@@ -11,15 +11,23 @@
   const near = (a, b, tol = 2.5) => Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol;
   const modalOpen = () => document.querySelector('.modal-root') && !document.querySelector('.modal-root').hidden;
   const closeModal = async () => { document.querySelector('.modal-root [data-ok]')?.click(); await wait(400); };
+  // The page settles after web fonts and appear-on-scroll animations (slower on CI); spots follow within ~1.5 s.
+  const until = async (find, ms = 5000) => {
+    for (const t0 = Date.now(); Date.now() - t0 < ms; await wait(100)) {
+      const found = find();
+      if (found) return found;
+    }
+    return find();
+  };
   try {
     await wait(900);
+    await document.fonts?.ready;
     if (st.step === 0 && location.pathname === '/') {
       const s = spots();
       ok('two spots on the home page (its own + the site-wide one)', s.length === 2, s.length);
-      const h1 = document.querySelector('.hero h1').getBoundingClientRect();
-      const want = { x: h1.left + h1.width * 0.88, y: h1.top + h1.height * 0.85 };
-      const home = s.find((el) => near(centre(el), want));
-      ok('home spot sits at 88% × 85% of the title', !!home, s.map((el) => JSON.stringify(centre(el))).join(' ') + ' want ' + JSON.stringify(want));
+      const want = () => { const h1 = document.querySelector('.hero h1').getBoundingClientRect(); return { x: h1.left + h1.width * 0.88, y: h1.top + h1.height * 0.85 }; };
+      const home = await until(() => s.find((el) => near(centre(el), want())));
+      ok('home spot sits at 88% × 85% of the title', !!home, s.map((el) => JSON.stringify(centre(el))).join(' ') + ' want ' + JSON.stringify(want()));
       ok('a «visible» spot is nearly opaque', home && Math.abs(parseFloat(getComputedStyle(home).opacity) - 0.9) < 0.01, home && getComputedStyle(home).opacity);
       const logo = s.find((el) => el !== home);
       ok('a «subtle» spot is faint', logo && Math.abs(parseFloat(getComputedStyle(logo).opacity) - 0.34) < 0.01, logo && getComputedStyle(logo).opacity);
@@ -54,9 +62,8 @@
     }
     if (st.step === 1 && location.pathname === '/play') {
       const s = spots();
-      const filters = document.querySelector('.filters').getBoundingClientRect();
-      const want = { x: filters.left + filters.width * 0.97, y: filters.top + filters.height * 0.5 };
-      const play = s.find((el) => near(centre(el), want));
+      const want = () => { const f = document.querySelector('.filters').getBoundingClientRect(); return { x: f.left + f.width * 0.97, y: f.top + f.height * 0.5 }; };
+      const play = await until(() => s.find((el) => near(centre(el), want())));
       ok('archive spot sits on the filters', !!play, s.map((el) => JSON.stringify(centre(el))).join(' '));
       play.click();
       await wait(1200);
