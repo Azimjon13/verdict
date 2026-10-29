@@ -314,6 +314,24 @@ story paragraph, and in Быстрый суд also «Кто есть кто», �
 SVG scene per world type, portraits generated from name, age and role, «quoted» lines as speech bubbles of the
 character who says them. The API returns the same frames, so a game client can draw them its own way.
 
+## Game feel (`assets/js/juice.js`)
+
+Small effects that make a verdict feel like one, all synthesised in the browser (no media files):
+
+- Picking an option stamps «Вердикт» on it with a gavel sound and a short vibration on phones; the hold-to-confirm
+  button ends with a screen strike. On a campaign chapter the stamp plays before the form is sent.
+- On the result: percentages count up, the earned XP flies to the rank chip in the header and is added to it, the
+  rank bar fills, confetti bursts on a rank-up, a new achievement, a found gift or a campaign ending, and the
+  consequence types out (click to finish). Sounds: a chord for a right guess, a low note for a wrong one, a fanfare
+  for a rank-up.
+- Living details: comic characters breathe and the speaker bobs, option cards glow under the cursor, hidden spots
+  glint every few seconds, the case-of-the-day timer ticks, pages cross-fade (View Transitions, where supported).
+- The speaker button in the header mutes sounds; the choice is kept in `localStorage` (`verdict:sound`).
+- With the system setting «reduce motion» only sounds and final values remain: no stamps flying in, confetti,
+  typing or shaking.
+
+`Juice.verdict(el)`, `Juice.strike(el)` and `Juice.result(container)` are the hooks pages call (`quick.js`, `case.js`).
+
 ## Dialogs and dropdowns
 
 `assets/js/modal.js` replaces `alert()`/`confirm()`: `<form data-confirm="…" data-confirm-title data-confirm-ok

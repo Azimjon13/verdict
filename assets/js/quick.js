@@ -27,6 +27,7 @@
   function choose(btn) {
     pick = btn.dataset.pick;
     root.querySelectorAll('[data-pick]').forEach((b) => b.classList.toggle('is-selected', b === btn));
+    window.Juice?.verdict(btn);
     pickedText.textContent = `${pick} — ${btn.querySelector('.opt-text').textContent}`;
     showStep(2);
   }
@@ -56,6 +57,7 @@
       window.VerdictFX?.boost(1);
       root.hidden = true;
       resultBox.innerHTML = data.html;
+      window.Juice?.result(resultBox, 'quick');
       const result = resultBox.querySelector('#quick-result');
       if (result) {
         result.classList.add('is-fresh');

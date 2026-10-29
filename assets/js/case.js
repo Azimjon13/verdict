@@ -52,6 +52,7 @@
     clearTimeout(timer);
     setProgress(1);
     holdBtn.classList.remove('holding');
+    window.Juice?.strike(holdBtn);
     submit();
   }
 
@@ -130,6 +131,7 @@
       form.hidden = true;
       if (!data.preview) updateWorld(data.world);
       bindResult(true);
+      window.Juice?.result(resultBox, 'full');
     } catch (err) {
       showError(err.message, 'Не удалось вынести вердикт', 'danger');
     } finally {

@@ -78,7 +78,7 @@
                 </div>
             </div>
             <div class="daily-side">
-                <div class="daily-stat"><span class="label-mono">{{ icon('clock') }}Новое дело через</span><b>{{ left // 3600 }} ч {{ (left % 3600) // 60 }} мин</b></div>
+                <div class="daily-stat"><span class="label-mono">{{ icon('clock') }}Новое дело через</span><b data-countdown="{{ left }}">{{ left // 3600 }} ч {{ (left % 3600) // 60 }} мин</b></div>
                 <div class="daily-stat"><span class="label-mono">{{ icon('flame') }}Дней подряд</span><b>{{ career.streak }}</b>{% if career.best_streak > career.streak %}<small>рекорд: {{ career.best_streak }}</small>{% endif %}</div>
                 <a class="daily-stat daily-rank" href="{{ url_for('judge') }}#career"><span class="label-mono">{{ icon(career.rank.icon) }}Ваш ранг</span><b>{{ career.rank.name }}</b><small>{{ career.xp }} XP</small></a>
             </div>

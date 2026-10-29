@@ -92,7 +92,7 @@
             </div>
             <h2 class="quick-title">{{ s.title }}</h2>
             {% with full = true, finish = '#camp-decide', finish_label = 'К решению' %}{% include 'partials/comic.html' %}{% endwith %}
-            <form method="post" class="camp-decide" id="camp-decide">
+            <form method="post" class="camp-decide" id="camp-decide" data-verdict-form>
                 {{ csrf_field() }}
                 <input type="hidden" name="action" value="choose">
                 <h3 class="quick-step-h"><span class="quick-step-num">{{ icon('gavel') }}</span>Ваш вердикт</h3>

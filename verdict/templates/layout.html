@@ -77,6 +77,7 @@
         {% else %}
             <a class="btn btn-sm btn-ghost btn-login" href="{{ url_for('login') }}">{{ icon('login') }}Войти</a>
         {% endif %}
+        <button class="icon-btn sound-toggle" type="button" data-sound-toggle aria-pressed="true" aria-label="Звук">{{ icon('volume') }}{{ icon('volume-off') }}</button>
         <a class="btn btn-primary btn-sm btn-play" href="{{ url_for('quick') }}">{{ icon('play') }}Играть</a>
         <button class="icon-btn nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Меню">{{ icon('menu') }}</button>
     </div>
@@ -145,6 +146,7 @@
 {% endif %}
 <script src="{{ asset('js/background.js') }}"></script>
 <script src="{{ asset('js/modal.js') }}"></script>
+<script src="{{ asset('js/juice.js') }}"></script>
 <script src="{{ asset('js/select.js') }}"></script>
 <script src="{{ asset('js/app.js') }}"></script>
 {% for s in scripts or [] %}
