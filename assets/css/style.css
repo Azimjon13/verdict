@@ -155,19 +155,27 @@ body.shockwave-flash::after {
 .brand-tag { font: 600 10px/1 var(--font-mono); letter-spacing: .14em; color: var(--cyan); border: 1px solid rgba(var(--cyan-rgb), .45); padding: 4px 6px; border-radius: 4px; box-shadow: 0 0 12px -2px rgba(var(--cyan-rgb), .5) inset; }
 
 .nav { display: flex; gap: 2px; margin-left: auto; }
-.nav a { position: relative; padding: 9px 14px; border-radius: 8px; color: var(--muted); font-weight: 700; font-size: 14px; transition: color .2s, background .2s; }
+.nav a { position: relative; padding: 9px 14px; border-radius: 8px; color: var(--muted); font-weight: 700; font-size: 14px; white-space: nowrap; transition: color .2s, background .2s; }
 .nav a:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
 .nav a.active { color: #fff; text-shadow: 0 0 12px rgba(var(--cyan-rgb), .8); }
 .nav a.active::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 1px; height: 2px; border-radius: 2px; background: var(--grad); box-shadow: 0 0 10px rgba(var(--cyan-rgb), .9), 0 0 20px rgba(var(--magenta-rgb), .6); }
 
 .header-actions { display: flex; align-items: center; gap: 10px; }
+/* Laptops: the full menu and a signed-in account's buttons share one line — the account shows as its avatar. */
+@media (max-width: 1480px) {
+  .site-header .brand-tag { display: none; }
+  .nav a { padding: 9px 10px; }
+  .nav a.active::after { left: 10px; right: 10px; }
+  .header-actions .user-name { display: none; }
+  .header-actions .user-chip { padding-right: 5px; }
+}
 .inline-form { display: inline; margin: 0; }
 .icon-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .03); color: var(--muted); cursor: pointer; transition: .2s; }
 .icon-btn:hover { color: #fff; border-color: rgba(var(--cyan-rgb), .6); box-shadow: 0 0 18px -4px rgba(var(--cyan-rgb), .7); }
 .icon-btn .icon { width: 19px; height: 19px; }
 .nav-toggle { display: none; }
 
-@media (max-width: 1020px) {
+@media (max-width: 1220px) {
   .nav { position: fixed; top: var(--header-h); left: 0; right: 0; flex-direction: column; gap: 4px; padding: 12px 16px 20px;
     background: rgba(3, 4, 14, .97); border-bottom: 1px solid var(--line); transform: translateY(-10px); opacity: 0; visibility: hidden; transition: .25s; }
   .nav.open { opacity: 1; transform: none; visibility: visible; }
@@ -2425,3 +2433,74 @@ a.note:hover { color: #fff; border-color: rgba(var(--cyan-rgb), .5); }
 @media (max-width: 420px) {
   .season-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- Discussion under a case ---------- */
+.talk-case-link { color: inherit; }
+.talk-case-link:hover { color: var(--cyan); }
+.page-hero .kicker .icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; }
+.talk-section { display: grid; gap: 14px; }
+.talk-columns { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.talk-main { display: grid; gap: 12px; min-width: 0; }
+.talk-side { display: grid; gap: 12px; position: sticky; top: calc(var(--header-h) + 16px); }
+@media (max-width: 900px) {
+  .talk-columns { grid-template-columns: minmax(0, 1fr); }
+  .talk-side { position: static; }
+}
+.talk-write { padding: 18px; display: grid; gap: 12px; }
+.talk-mine, .talk-note { display: flex; align-items: flex-start; gap: 10px; margin: 0; color: var(--muted); }
+.talk-mine > .icon, .talk-note > .icon { width: 18px; height: 18px; flex: none; color: var(--cyan); margin-top: 2px; }
+.talk-mine .opt-letter { margin: 0 4px; vertical-align: middle; }
+.talk-form { display: grid; gap: 10px; }
+.talk-form textarea { width: 100%; min-height: 104px; resize: vertical; }
+.talk-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.talk-form-foot small { color: var(--dim); }
+.talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.talk-item { padding: 16px 18px; display: grid; gap: 10px; scroll-margin-top: calc(var(--header-h) + 20px); }
+.talk-item:target { border-color: rgba(var(--cyan-rgb), .7); box-shadow: 0 0 26px -10px rgba(var(--cyan-rgb), .9); }
+.talk-item.is-mine { border-color: rgba(var(--cyan-rgb), .35); }
+.talk-item.is-hidden { opacity: .55; border-style: dashed; }
+.talk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.talk-verdict { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 13px; }
+.talk-verdict-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+.talk-same { font: 600 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--cyan);
+  padding: 4px 7px; border-radius: 6px; border: 1px solid rgba(var(--cyan-rgb), .4); }
+.talk-hidden-tag { color: var(--magenta); border-color: rgba(var(--magenta-rgb), .4); }
+.talk-text { color: var(--text); overflow-wrap: anywhere; }
+.talk-text p { margin: 0 0 8px; }
+.talk-text p:last-child { margin-bottom: 0; }
+.talk-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.talk-foot > small { color: var(--dim); margin-right: auto; }
+.talk-like { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, .03); color: var(--muted); font: 700 13px/1 var(--font-body); cursor: pointer; transition: .2s; }
+.talk-like .icon { width: 15px; height: 15px; }
+.talk-like:hover { color: #fff; border-color: rgba(var(--magenta-rgb), .6); }
+.talk-like.is-on { color: #fff; border-color: rgba(var(--magenta-rgb), .7); background: rgba(var(--magenta-rgb), .14); }
+.talk-like.is-on .icon { color: var(--magenta); }
+.talk-like.is-static { cursor: default; border-color: transparent; background: none; padding-left: 0; }
+.talk-foot .report-box summary { font-size: 13px; }
+.talk-rules { padding: 18px; }
+.talk-teaser { display: grid; gap: 10px; margin-top: 18px; }
+.talk-teaser-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.talk-teaser-list li { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: 14px; }
+.talk-teaser-list b { color: var(--text); }
+.talk-teaser-list small { color: var(--magenta); white-space: nowrap; }
+.talk-teaser-list small .icon { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
+.talk-teaser .btn { justify-self: start; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+.admin-quote { color: var(--text); overflow-wrap: anywhere; }
+
+/* ---------- «Меньше эффектов» (data-fx="lite"): what costs old phones the most ---------- */
+.fx-toggle .when-lite, [data-fx="lite"] .fx-toggle .when-full { display: none; }
+[data-fx="lite"] .fx-toggle .when-lite { display: inline; }
+.footer-fx { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: var(--dim);
+  font: inherit; cursor: pointer; }
+.footer-fx:hover { color: var(--cyan); }
+.footer-fx .icon { width: 15px; height: 15px; }
+@media (max-width: 1220px) { .nav .fx-toggle { display: flex; } }
+[data-fx="lite"] *, [data-fx="lite"] *::before, [data-fx="lite"] *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+[data-fx="lite"] .bg-aurora, [data-fx="lite"] .bg-beam, [data-fx="lite"] .bg-scan, [data-fx="lite"] .bg-hex { display: none; }
+[data-fx="lite"].js .reveal { opacity: 1; transform: none; }
+[data-fx="lite"] .site-header, [data-fx="lite"] .panel { background-color: rgba(6, 9, 24, .96); }
+[data-fx="lite"] .modal-backdrop { background: rgba(2, 2, 10, .92); }

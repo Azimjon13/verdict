@@ -28,11 +28,26 @@
     <meta name="twitter:card" content="summary">
     <meta name="theme-color" content="#03040a">
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="VERDICT">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800;900&display=swap">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <script>document.documentElement.classList.add('js');</script>
+    <script>
+        document.documentElement.classList.add('js');
+        // «Меньше эффектов»: the player's choice, or by default on a weak device. Set before the first paint.
+        try {
+            var fx = localStorage.getItem('verdict:fx'), n = navigator;
+            if (fx === 'lite' || (!fx && ((n.deviceMemory && n.deviceMemory <= 2) || (n.hardwareConcurrency && n.hardwareConcurrency <= 2)))) {
+                document.documentElement.setAttribute('data-fx', 'lite');
+            }
+        } catch (e) {}
+    </script>
 </head>
 <body class="{{ body_class }}" data-bg="{{ bg }}" data-vp="{{ vp }}" data-csrf="{{ csrf_token() }}" data-vote-url="{{ url_for('api_vote') }}"{% if autosave_clear %} data-autosave-clear="{{ autosave_clear|tojson|forceescape }}"{% endif %}>
 <a class="skip-link" href="#main">Перейти к содержимому</a>
@@ -62,11 +77,12 @@
             <a href="{{ href }}"{% if active == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
         <button class="nav-sound sound-toggle" type="button" data-sound-toggle aria-pressed="true">{{ icon('volume') }}{{ icon('volume-off') }}<span class="when-on">Звук включён</span><span class="when-off">Звук выключен</span></button>
+        <button class="nav-sound fx-toggle" type="button" data-fx-toggle>{{ icon('sparkles') }}<span class="when-full">Меньше эффектов</span><span class="when-lite">Все эффекты</span></button>
     </nav>
 
     <div class="header-actions">
         {% if me %}
-            <a class="user-chip{{ ' active' if active == 'account' }}" href="{{ url_for('account') }}" title="Профиль">
+            <a class="user-chip{{ ' active' if active == 'account' }}" href="{{ url_for('account') }}" title="Профиль: {{ me.display_name }}">
                 <span class="avatar avatar-xs" style="--ah: {{ name_hue(me.display_name) }}">{{ initials(me.display_name) }}</span>
                 <span class="user-name">{{ me.display_name }}</span>
                 {% if me.role == 'admin' %}<span class="user-role" title="Команда">{{ icon('shield') }}</span>{% endif %}
@@ -136,6 +152,8 @@
     </div>
     <div class="container footer-bottom">
         <span>© {{ year }} VERDICT · MVP</span>
+        <button class="footer-fx" type="button" data-install hidden>{{ icon('download') }}Установить приложение</button>
+        <button class="footer-fx fx-toggle" type="button" data-fx-toggle>{{ icon('sparkles') }}<span class="when-full">Меньше эффектов — для слабых телефонов</span><span class="when-lite">Включить все эффекты</span></button>
         <span>Все миры вымышлены и не связаны с реальными странами, политикой или законами.</span>
     </div>
 </footer>

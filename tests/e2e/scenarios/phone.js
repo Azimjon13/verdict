@@ -44,6 +44,15 @@
       ok(path + ' fits ' + width + ' px', doc.documentElement.scrollWidth <= width && offenders.length === 0,
         offenders.slice(0, 4).map((el) => describe(el) + ' →' + Math.round(el.getBoundingClientRect().right)).join('; '));
     }
+    // The header between phone and wide screen: the team's account has the most in it.
+    for (const w of [1500, 1481, 1440, 1300, 1221, 1100, 768, 390]) {
+      frame.style.width = w + 'px';
+      await new Promise((resolve) => { frame.onload = resolve; frame.src = '/play'; });
+      await wait(500);
+      const d = frame.contentDocument;
+      const header = d.querySelector('.site-header');
+      ok('the header fits ' + w + ' px', header.scrollWidth <= w && d.documentElement.scrollWidth <= w, header.scrollWidth);
+    }
   } catch (e) {
     out.push('ERROR ' + e.message);
   }

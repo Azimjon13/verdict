@@ -8,7 +8,7 @@ import re
 
 from flask import Blueprint, g, request
 
-from .. import career, gameauth, hunt, notify, players, seasons, signups, social
+from .. import career, gameauth, hunt, notify, players, seasons, signups, social, talk
 from ..catalog import JUDGE_ARCHETYPES, METRICS, SOCIAL, public as catalog_public
 from ..comic import cast_of, cast_public, panels_of
 from ..helpers import case_controversy, excerpt
@@ -180,6 +180,9 @@ def index():
             'GET /api/v1/cases/<id>': 'one case with comic frames (X-Voter-Id optional: adds my_vote)',
             'GET /api/v1/quick/next': 'a random case the player has not judged (X-Voter-Id required)',
             'POST /api/v1/cases/<id>/verdict': '{option, reasoning?, guess?, mode?, duration_ms?} (X-Voter-Id required)',
+            'GET /api/v1/cases/<id>/comments?sort=top|new[&scope=friends|community:<slug>]': 'the discussion (after a verdict)',
+            'POST /api/v1/cases/<id>/comments {text}': 'write a comment (Bearer, after a verdict)',
+            'POST /api/v1/comments/<id>/like|unlike|delete': 'back a comment, take it back, delete one\'s own (Bearer)',
             'GET /api/v1/profile': 'judge profile, Быстрый суд score and career (X-Voter-Id required)',
             'GET /api/v1/daily': 'the case of the day, the same for every player (X-Voter-Id optional)',
             'GET /api/v1/world': "the player's world: meters and active world events (X-Voter-Id required)",
@@ -413,6 +416,63 @@ def season_one(key):
         return error('Сезон не найден (ключ — ГГГГ-ММ закрытого сезона).', 404)
     return {'ok': True, 'key': s['key'], 'name': s['name'], 'players': s['players'],
             'closed_at': s['closed_at'].strftime('%Y-%m-%dT%H:%M:%SZ'), 'rows': season_rows(s['board'])}
+
+
+@bp.get('/cases/<int:case_id>/comments')
+def case_comments(case_id):
+    s = situation_find(case_id)
+    if not s or s['status'] != 'approved':
+        return error('Дело не найдено.', 404)
+    if talk.judged(voter(), case_id) is None:
+        return {'ok': False, 'error': 'Обсуждение открывается после вердикта по делу.', 'count': talk.count(case_id)}, 403
+    user = account()
+    uid = int(user['id']) if user else None
+    ids = None
+    scope = request.args.get('scope', '')
+    if scope == 'friends' and uid:
+        ids = [uid] + social.friend_ids(uid)
+    elif scope.startswith('community:'):
+        c = social.community_by_slug(scope[10:])
+        if not c:
+            return error('Сообщество не найдено.', 404)
+        ids = social.member_ids(c['id'])
+    sort = request.args.get('sort', 'top')
+    rows = talk.comments(case_id, uid, sort if sort in talk.SORTS else 'top', ids)
+    return {'ok': True, 'count': talk.count(case_id), 'my_verdict': talk.judged(voter(), case_id),
+            'comments': [talk.public(r) for r in rows]}
+
+
+@bp.post('/cases/<int:case_id>/comments')
+def case_comment_post(case_id):
+    user = account()
+    if not user:
+        return need_account()
+    s = situation_find(case_id)
+    if not s or s['status'] != 'approved':
+        return error('Дело не найдено.', 404)
+    try:
+        cid = talk.post(case_id, int(user['id']), voter(), input_str(body().get('text', ''), talk.MAX_LEN + 1))
+    except talk.TalkError as e:
+        return {'ok': False, 'error': e.message, 'code': e.code}, 429 if e.code in ('slow', 'daily') else 422
+    row = next(r for r in talk.comments(case_id, int(user['id']), 'new', [int(user['id'])]) if r['id'] == cid)
+    return {'ok': True, 'comment': talk.public(row)}
+
+
+@bp.post('/comments/<int:comment_id>/<action>')
+def comment_action(comment_id, action):
+    user = account()
+    if not user:
+        return need_account()
+    c = talk.find(comment_id)
+    if not c or action not in ('like', 'unlike', 'delete'):
+        return error('Комментарий не найден.', 404)
+    uid = int(user['id'])
+    if action == 'delete':
+        done = bool(talk.delete_own(comment_id, uid))
+    else:
+        done = (talk.like if action == 'like' else talk.unlike)(comment_id, uid)
+    c = talk.find(comment_id)
+    return {'ok': True, 'done': bool(done), 'likes': int(c['likes']) if c else 0}
 
 
 @bp.get('/users/<login>')

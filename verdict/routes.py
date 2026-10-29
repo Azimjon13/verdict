@@ -1,7 +1,7 @@
 """All URLs in one place. Old PHP addresses (case.php?id=3 …) redirect to the new ones."""
 from flask import abort, redirect, request, url_for
 
-from .views import accounts, admin, api, api_v1, authoring, campaigns, pages, social
+from .views import accounts, admin, api, api_v1, authoring, campaigns, pages, social, talk
 
 ROUTES = [
     # rule                       endpoint       view                     methods
@@ -10,6 +10,7 @@ ROUTES = [
     ('/quick/<int:id>',          'quick_case',  pages.quick,             ['GET']),
     ('/play',                    'play',        pages.play,              ['GET']),
     ('/case/<int:id>',           'case',        pages.case,              ['GET']),
+    ('/talk/<int:id>',           'talk',        talk.talk_page,          ['GET', 'POST']),
     ('/judge',                   'judge',       pages.judge_page,        ['GET']),
     ('/judge/title',             'judge_title', pages.judge_title,       ['POST']),
     ('/brief',                   'brief',       pages.brief,             ['GET']),
@@ -40,6 +41,8 @@ ROUTES = [
     ('/api/hunt',                'api_hunt',    api.hunt_claim,          ['POST']),
     ('/api/export',              'api_export',  api.export,              ['GET']),
     ('/health',                  'health',      api.health,              ['GET', 'HEAD']),
+    ('/sw.js',                   'service_worker', pages.service_worker, ['GET']),
+    ('/offline',                 'offline',     pages.offline,           ['GET']),
 ]
 
 # PHP page → (endpoint, query parameter that becomes the <int:id> part, endpoint when that parameter is set)

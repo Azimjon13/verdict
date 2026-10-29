@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.fx === 'lite';
   const KEY = 'verdict:sound';
 
   /* ---------- Звук ---------- */

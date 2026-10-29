@@ -262,3 +262,38 @@
     document.querySelectorAll('[data-section]').forEach((s) => so.observe(s));
   }
 })();
+
+/* «Меньше эффектов»: a static background, no blur and no animations — for older phones. */
+(() => {
+  document.querySelectorAll('[data-fx-toggle]').forEach((btn) => {
+    btn.setAttribute('aria-pressed', document.documentElement.dataset.fx === 'lite' ? 'true' : 'false');
+    btn.addEventListener('click', () => {
+      const lite = document.documentElement.dataset.fx !== 'lite';
+      try { localStorage.setItem('verdict:fx', lite ? 'lite' : 'full'); } catch (_) { /* private mode */ }
+      window.location.reload();
+    });
+  });
+})();
+
+/* The installable app: the service worker (styles and scripts from the cache, a «Нет связи» page offline) and the
+ * «Установить приложение» button where the browser offers installing. */
+(() => {
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  }
+  const buttons = [...document.querySelectorAll('[data-install]')];
+  let offer = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    offer = e;
+    buttons.forEach((b) => { b.hidden = false; });
+  });
+  buttons.forEach((b) => b.addEventListener('click', async () => {
+    if (!offer) return;
+    offer.prompt();
+    await offer.userChoice.catch(() => null);
+    offer = null;
+    buttons.forEach((x) => { x.hidden = true; });
+  }));
+  window.addEventListener('appinstalled', () => buttons.forEach((b) => { b.hidden = true; }));
+})();

@@ -6,7 +6,8 @@
   if (!canvas || !canvas.getContext) return;
 
   const ctx = canvas.getContext('2d');
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // «Меньше эффектов» (data-fx="lite" on <html>) draws the scene once, like reduced motion.
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.fx === 'lite';
   const calm = document.body.dataset.bg === 'calm';
 
   const C = {

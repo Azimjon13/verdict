@@ -1,0 +1,135 @@
+{% extends 'layout.html' %}
+{% from 'partials/person.html' import person %}
+{% from 'partials/report.html' import report_form %}
+{% block content %}
+{% set me_user = current_user() %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">{{ icon('message') }}Обсуждение дела</span>
+        <h1><a class="talk-case-link" href="{{ url_for('case', id=s.id) }}">{{ s.title }}</a></h1>
+        <p class="lead">{% if total %}{{ total }} {{ plural(total, 'комментарий', 'комментария', 'комментариев') }}. {% endif %}Спорят те, кто уже вынес вердикт: у каждого комментария — решение его автора.</p>
+    </div>
+</section>
+
+<section class="container section-top-0 talk-section">
+    {% if locked %}
+        <div class="empty panel">
+            {{ icon('lock') }}
+            <h2>Обсуждение откроется после вашего вердикта</h2>
+            <p>Здесь спорят о решениях — и выдают, к чему склоняется большинство. Сначала рассудите дело сами{% if total %}: {{ total }} {{ plural(total, 'судья уже высказался', 'судьи уже высказались', 'судей уже высказались') }}{% endif %}.</p>
+            <div class="empty-actions">
+                <a class="btn btn-primary" href="{{ url_for('quick_case', id=s.id) }}">{{ icon('play') }}Быстрый суд</a>
+                <a class="btn" href="{{ url_for('case', id=s.id) }}">{{ icon('file') }}Полное дело</a>
+            </div>
+        </div>
+    {% else %}
+        <div class="talk-columns">
+            <div class="talk-main">
+                <div class="panel talk-write" id="write">
+                    {% if mine is not none %}
+                        <p class="talk-mine">{{ icon('gavel') }}<span>Ваш вердикт: <span class="opt-letter opt-letter-sm">{{ '+' if mine == 'other' else mine }}</span> {{ decision_text(s, mine) }}</span></p>
+                    {% endif %}
+                    {% if not me_user %}
+                        <p class="talk-note">{{ icon('user') }}<span><a href="{{ url_for('login', back=request.path) }}">Войдите</a> или <a href="{{ url_for('register', back=request.path) }}">заведите аккаунт</a>, чтобы высказаться и поддерживать других. Ваши вердикты сохранятся.</span></p>
+                    {% elif barred %}
+                        <p class="talk-note">{{ icon('ban') }}<span>Команда закрыла вам обсуждения.</span></p>
+                    {% elif mine is none %}
+                        <p class="talk-note">{{ icon('info') }}<span>Вы видите обсуждение как команда. Высказаться можно после своего вердикта.</span></p>
+                    {% else %}
+                        <form method="post" class="talk-form" data-validate novalidate>
+                            {{ csrf_field() }}<input type="hidden" name="action" value="post">
+                            <label class="visually-hidden" for="talk-text">Ваш комментарий</label>
+                            <textarea id="talk-text" name="text" rows="4" maxlength="{{ max_len }}" required minlength="3" placeholder="Почему вы решили так? Что упускают другие?">{{ draft }}</textarea>
+                            {% if problem %}<div class="form-alert" role="alert">{{ icon('alert') }}<span>{{ problem }}</span></div>{% endif %}
+                            <div class="talk-form-foot">
+                                <small>Спорьте с решениями, а не с людьми. До {{ max_len }} символов.</small>
+                                <button class="btn btn-primary btn-sm" type="submit">{{ icon('send') }}Опубликовать</button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+
+                <div class="panel rating-filters talk-filters">
+                    <div class="tabs" role="tablist" aria-label="Порядок">
+                        {% for key, label in [('top', 'Лучшие'), ('new', 'Новые')] %}
+                            <a role="tab" href="{{ url_for('talk', id=s.id, sort=key, scope=scope if scope != 'all' else none) }}" class="tab{{ ' active' if sort == key }}" aria-selected="{{ 'true' if sort == key else 'false' }}">{{ label }}</a>
+                        {% endfor %}
+                    </div>
+                    {% if me_user %}
+                        <form method="get" class="rating-scope">
+                            <input type="hidden" name="sort" value="{{ sort }}">
+                            <select class="vs" name="scope" data-autosubmit data-size="sm" data-align="right" aria-label="Чьи комментарии">
+                                <option value="all"{{ option_icon('globe', 190) }}{{ ' selected' if scope == 'all' }}>Все судьи</option>
+                                <option value="friends"{{ option_icon('users', 150) }}{{ ' selected' if scope == 'friends' }}>Мои друзья</option>
+                                {% for c in my_communities %}
+                                    <option value="c:{{ c.slug }}"{{ option_icon(c.icon, c.hue) }}{{ ' selected' if scope == 'c:' ~ c.slug }}>{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <noscript><button class="btn btn-sm" type="submit">Показать</button></noscript>
+                        </form>
+                    {% endif %}
+                </div>
+
+                {% if items %}
+                    <ol class="talk-list">
+                        {% for c in items %}
+                            <li id="c{{ c.id }}" class="panel talk-item{{ ' is-mine' if c.mine }}{{ ' is-hidden' if c.status == 'hidden' }}{{ ' is-same' if mine is not none and c.option_key == mine and not c.mine }}">
+                                <header class="talk-head">
+                                    {{ person(c.login, c.display_name, c.title, small=true) }}
+                                    <span class="talk-verdict" title="{{ decision_text(s, c.option_key) }}"><span class="opt-letter opt-letter-sm">{{ '+' if c.option_key == 'other' else c.option_key }}</span><span class="talk-verdict-text">{{ excerpt(decision_text(s, c.option_key), 60) }}</span></span>
+                                    {% if mine is not none and c.option_key == mine and not c.mine %}<span class="talk-same">как вы</span>{% endif %}
+                                    {% if c.status == 'hidden' %}<span class="talk-same talk-hidden-tag">скрыт</span>{% endif %}
+                                </header>
+                                <div class="talk-text">{{ paragraphs(c.text) }}</div>
+                                <footer class="talk-foot">
+                                    <small>{{ format_datetime(c.created_at) }}</small>
+                                    {% if me_user and not c.mine and c.status == 'visible' and not barred %}
+                                        <form method="post" class="inline-form">
+                                            {{ csrf_field() }}<input type="hidden" name="action" value="{{ 'unlike' if c.liked else 'like' }}"><input type="hidden" name="comment_id" value="{{ c.id }}">
+                                            <button class="talk-like{{ ' is-on' if c.liked }}" type="submit" aria-pressed="{{ 'true' if c.liked else 'false' }}">{{ icon('heart-whole') }}Поддерживаю{% if c.likes %} · {{ c.likes }}{% endif %}</button>
+                                        </form>
+                                    {% else %}
+                                        <span class="talk-like is-static">{{ icon('heart-whole') }}{{ c.likes }}</span>
+                                    {% endif %}
+                                    {% if c.mine %}
+                                        <form method="post" class="inline-form" data-confirm="Удалить ваш комментарий?" data-confirm-title="Удаление" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                                            {{ csrf_field() }}<input type="hidden" name="action" value="delete"><input type="hidden" name="comment_id" value="{{ c.id }}">
+                                            <button class="btn btn-ghost btn-sm" type="submit">{{ icon('trash') }}Удалить</button>
+                                        </form>
+                                    {% elif me_user %}
+                                        {{ report_form('comment', c.id, url_for('talk', id=s.id) ~ '#c' ~ c.id) }}
+                                    {% endif %}
+                                    {% if is_admin() %}
+                                        <form method="post" class="inline-form">
+                                            {{ csrf_field() }}<input type="hidden" name="action" value="{{ 'show' if c.status == 'hidden' else 'hide' }}"><input type="hidden" name="comment_id" value="{{ c.id }}">
+                                            <button class="btn btn-sm" type="submit">{{ icon('eye' if c.status == 'hidden' else 'eye-off') }}{{ 'Показать' if c.status == 'hidden' else 'Скрыть' }}</button>
+                                        </form>
+                                    {% endif %}
+                                </footer>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <div class="empty panel">
+                        {{ icon('message') }}
+                        <h2>{% if scope != 'all' %}Здесь пока никто не высказался{% else %}Пока тихо{% endif %}</h2>
+                        <p>{% if scope != 'all' %}Среди выбранных судей комментариев нет — посмотрите всех.{% else %}Будьте первым: объясните свой вердикт — с ним будут спорить.{% endif %}</p>
+                    </div>
+                {% endif %}
+            </div>
+            <aside class="talk-side">
+                <div class="panel talk-rules">
+                    <h2 class="vz-title">{{ icon('shield') }}Правила спора</h2>
+                    <ul class="plain-list">
+                        <li>{{ icon('check') }}<span>Спорьте с решением, а не с человеком.</span></li>
+                        <li>{{ icon('check') }}<span>Без оскорблений, рекламы и чужих личных данных.</span></li>
+                        <li>{{ icon('check') }}<span>Что нарушает правила — «Пожаловаться»: команда скроет.</span></li>
+                    </ul>
+                </div>
+                <a class="btn btn-block" href="{{ url_for('case', id=s.id) }}">{{ icon('file') }}Вернуться к делу</a>
+            </aside>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,4 +1,4 @@
--- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 9.
+-- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 10.
 -- Сайт создаёт и обновляет эти таблицы сам при первом запуске. Этот файл нужен, если у
 -- пользователя MySQL нет права CREATE: создайте базу и импортируйте его вручную
 -- (phpMyAdmin / HeidiSQL / mysql -u root -p < database/schema.sql).
@@ -353,14 +353,42 @@ CREATE TABLE IF NOT EXISTS signup_log (
     KEY idx_signup_log_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Обсуждение дела: пишут аккаунты, рассудившие дело; option_key — их вердикт на момент записи.
+CREATE TABLE IF NOT EXISTS comments (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    situation_id INT UNSIGNED NOT NULL,
+    user_id      INT UNSIGNED NOT NULL,
+    option_key   VARCHAR(10)  NULL,
+    text         TEXT         NOT NULL,
+    status       VARCHAR(10)  NOT NULL DEFAULT 'visible',  -- visible | hidden (скрыт командой)
+    likes        INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at   DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_comments_case (situation_id, status, created_at),
+    KEY idx_comments_user (user_id, created_at),
+    CONSTRAINT fk_comments_situation FOREIGN KEY (situation_id) REFERENCES situations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_comments_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- «Поддерживаю» под комментарием: один раз от аккаунта.
+CREATE TABLE IF NOT EXISTS comment_likes (
+    comment_id INT UNSIGNED NOT NULL,
+    user_id    INT UNSIGNED NOT NULL,
+    created_at DATETIME     NOT NULL,
+    PRIMARY KEY (comment_id, user_id),
+    KEY idx_comment_likes_user (user_id),
+    CONSTRAINT fk_comment_likes_comment FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
+    CONSTRAINT fk_comment_likes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS meta (
     meta_key   VARCHAR(64)  NOT NULL,
     meta_value VARCHAR(255) NOT NULL,
     PRIMARY KEY (meta_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '9')
-    ON DUPLICATE KEY UPDATE meta_value = '9';
+INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '10')
+    ON DUPLICATE KEY UPDATE meta_value = '10';
 
 -- Первая учётная запись команды: логин admin, пароль verdict-admin.
 -- СМЕНИТЕ ПАРОЛЬ сразу после первого входа (страница «Профиль»).

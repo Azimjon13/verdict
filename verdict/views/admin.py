@@ -465,6 +465,28 @@ def gift_page(gift_id):
     return _render('gift.html', gift['name'], 'gifts', gift=gift, errors=errors, codes=codes, grants=grants, preview=preview)
 
 
+# ---------- Discussions ----------
+
+@bp.route('/talk', methods=['GET', 'POST'])
+@team_only
+def talk_page():
+    """The latest comments everywhere: the team reads along and hides what breaks the rules."""
+    from .. import talk
+    status = request.args.get('status', 'visible')
+    status = status if status in ('visible', 'hidden') else 'visible'
+    if request.method == 'POST':
+        cid = _int(request.form.get('comment_id'))
+        act = request.form.get('action', '')
+        if act in ('hide', 'show'):
+            talk.set_hidden(cid, act == 'hide')
+            flash('success', 'Комментарий скрыт, автор узнает об этом.' if act == 'hide' else 'Комментарий снова виден.')
+        elif act == 'remove':
+            talk.remove(cid)
+            flash('success', 'Комментарий удалён.')
+        return redirect(url_for('admin.talk_page', status=status))
+    return _render('talk.html', 'Обсуждения', 'talk', items=talk.recent(status), status=status)
+
+
 # ---------- Reports ----------
 
 @bp.route('/reports', methods=['GET', 'POST'])
@@ -485,11 +507,15 @@ def reports_page():
             if c:
                 social.community_delete(c['id'])
                 flash('success', 'Сообщество «%s» удалено.' % c['name'])
+        elif act == 'hide_comment':
+            from .. import talk
+            talk.set_hidden(_int(request.form.get('target_id')), True)
+            flash('success', 'Комментарий скрыт, автор узнает об этом.')
         elif act == 'unpublish':
             execute("UPDATE situations SET status = 'pending' WHERE id = %s AND status = 'approved'",
                     (_int(request.form.get('target_id')),))
             flash('success', 'Ситуация снята с игры и вернулась на отбор.')
-        if act in ('block', 'delete_community', 'unpublish', 'resolve'):
+        if act in ('block', 'delete_community', 'unpublish', 'hide_comment', 'resolve'):
             social.report_close(rid, 'resolved', current_user_id())
             if act == 'resolve':
                 flash('success', 'Жалоба закрыта.')

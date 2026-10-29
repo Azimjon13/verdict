@@ -272,6 +272,18 @@ invited to sign up (the progress made so far comes along).
   moderators accept requests and remove members (not other moderators). Each community has its own rating. The team
   sees all communities in admin → «Сообщества» and can remove one.
 
+## Discussion under a case (`/talk/<id>`)
+
+- Opens after the player's own verdict (the arguments give away where the majority leans); the result screen shows
+  how many comments there are, quotes the two most backed and links to the discussion.
+- Accounts write; every comment carries the verdict its author had when writing, and comments from players who
+  judged like you are marked «как вы». Others press «Поддерживаю» (once, not on their own comment); the author is
+  told at 1, 5, 10, 25… backers. Sorted by backing or newest; filtered to friends or one of your communities.
+- Brakes: 3–1000 characters, one comment per 15 seconds, 30 a day; a barred player can't write or back.
+- Moderation: players report a comment like a profile; the team hides it (from the report, on the page or in admin →
+  «Обсуждения», where the latest comments everywhere are listed) and the author is told. Hidden comments stay
+  visible to the team only.
+
 ## Seasons and notifications
 
 - **Seasons.** The season rating is a calendar month (UTC). The first visit after a month ends closes it: the final
@@ -390,6 +402,18 @@ Small effects that make a verdict feel like one, all synthesised in the browser 
 - The speaker button in the header mutes sounds; the choice is kept in `localStorage` (`verdict:sound`).
 - With the system setting «reduce motion» only sounds and final values remain: no stamps flying in, confetti,
   typing or shaking.
+- **«Меньше эффектов»** (the footer, and the menu on phones) does the same plus a still background without glow, blur
+  or animations — for older phones. It's on by default on a weak device (≤ 2 GB memory or ≤ 2 cores) until the
+  player chooses; the choice is kept in `localStorage` (`verdict:fx`) and applied before the page paints.
+
+## Installable app
+
+The site is a PWA: `assets/manifest.webmanifest` (name, icons, shortcuts to Быстрый суд, the judge profile and the
+rating) and a service worker at `/sw.js`. Phones offer «Установить» / «На экран Домой», and Chrome's install button
+appears; the footer shows «Установить приложение» where the browser allows it. The worker keeps styles, scripts,
+images and fonts in a cache named after the newest file in `assets/` (a new upload starts a fresh cache) and serves
+pages always from the network — they are personal and never stored. Without a network it shows `/offline`, a page
+with nothing personal in it. The icons are drawn from the logo by `scripts/make_icons.py` (it needs Chrome).
 
 `Juice.verdict(el)`, `Juice.strike(el)` and `Juice.result(container)` are the hooks pages call (`quick.js`, `case.js`).
 
@@ -413,7 +437,8 @@ judge profile, the career (case of the day, XP, streaks, world events, achieveme
 across devices, the admin panel and its numbers, treasure hunts and gifts (placement, dates, limits, code pools,
 accounts-only gifts, blocked players, the main prize), profiles and their privacy, friends, ratings (season by first
 verdict, scopes, ties, opt-out), communities (rules, access modes, roles, invite links, limits), story campaigns,
-reports and bans, security (per-login lock, sign-up brake, token expiry, team password reset) and the game API.
+reports and bans, security (per-login lock, sign-up brake, token expiry, team password reset), seasons, notifications,
+discussions, the installable app and the game API; a test keeps `database/schema.sql` equal to the migrations.
 `tests/fixtures/comic_expected.json` was produced by the PHP comic engine; the Python engine must give exactly the
 same frames, speakers, portraits and scenes for all 48 cases.
 
@@ -434,7 +459,9 @@ a player with a judge profile and a month of made-up activity. Each scenario in 
 the runner adds to the real pages in headless Chrome: it clicks, types and holds buttons like a player and reports
 PASS/FAIL lines. They cover the archive filters, the judge profile, Быстрый суд with keys and a change of mind, the
 game-feel effects, the comic, the hold-to-confirm verdict, writing a case from sign-up to submission, removing a
-decision that has votes, a whole treasure hunt, placing a spot by clicking, and every main page at 360 px wide.
+decision that has votes, a whole treasure hunt, placing a spot by clicking, every main page at 360 px wide and the
+header from phone to wide screen, the «Меньше эффектов» switch, a discussion from verdict to comment, and the
+installable app (service worker, cache, manifest).
 Headless Chrome on Windows won't make a window narrower than about 500 px, so phone widths are checked and
 screenshotted inside a frame of the right width (`/__phone`); phone screenshots have a dark strip on the right.
 
@@ -456,13 +483,14 @@ verdict/               the application
   campaigns.py         story campaigns: chapters, bridges, the campaign's world, endings
   gameauth.py          sign-in from the game client (hashed tokens, slowed-down guessing)
   seasons.py notify.py signups.py  closing seasons with trophies; notifications; sign-up limits
+  talk.py              the discussion under a case
   analytics.py charts.py  the admin overview: numbers and chart shapes
   views/               pages, authoring, accounts, social, campaigns, admin (the team's panel), api (site JSON), api_v1 (game clients)
   templates/           Jinja templates (layout, pages, partials)
 content/               catalog.json, demo cases and story campaigns (shared with game clients)
 assets/                CSS, JavaScript, images (served at /assets)
-database/schema.sql    manual schema import (schema v9; a test keeps it equal to the migrations)
-scripts/build_dist.py  builds dist/
+database/schema.sql    manual schema import (schema v10; a test keeps it equal to the migrations)
+scripts/build_dist.py  builds dist/; scripts/make_icons.py draws the app icons
 tests/                 pytest suite; tests/e2e/ — browser scenarios and their runner
 docs/API.md            game-client API
 docs/ARCHITECTURE.md   how the game is put together, and where friends, communities and ratings will go

@@ -14,7 +14,7 @@ from flask import current_app, g
 from .catalog import CONTENT
 
 # Bump and add a step to migrate() when the table structure changes. database/schema.sql holds the same result.
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 _ready = set()            # databases already migrated by this process
 _ready_lock = threading.Lock()
@@ -525,6 +525,35 @@ def migrate(conn, cfg):
         if not _index_exists(conn, 'votes', 'idx_votes_first'):
             execute('ALTER TABLE votes ADD KEY idx_votes_first (first_at)', (), conn)
         _set_meta(conn, 'schema_version', '9')
+
+    if schema < 10:
+        # Discussion under a case: accounts that judged it write comments (with the verdict they had then), others
+        # back them; the team hides what breaks the rules.
+        execute("""CREATE TABLE IF NOT EXISTS comments (
+            id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            situation_id INT UNSIGNED NOT NULL,
+            user_id      INT UNSIGNED NOT NULL,
+            option_key   VARCHAR(10)  NULL,
+            text         TEXT         NOT NULL,
+            status       VARCHAR(10)  NOT NULL DEFAULT 'visible',
+            likes        INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at   DATETIME     NOT NULL,
+            PRIMARY KEY (id),
+            KEY idx_comments_case (situation_id, status, created_at),
+            KEY idx_comments_user (user_id, created_at),
+            CONSTRAINT fk_comments_situation FOREIGN KEY (situation_id) REFERENCES situations (id) ON DELETE CASCADE,
+            CONSTRAINT fk_comments_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        execute("""CREATE TABLE IF NOT EXISTS comment_likes (
+            comment_id INT UNSIGNED NOT NULL,
+            user_id    INT UNSIGNED NOT NULL,
+            created_at DATETIME     NOT NULL,
+            PRIMARY KEY (comment_id, user_id),
+            KEY idx_comment_likes_user (user_id),
+            CONSTRAINT fk_comment_likes_comment FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
+            CONSTRAINT fk_comment_likes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        _set_meta(conn, 'schema_version', '10')
 
     admin_id = ensure_admin(conn, cfg)
     # Team demo situations created before accounts existed belong to the team.

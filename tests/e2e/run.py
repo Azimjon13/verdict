@@ -69,12 +69,19 @@ SCENARIOS = {
     'hunt': ('/', 45),
     'place': ('/__login?to=%2F%3Fhunt_place%3D{place_spot}', 45),
     'phone': ('/__login?to=%2F__phone%3Fw%3D360', 90),
+    'fx': ('/play', 40),
+    'talk': ('/__login?to=%2Fquick%2F7', 60),
+    'app': ('/play', 40),
 }
+TALK = ['Закон один для всех. Если сегодня простить «по-человечески», завтра каждый найдёт себе причину.',
+        'А я за милосердие: человек не знал всех обстоятельств, и наказание ничего не исправит.',
+        'Ни то ни другое — сначала свидетели. Половина фактов в деле может оказаться ложью.',
+        'Согласен с первым комментарием, но срок я бы смягчил.']
 # name: (page, signed in as the team). Taken at 1280 and 390 px wide.
 SHOTS = [
     ('home', '/', False), ('quick', '/quick', False), ('case', '/case/3', False), ('play', '/play', False),
     ('judge', '/__as?vid={judge}&to=/judge', False), ('ratings', '/ratings', False), ('campaigns', '/campaigns', False),
-    ('seasons', '/seasons', False), ('season', '/seasons/{last_season}', False), ('notifications', '/notifications', True),
+    ('talk', '/talk/3', True), ('seasons', '/seasons', False), ('season', '/seasons/{last_season}', False), ('notifications', '/notifications', True),
     ('admin', '/admin/', True), ('admin-players', '/admin/players', True), ('admin-hunt', '/admin/hunts/{hunt}', True),
 ]
 
@@ -185,6 +192,10 @@ def seed(app):
             vote(out['voter_id'], sid, rnd.choice(cases[sid]), now - timedelta(hours=rnd.randint(1, 30)))
         if i < 2:
             c.post('/api/v1/friends', json={'login': ADMIN[0]}, headers={'Authorization': 'Bearer ' + out['token']})
+        if i < 4:  # a discussion under case 3, for the screenshots
+            vote(out['voter_id'], 3, cases[3][i % 2], now - timedelta(hours=8 - i))
+            q('INSERT INTO comments (situation_id, user_id, option_key, text, likes, created_at) VALUES (3, %s, %s, %s, %s, %s)',
+              (out['user']['id'], cases[3][i % 2], TALK[i], 4 - i, now - timedelta(hours=7 - i)))
     with app.test_request_context('/'):
         from verdict import seasons
         seasons.close(last_month)
@@ -266,6 +277,9 @@ class Harness:
         head, sep, tail = body.rpartition(b'</body>')
         if sep:
             body = head + b'<script src="/__e2e.js"></script></body>' + tail
+        # full effects unless a scenario chose otherwise: a CI machine with 2 cores would get «Меньше эффектов»
+        body = body.replace(b'<head>', b'<head><script>try{localStorage.getItem("verdict:fx")||'
+                                       b'localStorage.setItem("verdict:fx","full")}catch(e){}</script>', 1)
         headers = [(k, v) for k, v in captured['headers'] if k.lower() != 'content-length']
         start_response(captured['status'], headers + [('Content-Length', str(len(body)))])
         return [body]

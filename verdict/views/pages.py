@@ -15,6 +15,26 @@ from ..repository import input_str
 from ..web import csrf_valid, flash, page, redirect, voter_id
 
 
+def service_worker():
+    """/sw.js — at the root, so it may serve the whole site. Its VERSION follows the newest file in assets/."""
+    from flask import current_app, make_response, render_template
+    version = current_app.config.get('ASSET_VERSION')
+    if not version:
+        from ..config import ROOT
+        version = str(max(int(p.stat().st_mtime) for p in (ROOT / 'assets').rglob('*') if p.is_file()))
+        current_app.config['ASSET_VERSION'] = version
+    response = make_response(render_template('sw.js', version=version))
+    response.headers['Content-Type'] = 'application/javascript; charset=utf-8'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+
+def offline():
+    """What the installed app shows without a network (kept by the service worker; nothing personal in it)."""
+    from flask import render_template
+    return render_template('offline.html')
+
+
 def index():
     stats = stats_overview()
     approved = situations_list(status='approved', order='old')

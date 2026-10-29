@@ -13,6 +13,8 @@ ASSETS = config.ROOT / 'assets'
 
 def create_app(overrides=None):
     cfg = config.load(overrides)
+    import mimetypes
+    mimetypes.add_type('application/manifest+json', '.webmanifest')
     app = Flask(__name__, static_folder=str(ASSETS), static_url_path='/assets')
     app.config['VERDICT'] = cfg
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 7 * 24 * 3600  # asset URLs carry ?v=<mtime>
@@ -84,7 +86,7 @@ def create_app(overrides=None):
 
 
 def _template_globals(app):
-    from . import auth, campaigns, career, comic, hunt, judge, notify, repository, web
+    from . import auth, campaigns, career, comic, hunt, judge, notify, repository, talk, web
     from .forms import field_error
 
     def asset(path):
@@ -123,6 +125,7 @@ def _template_globals(app):
         ACHIEVEMENTS=catalog.ACHIEVEMENTS, REPORT_REASONS=catalog.REPORT_REASONS,
         friend_votes_for=_friend_votes_for, campaign_of=campaigns.campaign_of_case,
         notifications_unread=lambda: notify.unread(auth.current_user_id()),
+        talk_preview=lambda sid: talk.preview(sid, auth.current_user_id()),
         current_user=auth.current_user, is_admin=auth.is_admin, is_logged_in=auth.is_logged_in,
         owns_situation=auth.owns_situation, can_edit_situation=auth.can_edit_situation, can_see_hidden=auth.can_see_hidden,
         # game

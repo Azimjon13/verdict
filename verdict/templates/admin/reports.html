@@ -1,12 +1,12 @@
 {% extends 'layout.html' %}
 {% block content %}
-{% set kinds = {'user': ('user', 'Игрок'), 'community': ('users', 'Сообщество'), 'situation': ('file', 'Дело')} %}
+{% set kinds = {'user': ('user', 'Игрок'), 'community': ('users', 'Сообщество'), 'situation': ('file', 'Дело'), 'comment': ('message', 'Комментарий')} %}
 
 <section class="page-hero page-hero-compact admin-hero">
     <div class="container">
         <span class="kicker">Админка</span>
         <h1>Жалобы <span class="grad-text">{{ items|length }}</span></h1>
-        <p class="lead">Игроки жалуются на профили, сообщества и дела. Отстранённый игрок пропадает из рейтинга и охоты, не может добавлять друзей и вступать в сообщества.</p>
+        <p class="lead">Игроки жалуются на профили, сообщества, дела и комментарии. Отстранённый игрок пропадает из рейтинга и охоты, не может добавлять друзей и вступать в сообщества.</p>
         {% include 'admin/_nav.html' %}
     </div>
 </section>
@@ -28,6 +28,7 @@
                             {% if not t %}<em>уже удалено</em>
                             {% elif r.target_type == 'user' %}<a href="{{ url_for('profile', login=t.login) }}">{{ t.name }}</a>
                             {% elif r.target_type == 'community' %}<a href="{{ url_for('community', slug=t.slug) }}">{{ t.name }}</a>
+                            {% elif r.target_type == 'comment' %}<a href="{{ url_for('talk', id=t.situation_id) }}#c{{ t.id }}">«{{ excerpt(t.name, 120) }}»</a> <small>— {{ t.author }}{% if t.status == 'hidden' %}, уже скрыт{% endif %}</small>
                             {% else %}<a href="{{ url_for('view', id=t.id) }}">{{ t.name }}</a> <small>({{ STATUSES.get(t.status, t.status)|lower }})</small>{% endif %}
                         </b>
                         <small>{{ REPORT_REASONS.get(r.reason, r.reason) }}{% if r.text %} — «{{ r.text }}»{% endif %}</small>
@@ -44,6 +45,11 @@
                                 <form method="post" class="inline-form" data-confirm="Удалить сообщество «{{ t.name }}»?" data-confirm-title="Удаление сообщества" data-confirm-ok="Удалить" data-confirm-tone="danger">
                                     {{ csrf_field() }}<input type="hidden" name="action" value="delete_community"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="target_id" value="{{ r.target_id }}">
                                     <button class="btn btn-sm btn-danger" type="submit">{{ icon('trash') }}Удалить сообщество</button>
+                                </form>
+                            {% elif t and r.target_type == 'comment' and t.status == 'visible' %}
+                                <form method="post" class="inline-form">
+                                    {{ csrf_field() }}<input type="hidden" name="action" value="hide_comment"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="target_id" value="{{ r.target_id }}">
+                                    <button class="btn btn-sm btn-danger" type="submit">{{ icon('eye-off') }}Скрыть комментарий</button>
                                 </form>
                             {% elif t and r.target_type == 'situation' and t.status == 'approved' %}
                                 <form method="post" class="inline-form" data-confirm="Снять «{{ t.name }}» с игры и вернуть на отбор?" data-confirm-title="Снять с игры" data-confirm-ok="Снять" data-confirm-tone="warn">

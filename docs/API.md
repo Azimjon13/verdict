@@ -46,6 +46,9 @@ answers `429` with the reason in `error`.
 | `POST /api/v1/hunt/spots/<id>/claim` | yes | the player found a spot: the gift, progress, the main prize, career |
 | `GET /api/v1/gifts` | yes | the player's gifts (XP, trophies, titles, codes, messages) and current title |
 | `GET /api/v1/ratings?board=season\|all\|accuracy\|streak[&community=<slug>]` | — | a rating of players with an account |
+| `GET /api/v1/cases/<id>/comments?sort=top\|new[&scope=friends\|community:<slug>]` | yes | the discussion, once the player judged the case |
+| `POST /api/v1/cases/<id>/comments {text}` | Bearer | write a comment (after a verdict) |
+| `POST /api/v1/comments/<id>/like\|unlike\|delete` | Bearer | back a comment, take it back, delete one's own |
 | `GET /api/v1/seasons`, `/seasons/<YYYY-MM>` | — | the current season with its trophies; closed seasons and their final boards |
 | `GET /api/v1/users/<login>` | — | a public profile, as much as its owner shows to everyone |
 | `GET /api/v1/communities` | — | every community: name, description, rules, access, emblem, members |
@@ -301,6 +304,20 @@ account gets a notification. Trophy XP counts in the career, not in the next sea
 `{key, name, players, closed_at, rows: [{place, login, display_name, title, value, xp, rank}]}` — `value` is the season
 XP, `xp` and `rank` are as they were when the season closed; `404` for a season that isn't closed.
 
+### `GET /cases/<id>/comments`
+
+```json
+{ "ok": true, "count": 4, "my_verdict": "A",
+  "comments": [ { "id": 12, "case_id": 3, "text": "Закон один для всех…", "option": "A", "likes": 4, "liked": false,
+                  "mine": false, "author": { "login": "anna", "display_name": "Анна Ветрова", "title": "…" },
+                  "created_at": "2026-11-02T09:15:00Z" } ] }
+```
+
+Before the player has judged the case: `403` with `count` (show «N судей спорят — вынесите вердикт»). `option` is
+the author's verdict when writing. `POST /cases/<id>/comments {text}` (3–1000 characters) answers `{comment}`, or
+`422` with `code` `judge` | `blocked` | `short` | `long`, or `429` with `slow` (one per 15 s) | `daily` (30 a day).
+`POST /comments/<id>/like` answers `{done, likes}`; one's own comment and hidden ones can't be backed.
+
 ### `GET /notifications`
 
 ```json
@@ -311,7 +328,8 @@ XP, `xp` and `rank` are as they were when the season closed; `404` for a season 
 
 Newest first, the last 50, kept for 90 days. `kind`: `friend_request`, `friend_accepted`, `community_request` (to the
 founder and moderators), `community_joined`, `community_role`, `case_approved`, `case_rejected` (to the author), `gift`
-(from the team), `season` (where the account finished, with its trophy), `report` (the team closed the player's report).
+(from the team), `season` (where the account finished, with its trophy), `report` (the team closed the player's report),
+`comment_liked` (at 1, 5, 10, 25… backers), `comment_hidden` (the team hid the player's comment).
 `link` is a path on the website. Reading the list doesn't mark it read: `POST /notifications/read` with `{ids: [41]}`
 marks those, with `{}` all of them; it answers `{marked, unread}`. `GET /me` has `notifications_unread` for a badge.
 

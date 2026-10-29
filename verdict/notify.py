@@ -17,6 +17,8 @@ KINDS = {
     'gift': 'gift',
     'season': 'trophy',
     'report': 'flag',
+    'comment_liked': 'heart-whole',
+    'comment_hidden': 'eye-off',
 }
 KEEP_DAYS = 90
 PAGE = 50

@@ -133,7 +133,7 @@
         <div class="continuation">{{ icon('branch') }}<div><b>У этого дела будет продолжение</b><p>Ваше решение может вернуться к вам в будущих событиях.</p></div></div>
     {% endif %}
 
-    {% if not preview|default(false) %}{% include 'partials/friend_votes.html' %}{% include 'partials/campaign_teaser.html' %}{% endif %}
+    {% if not preview|default(false) %}{% include 'partials/friend_votes.html' %}{% include 'partials/talk_teaser.html' %}{% include 'partials/campaign_teaser.html' %}{% endif %}
     {% if judge_info %}{% include 'partials/judge_teaser.html' %}{% endif %}
     {% if career_info %}{% include 'partials/career.html' %}{% endif %}
 

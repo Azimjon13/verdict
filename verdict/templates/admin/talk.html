@@ -1,0 +1,46 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Обсуждения <span class="grad-text">{{ items|length }}</span></h1>
+        <p class="lead">Последние комментарии под делами. Скрытый комментарий видит только команда, автор получает уведомление. Жалобы на комментарии — в «Жалобах».</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="tabs" role="tablist" aria-label="Какие комментарии">
+        {% for key, label in [('visible', 'Видимые'), ('hidden', 'Скрытые')] %}
+            <a role="tab" href="{{ url_for('admin.talk_page', status=key) }}" class="tab{{ ' active' if status == key }}" aria-selected="{{ 'true' if status == key else 'false' }}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    {% if items %}
+        <div class="admin-list">
+            {% for c in items %}
+                <article class="panel report-row">
+                    <span class="hunt-row-icon">{{ icon('message') }}</span>
+                    <div class="hunt-row-main">
+                        <b><a href="{{ url_for('talk', id=c.situation_id) }}#c{{ c.id }}">{{ c.case_title }}</a></b>
+                        <span class="admin-quote">«{{ excerpt(c.text, 300) }}»</span>
+                        <small><a href="{{ url_for('profile', login=c.login) }}">{{ c.display_name }}</a> · вердикт {{ '+' if c.option_key == 'other' else c.option_key }} · {{ c.likes }} {{ plural(c.likes, 'поддержка', 'поддержки', 'поддержек') }} · {{ format_datetime(c.created_at) }} UTC</small>
+                    </div>
+                    <div class="admin-actions report-actions">
+                        <form method="post" class="inline-form">
+                            {{ csrf_field() }}<input type="hidden" name="action" value="{{ 'show' if status == 'hidden' else 'hide' }}"><input type="hidden" name="comment_id" value="{{ c.id }}">
+                            <button class="btn btn-sm{{ '' if status == 'hidden' else ' btn-danger' }}" type="submit">{{ icon('eye' if status == 'hidden' else 'eye-off') }}{{ 'Показать' if status == 'hidden' else 'Скрыть' }}</button>
+                        </form>
+                        <form method="post" class="inline-form" data-confirm="Удалить комментарий навсегда?" data-confirm-title="Удаление" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                            {{ csrf_field() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="comment_id" value="{{ c.id }}">
+                            <button class="btn btn-sm btn-ghost" type="submit">{{ icon('trash') }}Удалить</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty panel">{{ icon('message') }}<h2>{{ 'Комментариев пока нет' if status == 'visible' else 'Скрытых комментариев нет' }}</h2><p>Игроки пишут под делом после своего вердикта.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

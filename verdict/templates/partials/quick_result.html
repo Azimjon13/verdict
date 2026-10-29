@@ -77,7 +77,7 @@
         <p class="quick-conflict">{{ icon('swords') }}<span><b>Почему нет правильного ответа:</b> {{ s.ambiguity.conflict }}</span></p>
     {% endif %}
 
-    {% if not preview|default(false) %}{% include 'partials/friend_votes.html' %}{% include 'partials/campaign_teaser.html' %}{% endif %}
+    {% if not preview|default(false) %}{% include 'partials/friend_votes.html' %}{% include 'partials/talk_teaser.html' %}{% include 'partials/campaign_teaser.html' %}{% endif %}
     {% if judge_info %}{% include 'partials/judge_teaser.html' %}{% endif %}
     {% if career_info %}{% include 'partials/career.html' %}{% endif %}
 

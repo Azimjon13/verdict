@@ -386,7 +386,7 @@ def user_communities(user_id):
 
 # ---------- Reports and barred players ----------
 
-REPORT_TARGETS = ('user', 'community', 'situation')
+REPORT_TARGETS = ('user', 'community', 'situation', 'comment')
 
 
 def barred(user_id):
@@ -416,6 +416,11 @@ def reports_list(status='open'):
         elif r['target_type'] == 'community':
             t = query_one('SELECT slug, name FROM communities WHERE id = %s', (r['target_id'],))
             r['target'] = {'name': t['name'], 'slug': t['slug']} if t else None
+        elif r['target_type'] == 'comment':
+            t = query_one('SELECT c.id, c.situation_id, c.text, c.status, u.login, u.display_name FROM comments c'
+                          ' JOIN users u ON u.id = c.user_id WHERE c.id = %s', (r['target_id'],))
+            r['target'] = {'name': t['text'], 'id': t['id'], 'situation_id': t['situation_id'], 'status': t['status'],
+                           'login': t['login'], 'author': t['display_name']} if t else None
         else:
             t = query_one('SELECT id, title, status FROM situations WHERE id = %s', (r['target_id'],))
             r['target'] = {'name': t['title'], 'id': t['id'], 'status': t['status']} if t else None

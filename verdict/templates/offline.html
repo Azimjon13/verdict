@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#03040a">
+    <title>Нет связи — VERDICT</title>
+    {#- Kept by the service worker for when the network is gone: nothing personal here, no external files. -#}
+    <style>
+        html, body { margin: 0; min-height: 100%; background: #03040a; color: #e8edff; }
+        body { min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box;
+            font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 50% 35%, #1a1550, #0a0c26 45%, #03040a 75%); }
+        main { max-width: 420px; text-align: center; display: grid; gap: 14px; justify-items: center; }
+        svg { width: 84px; height: 84px; filter: drop-shadow(0 0 18px rgba(43, 228, 255, .6)); }
+        h1 { margin: 6px 0 0; font-size: 26px; letter-spacing: .02em; }
+        p { margin: 0; color: #9aa6d1; }
+        button { margin-top: 8px; padding: 12px 22px; border: 0; border-radius: 12px; cursor: pointer; color: #03040a;
+            font: 700 15px/1 system-ui, sans-serif; background: linear-gradient(90deg, #2be4ff, #8b5cf6); }
+    </style>
+</head>
+<body>
+<main>
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <defs><linearGradient id="g" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2be4ff"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+        <path d="M16 2.5 27.7 9.25v13.5L16 29.5 4.3 22.75V9.25Z" stroke="url(#g)" stroke-width="1.6"/>
+        <path d="M10.5 10.5 16 21l5.5-10.5" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="16" cy="25" r="1.4" fill="#2be4ff"/>
+    </svg>
+    <h1>Нет связи</h1>
+    <p>Суду нужен интернет: дела, вердикты и рейтинг живут на сервере. Проверьте подключение — и продолжим.</p>
+    <button type="button" onclick="location.reload()">Попробовать снова</button>
+</main>
+</body>
+</html>

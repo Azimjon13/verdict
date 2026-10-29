@@ -1,0 +1,25 @@
+{
+    "name": "VERDICT — симулятор решений",
+    "short_name": "VERDICT",
+    "description": "Вымышленные миры, спорные поступки, свидетели, которые могут лгать, и последствия вашего вердикта.",
+    "lang": "ru",
+    "dir": "ltr",
+    "id": "/",
+    "start_url": "/?source=app",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#03040a",
+    "theme_color": "#03040a",
+    "categories": ["games", "entertainment", "education"],
+    "icons": [
+        {"src": "/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    ],
+    "shortcuts": [
+        {"name": "Быстрый суд", "short_name": "Играть", "url": "/quick?source=app", "icons": [{"src": "/assets/img/icon-192.png", "sizes": "192x192"}]},
+        {"name": "Профиль судьи", "short_name": "Профиль", "url": "/judge?source=app", "icons": [{"src": "/assets/img/icon-192.png", "sizes": "192x192"}]},
+        {"name": "Рейтинг", "short_name": "Рейтинг", "url": "/ratings?source=app", "icons": [{"src": "/assets/img/icon-192.png", "sizes": "192x192"}]}
+    ]
+}

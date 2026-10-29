@@ -1,0 +1,18 @@
+{#- After a verdict: the discussion of the case — how many comments, the two most backed, a way in. s — situation. -#}
+{% if s.status == 'approved' %}
+    {% set tp = talk_preview(s.id) %}
+    <div class="talk-teaser">
+        <h3 class="result-h">{{ icon('message') }}Обсуждение <span class="result-sub">{% if tp.count %}{{ tp.count }} {{ plural(tp.count, 'комментарий', 'комментария', 'комментариев') }}{% else %}пока никто не высказался{% endif %}</span></h3>
+        {% if tp.top %}
+            <ul class="talk-teaser-list">
+                {% for c in tp.top %}
+                    <li>
+                        <span class="opt-letter opt-letter-sm" title="{{ decision_text(s, c.option_key) }}">{{ '+' if c.option_key == 'other' else c.option_key }}</span>
+                        <span><b>{{ c.display_name }}</b> «{{ excerpt(c.text, 140) }}»{% if c.likes %} <small>{{ icon('heart-whole') }}{{ c.likes }}</small>{% endif %}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <a class="btn btn-sm" href="{{ url_for('talk', id=s.id) }}">{{ icon('message') }}{{ 'Открыть обсуждение' if tp.count else 'Начать спор' }}</a>
+    </div>
+{% endif %}
