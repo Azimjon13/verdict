@@ -190,7 +190,7 @@
             {% if admin %}
                 <a class="btn btn-block" href="{{ url_for('api_export', id=s.id) }}">{{ icon('download') }}Экспорт JSON</a>
                 <div class="side-actions">
-                    {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to %}
+                    {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to and s.status != 'campaign' %}
                         <form method="post" action="{{ url_for('action') }}"{{ status_confirm_attrs(to, s.title) }}>
                             {{ csrf_field() }}
                             <input type="hidden" name="id" value="{{ s.id }}">

@@ -9,6 +9,7 @@ from .db import execute, now, query_one, scalar
 
 FAILURE_WINDOW = timedelta(minutes=15)
 MAX_FAILURES = 10
+TOKEN_TTL = timedelta(days=90)  # a device not seen for this long signs in again
 
 
 def _hash(token):
@@ -28,13 +29,24 @@ def user_for(token):
         return None
     row = query_one('SELECT u.id, u.login, u.display_name, u.role, u.bio, u.visibility, u.in_ratings, t.used_at'
                     ' FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = %s', (_hash(token),))
-    if row and (datetime.now(timezone.utc).replace(tzinfo=None) - row['used_at']) > timedelta(hours=1):
+    if not row:
+        return None
+    idle = datetime.now(timezone.utc).replace(tzinfo=None) - row['used_at']
+    if idle > TOKEN_TTL:
+        revoke(token)
+        return None
+    if idle > timedelta(hours=1):
         execute('UPDATE api_tokens SET used_at = %s WHERE token_hash = %s', (now(), _hash(token)))
     return row
 
 
 def revoke(token):
     return execute('DELETE FROM api_tokens WHERE token_hash = %s', (_hash(token),))
+
+
+def revoke_user(user_id):
+    """Signs the account out of every game client (a new password, the team's reset)."""
+    return execute('DELETE FROM api_tokens WHERE user_id = %s', (user_id,))
 
 
 def locked(login):

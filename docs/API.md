@@ -22,7 +22,9 @@ Keep the id private: whoever knows it can play as that player.
 `{login, password, device?}` (send the device's `X-Voter-Id` too) returns `{token, voter_id, user}`. The device's
 anonymous progress is merged into the account, and `voter_id` is the account's player — the same as on the website.
 From then on send `Authorization: Bearer <token>`; verdicts, career and everything else go to the account whatever
-`X-Voter-Id` says. Ten wrong passwords for a login in 15 minutes → `429`. `POST /auth/logout` forgets the device.
+`X-Voter-Id` says. Ten wrong passwords for a login in 15 minutes → `429` (the website form shares this lock).
+`POST /auth/logout` forgets the device. A token not used for 90 days stops working (`401`), and so do all of an
+account's tokens after a password change or a reset by the team — the client then asks the player to sign in again.
 
 ## Endpoints
 

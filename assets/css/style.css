@@ -2347,3 +2347,6 @@ main.is-struck { animation: juice-strike .4s cubic-bezier(.3, .7, .3, 1); }
   @view-transition { navigation: none; }
   .cm-fig svg, .cm-fig.talking svg, .hunt-spot .icon, .option::after { animation: none; transition: none; }
 }
+
+.status-campaign { color: #d8c6ff; border-color: rgba(var(--violet-rgb), .45); background: rgba(var(--violet-rgb), .1); }
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }

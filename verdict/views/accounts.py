@@ -11,6 +11,7 @@ from ..auth import (ROLES, admins_count, auth_attempt, auth_login, auth_logout, 
 from ..catalog import STATUSES
 from ..repository import input_str, situations_list, vote_counts
 from ..sessions import active_count, revoke_others
+from .. import gameauth
 from ..players import on_login, on_logout, on_register
 from ..web import csrf_valid, flash, page, redirect, require_login, safe_back, voter_id
 
@@ -36,6 +37,8 @@ def login():
             error = 'Слишком много неудачных попыток. Попробуйте через %d сек.' % wait
         elif not login_name or not password:
             error = 'Введите логин и пароль.'
+        elif gameauth.locked(login_name):
+            error = 'Слишком много неудачных попыток войти в этот аккаунт. Попробуйте через 15 минут.'
         else:
             user = auth_attempt(login_name, password)
             if user:
@@ -44,6 +47,7 @@ def login():
                 flash('success', 'С возвращением, %s!' % user['display_name'])
                 return redirect(back or _home_for(user))
             login_register_failure()
+            gameauth.failed(login_name)
             time.sleep(0.3)
             error = 'Неверный логин или пароль.'
 
@@ -63,8 +67,11 @@ def register():
         values['display_name'] = input_str(request.form.get('display_name', ''), 80)
         password = request.form.get('password', '')
         confirm = request.form.get('password_confirm', '')
+        started = session.get('signup_started') or 0
         if not csrf_valid():
             errors = {'_csrf': 'Сессия устарела. Попробуйте ещё раз.'}
+        elif request.form.get('website') or time.time() - started < current_app.config['VERDICT']['min_signup_seconds']:
+            errors = {'_csrf': 'Не удалось создать аккаунт. Обновите страницу и попробуйте ещё раз.'}
         else:
             errors = registration_validate(values['login'], values['display_name'], password, confirm)
         if not errors:
@@ -79,6 +86,8 @@ def register():
                       % values['display_name'])
                 return redirect(back)
 
+    if request.method == 'GET' or errors:
+        session['signup_started'] = time.time()
     return page('register.html', title='Регистрация', active='', body_class='page-auth', bg='high',
                 back=back, errors=errors, values=values)
 
@@ -123,6 +132,7 @@ def account():
                 errors = {'new_' + k: v for k, v in password_validate(new, confirm).items()}
             if not errors:
                 user_set_password(uid, new)
+                gameauth.revoke_user(uid)
                 closed = revoke_others(uid, session.sid)
                 session.regenerate()
                 flash('success', 'Пароль изменён.' + (' Другие сеансы входа завершены: %d.' % closed if closed else ''))

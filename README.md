@@ -130,9 +130,13 @@ live in the database; export them with `/api/export` (team only).
   session and returned to the form after logging in again.
 - The **team** (role `admin`) approves or rejects situations, edits anything, sees hidden info and exports JSON, and
   promotes authors on `/users`. The last team member can't be demoted.
-- Five failed logins lock the form with a growing delay.
+- Five failed logins lock the form with a growing delay; ten wrong passwords for one login in 15 minutes lock that
+  login for everyone (the same lock as the game client's sign-in), so clearing cookies doesn't reset it.
+- The sign-up form has a hidden field people don't see and refuses a form sent sooner than `min_signup_seconds`
+  (3 by default) after it was opened — two cheap brakes on bots.
 - **Sessions are stored in MySQL** (`sessions` table) for 14 days of inactivity. Each row records `user_id`, so
-  changing the password or «Выйти на других устройствах» ends the user's other sessions.
+  changing the password or «Выйти на других устройствах» ends the user's other sessions. A new password also signs
+  the account out of every game client.
 - Players don't need an account. Votes use an anonymous cookie id (`verdict_vid`); game clients send their own id.
 - **An account keeps the progress.** Signing up attaches the browser's player (verdicts, career, gifts) to the new
   account. Signing in on another device switches that browser to the account's player and merges whatever it did
@@ -242,7 +246,10 @@ Team accounts get «Админка» in the header. Sections:
 - **Игроки** — every player: anonymous (cookie id) or with an account; search by login, name or the start of the id;
   filters (with verdicts, with an account, blocked, every visitor) and sorting. A player's page shows rank, XP,
   streak, activity, style, recent verdicts, gifts and finds, and lets the team give a gift by hand, take one back,
-  bar the player from the hunt, start their world anew, or delete all their game data.
+  bar the player from the hunt, start their world anew, or delete all their game data. For a player with an
+  account, «Новый пароль» sets a random password, shows it once to the team member and ends all of the player's
+  sessions — there is no email, so this is how a forgotten password is fixed. The dashboard warns while the `admin`
+  account still has the setup password.
 - **Охота** and **Подарки** — treasure hunts, see below.
 - **Игра** — the case of the day for the next 7 days (pick any case for any day), XP and rank thresholds, links to
   the review board, the team and the JSON export.

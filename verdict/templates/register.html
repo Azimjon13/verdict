@@ -6,6 +6,7 @@
         <form method="post" class="panel auth-card hud" data-validate novalidate>
             {{ csrf_field() }}
             <input type="hidden" name="back" value="{{ back }}">
+            <label class="hp-field" aria-hidden="true">Сайт <input type="text" name="website" value="" tabindex="-1" autocomplete="off"></label>
             <div class="auth-icon">{{ icon('user') }}</div>
             <span class="kicker">Для авторов контента</span>
             <h1>Регистрация</h1>

@@ -112,7 +112,7 @@
                             <a class="btn btn-sm" href="{{ url_for('view', id=s.id) }}">{{ icon('file') }}Досье</a>
                             <a class="btn btn-sm btn-ghost" href="{{ url_for('case', id=s.id) }}" title="Пройти как игрок">{{ icon('play') }}</a>
                             {% if admin %}
-                                {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to %}
+                                {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to and s.status != 'campaign' %}
                                     <form method="post" action="{{ url_for('action') }}" class="inline-form"{{ status_confirm_attrs(to, s.title) }}>
                                         {{ csrf_field() }}
                                         <input type="hidden" name="id" value="{{ s.id }}">

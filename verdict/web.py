@@ -37,7 +37,8 @@ def voter_id():
 
 def remember_voter(response):
     if g.get('voter_new'):
-        response.set_cookie(VOTER_COOKIE, g.voter, max_age=31536000, path='/', httponly=True, samesite='Lax')
+        response.set_cookie(VOTER_COOKIE, g.voter, max_age=31536000, path='/', httponly=True, samesite='Lax',
+                            secure=request.is_secure)
     return response
 
 

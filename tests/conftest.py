@@ -31,7 +31,7 @@ def app():
     with conn.cursor() as cur:
         cur.execute('DROP DATABASE IF EXISTS `%s`' % DB['name'])
     conn.close()
-    application = create_app({'db': DB, 'admin_password': 'verdict-admin', 'secret_key': 'test'})
+    application = create_app({'db': DB, 'admin_password': 'verdict-admin', 'secret_key': 'test', 'min_signup_seconds': 0})
     application.config['TESTING'] = True
     with application.test_client() as c:
         c.get('/')  # builds the database

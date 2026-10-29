@@ -93,7 +93,15 @@ def dashboard():
     }
     from ..social import open_reports_count
     return _render('dashboard.html', 'Обзор', 'dashboard', a=a, ch=ch, running=hunt.running_challenges(),
-                   open_reports=open_reports_count())
+                   open_reports=open_reports_count(), default_password=default_password())
+
+
+def default_password():
+    """The first team account (admin) still opens with the password from the setup guide."""
+    from ..auth import check_password
+    from ..db import scalar
+    hashed = scalar("SELECT password_hash FROM users WHERE login = 'admin' AND role = 'admin'")
+    return bool(hashed) and check_password('verdict-admin', hashed)
 
 
 # ---------- Players ----------
@@ -144,6 +152,18 @@ def player_page(voter):
         elif act == 'revoke':
             r = hunt.revoke(_int(request.form.get('grant_id')))
             flash('success' if r else 'error', ('Подарок «%s» отозван.' % r['name']) if r else 'Подарок уже отозван.')
+        elif act == 'password' and info_user(voter):
+            import secrets
+            from .. import gameauth
+            from ..auth import user_set_password
+            from ..sessions import revoke_others
+            u = info_user(voter)
+            new = secrets.token_urlsafe(9)
+            user_set_password(u['id'], new)
+            revoke_others(u['id'], '')
+            gameauth.revoke_user(u['id'])
+            flash('success', 'Новый пароль для @%s: %s — передайте его игроку и попросите сменить в профиле. '
+                             'Все входы игрока на сайте и в игре завершены.' % (u['login'], new))
         elif act == 'delete':
             players.delete_player(voter)
             flash('success', 'Все игровые данные игрока удалены.')
@@ -157,6 +177,11 @@ def player_page(voter):
                    profile=p, badges=career.achievements(voter, p)[0], votes=players.player_votes(voter),
                    grants=players.player_grants(voter), finds=players.player_finds(voter),
                    world=career.world(voter), gifts=[x for x in hunt.gifts_all() if x['active']])
+
+
+def info_user(voter):
+    from ..db import query_one
+    return query_one('SELECT u.id, u.login FROM players p JOIN users u ON u.id = p.user_id WHERE p.voter = %s', (voter,))
 
 
 # ---------- Treasure hunts ----------

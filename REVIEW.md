@@ -8,11 +8,10 @@ this date; opinions are marked as such.*
 VERDICT is a complete, working product: a Russian-language judgment game with 48 cases and two story campaigns, a
 career system, treasure hunts, a social layer (profiles, friends, ratings, communities), a team admin panel with
 analytics, and a documented JSON API that a Unity client can use for everything the website does, including sign-in.
-The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 190
+The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 198
 automated tests plus real-browser scenarios. It is live at https://verdict.azero.uz on cPanel. The weak spots are not
 in the game logic but around it: **there was no version control until 29 October (fixed — the project is a git repository now), and there are
-still no backups and no monitoring**, a few security
-corners need tightening before the player base grows, and the visual side still runs on generated comics rather than
+still no backups and no monitoring**, the registration brake is only half built, and the visual side still runs on generated comics rather than
 real illustrations.
 
 ## What is here
@@ -22,7 +21,7 @@ real illustrations.
 | Server (Flask, `verdict/`) | 7,264 lines Python, 74 routes (30 game API, 12 admin) | solid |
 | Front-end | 2,754 lines JS (11 plain scripts, no build step), 2,302 lines CSS (one file), 54 templates | solid, one big CSS file |
 | Content | 48 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
-| Tests | 190 pytest tests (2,366 lines), 10 browser scenarios, screenshots at desktop and phone width | strong; browser tests live outside the repo |
+| Tests | 198 pytest tests (2,366 lines), 10 browser scenarios, screenshots at desktop and phone width | strong; browser tests live outside the repo |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
 | Database | MySQL, schema v8, 17 tables, self-upgrading; manual `schema.sql` | fine |
 | Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
@@ -59,37 +58,33 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
    5 minutes on `/api/v1/`) and a look at the Passenger log after each deploy are enough for now.
 5. **Done 29 Oct — PHP leftovers removed** (the first commit keeps them; `build_dist.py` makes Python packages only).
 6. **Low — no CI.** Tests need a MySQL server, which is why they aren't automated. A GitHub Actions job with a MySQL
-   service would run the 190 tests on every push in about a minute.
+   service would run the 198 tests on every push in about a minute.
 
 ### Security
 
-7. **Medium — website login lockout is per browser session.** Five failures lock the *session*; an attacker who
-   drops the cookie starts fresh. The game API already locks per login (10 failures / 15 minutes in `auth_failures`).
-   Use the same per-login lock for the website form (`verdict/views/accounts.py` → `gameauth.locked/failed`).
-8. **Medium — registration has no brake.** Neither the site nor the API limits sign-ups per IP or asks a question a
-   bot can't answer. Fake accounts would pollute ratings and communities. Options, cheapest first: a hidden honeypot
-   field, a per-IP limit (e.g. 5 sign-ups per hour), an "invite-only registration" switch in the admin panel.
-9. **Medium — game tokens never expire and survive a password change.** `api_tokens` rows live forever; «Сменить
-   пароль» ends website sessions but not game sessions. Expire tokens unused for 90 days and delete the account's
-   tokens on password change (one `DELETE` in `user_set_password`).
-10. **Medium — no password reset.** There is no email sending, so a player who forgets the password is stuck, and
-    the team has no "set a new password" button either. Short term: a reset button on admin → player (shows a
-    one-time password). Long term: email with SMTP from the host.
-11. **Low — the player cookie is not `Secure`.** `verdict_sid` is sent with `Secure` on the live site (checked);
-    `verdict_vid` is not (`verdict/web.py: remember_voter`). Add `secure=request.is_secure` — the id is the key to
-    the player's verdicts.
-12. **Low — default admin password.** `verdict-admin` is the fallback when `VERDICT_ADMIN_PASSWORD` is unset. A
-    warning on the admin dashboard when the `admin` account still has that password would catch a forgotten step.
+7. **Done 29 Oct — website login lockout is per login now.** Besides the session lock, the website form uses the
+   game API's per-login lock (10 failures / 15 minutes in `auth_failures`), so dropping the cookie doesn't help.
+8. **Partly done 29 Oct — registration brake.** The website form has a hidden honeypot field and refuses a form
+   sent less than 3 seconds after it was opened (`min_signup_seconds` in the config). Still open: the API sign-up has
+   no brake, and there is no per-IP limit. Before adding one, check that the app sees the real visitor address
+   behind the host's nginx (Engintron) — if every request comes from 127.0.0.1, a per-IP limit would stop all
+   sign-ups. An "invite-only registration" switch in the admin panel is the fallback.
+9. **Done 29 Oct — game tokens expire and end with a new password.** A token unused for 90 days is deleted on its
+   next use; «Сменить пароль» and the team's reset delete all of the account's game tokens.
+10. **Short term done 29 Oct — password reset by the team.** Admin → player → «Новый пароль» sets a random password,
+    shows it once to the team member and ends all of the player's sessions on the site and in the game. Still open:
+    a self-service reset by email (needs SMTP from the host).
+11. **Done 29 Oct — the player cookie is `Secure` on HTTPS**, like the session cookie.
+12. **Done 29 Oct — default admin password warning.** The admin dashboard shows a warning while the `admin` account
+    still opens with `verdict-admin`.
 13. **Known and accepted:** the player id (`X-Voter-Id` / cookie) is a bearer secret; hidden spots can be found
     with browser developer tools (mitigated by accounts-only gifts and finder limits); hunt placement selectors are
     trusted admin input.
 
 ### Game logic and content
 
-14. **Low — a campaign chapter can be moved into the archive by mistake.** On the review board a chapter with
-    status «В кампании» shows the usual «В игру / Отклонить / На отбор» buttons; «В игру» would publish it as a
-    stand-alone case. Hide those buttons for `status == 'campaign'` (`view.html`, `library.html`) and add a
-    `.status-campaign` colour (none exists, the chip falls back to the default grey).
+14. **Done 29 Oct — campaign chapters stay out of moderation.** The review board hides «В игру / Отклонить / На
+    отбор» for chapters, the server refuses those actions too, and the «В кампании» chip has its own colour.
 15. **Medium (design) — seasons end with nothing.** The monthly rating resets, but nobody gets anything for winning
     it, and last month's board disappears. Automatic end-of-season trophies for the top places (the gift system can
     do it) and a "past seasons" page would turn the rating into a reason to come back.
@@ -132,14 +127,15 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 1. ~~`git init`, first commit, remote~~ done
 2. Daily database backup on the host + a downloaded copy. (1 hour)
 3. Move the browser tests into `tests/e2e/`. (2 hours)
-4. Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
-   on the player cookie, hide moderation buttons for campaign chapters. (half a day, with tests)
+4. ~~Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
+   on the player cookie, hide moderation buttons for campaign chapters.~~ done, with the honeypot, the admin
+   "set password" button and the default-password warning
 5. ~~Delete the PHP files and the `--php` build.~~ done
 
 **Next 2–4 weeks (make players come back)**
 6. End-of-season trophies and a past-seasons page.
 7. In-site notifications (header bell): friend requests, community approvals, hunt prizes, case of the day.
-8. Registration brake (honeypot + per-IP limit) and an admin "set password" button.
+8. Registration brake for the API and a per-IP limit (the honeypot and the "set password" button are done).
 9. One XP formula; uptime monitor; CI with MySQL.
 
 **Later (grow the game)**

@@ -47,6 +47,12 @@
                 <button class="btn btn-primary btn-sm" type="submit"{{ ' disabled' if not gifts }}>{{ icon('gift') }}Выдать</button>
             </form>
             <div class="admin-actions">
+                {% if info.login %}
+                    <form method="post" class="inline-form" data-confirm="Задать @{{ info.login }} новый пароль? Старый перестанет работать, все входы на сайте и в игре завершатся. Новый пароль появится в сообщении — передайте его игроку." data-confirm-title="Новый пароль" data-confirm-ok="Задать" data-confirm-tone="warn">
+                        {{ csrf_field() }}<input type="hidden" name="action" value="password">
+                        <button class="btn btn-sm" type="submit">{{ icon('lock') }}Новый пароль</button>
+                    </form>
+                {% endif %}
                 <form method="post" class="inline-form" data-confirm="{{ 'Вернуть игрока в охоту, рейтинг и сообщества?' if info.blocked else 'Отстранить игрока? Он пропадёт из рейтинга, не сможет искать тайники, добавлять друзей и вступать в сообщества.' }}" data-confirm-title="Охота за тайниками" data-confirm-ok="{{ 'Вернуть' if info.blocked else 'Отстранить' }}" data-confirm-tone="warn">
                     {{ csrf_field() }}
                     <input type="hidden" name="action" value="{{ 'unblock' if info.blocked else 'block' }}">

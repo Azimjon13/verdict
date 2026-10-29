@@ -26,6 +26,8 @@ DEFAULTS = {
     'session_lifetime': 60 * 60 * 24 * 14,
     # Signs nothing important (sessions live in MySQL), but Flask wants one. Set it in production.
     'secret_key': '',
+    # A sign-up form sent sooner than this after it was opened is a bot's (people need a few seconds to type).
+    'min_signup_seconds': 3,
 }
 
 ENV = {
@@ -58,6 +60,7 @@ def load(overrides=None):
         _merge(cfg, overrides)
     cfg['db']['port'] = int(cfg['db']['port'])
     cfg['session_lifetime'] = int(cfg['session_lifetime'])
+    cfg['min_signup_seconds'] = float(cfg['min_signup_seconds'])
     return cfg
 
 

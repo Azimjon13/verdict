@@ -52,8 +52,11 @@
         </a>
     </div>
 
-    {% if running or a.hunt.low_pools or open_reports %}
+    {% if running or a.hunt.low_pools or open_reports or default_password %}
         <div class="admin-alerts">
+            {% if default_password %}
+                <a class="panel admin-alert tone-warn" href="{{ url_for('account') }}">{{ icon('lock') }}<span>У аккаунта <b>admin</b> всё ещё стандартный пароль <code>verdict-admin</code> — смените его в профиле.</span>{{ icon('arrow-right') }}</a>
+            {% endif %}
             {% if open_reports %}
                 <a class="panel admin-alert tone-warn" href="{{ url_for('admin.reports_page') }}">{{ icon('flag') }}<span>Жалоб ждут решения: <b>{{ open_reports }}</b>.</span>{{ icon('arrow-right') }}</a>
             {% endif %}

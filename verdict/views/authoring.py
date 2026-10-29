@@ -249,7 +249,9 @@ def action():
         flash('error', 'Ситуация не найдена.')
         return redirect(url_for('library'))
 
-    if act == 'approved':
+    if act in ('approved', 'rejected', 'pending') and s['status'] == 'campaign':
+        flash('error', '«%s» — глава сюжетной кампании: её статус не меняют на отборе.' % s['title'])
+    elif act == 'approved':
         situation_set_status(sid, 'approved')
         flash('success', 'Ситуация «%s» добавлена в игру.' % s['title'])
     elif act == 'rejected':
