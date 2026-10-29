@@ -49,7 +49,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 ### Process and operations
 
 1. **Done 29 Oct — version control.** The project is a git repository (branch `main`, first commit holds the PHP
-   site too). Still to do: push it to a private remote (GitHub/GitLab) so a dead disk can't take it.
+   site too), pushed to https://github.com/Azimjon13/verdict.
 2. **High — no database backups.** The live database holds every verdict, account and gift; the host's own backups
    are unknown. Turn on cPanel's backup or a daily `mysqldump` cron job, and download a copy weekly.
 3. **Medium — browser tests are not in the repo.** The 10 headless-Chrome scenarios (vote, quick, comic, play,
@@ -129,7 +129,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 ## Recommended order of work
 
 **This week (protect what exists)**
-1. ~~`git init`, first commit~~ done; add a private remote. (15 minutes)
+1. ~~`git init`, first commit, remote~~ done
 2. Daily database backup on the host + a downloaded copy. (1 hour)
 3. Move the browser tests into `tests/e2e/`. (2 hours)
 4. Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
