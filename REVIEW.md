@@ -21,7 +21,7 @@ real illustrations.
 | Server (Flask, `verdict/`) | 7,264 lines Python, 74 routes (30 game API, 12 admin) | solid |
 | Front-end | 2,754 lines JS (11 plain scripts, no build step), 2,302 lines CSS (one file), 54 templates | solid, one big CSS file |
 | Content | 48 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
-| Tests | 198 pytest tests (2,366 lines), 10 browser scenarios, screenshots at desktop and phone width | strong; browser tests live outside the repo |
+| Tests | 198 pytest tests, 11 browser scenarios (164 checks), screenshots at desktop and phone width | strong |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
 | Database | MySQL, schema v8, 17 tables, self-upgrading; manual `schema.sql` | fine |
 | Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
@@ -51,9 +51,9 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
    site too), pushed to https://github.com/Azimjon13/verdict.
 2. **High — no database backups.** The live database holds every verdict, account and gift; the host's own backups
    are unknown. Turn on cPanel's backup or a daily `mysqldump` cron job, and download a copy weekly.
-3. **Medium — browser tests are not in the repo.** The 10 headless-Chrome scenarios (vote, quick, comic, play,
-   create, remove, judge, hunt, place, screenshots) live in a temporary folder of the development machine. Move them to
-   `tests/e2e/` with the proxy and the runner script, so they survive and others can run them.
+3. **Done 29 Oct — browser tests are in the repo.** `tests/e2e/run.py` builds and seeds its own database, serves
+   the site in-process (no PHP proxy any more), runs 11 headless-Chrome scenarios and takes screenshots. The new
+   phone-width scenario found the signed-in header 10 px too wide on 390 px phones; fixed.
 4. **Medium — no monitoring.** Nobody is told when the site is down or erroring. A free uptime check (e.g. every
    5 minutes on `/api/v1/`) and a look at the Passenger log after each deploy are enough for now.
 5. **Done 29 Oct — PHP leftovers removed** (the first commit keeps them; `build_dist.py` makes Python packages only).
@@ -126,7 +126,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 **This week (protect what exists)**
 1. ~~`git init`, first commit, remote~~ done
 2. Daily database backup on the host + a downloaded copy. (1 hour)
-3. Move the browser tests into `tests/e2e/`. (2 hours)
+3. ~~Move the browser tests into `tests/e2e/`.~~ done
 4. ~~Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
    on the player cookie, hide moderation buttons for campaign chapters.~~ done, with the honeypot, the admin
    "set password" button and the default-password warning

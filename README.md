@@ -358,8 +358,29 @@ old-link redirects, drafts and levels, moderation, accounts and sessions, Быс
 judge profile, the career (case of the day, XP, streaks, world events, achievements), accounts carrying the progress
 across devices, the admin panel and its numbers, treasure hunts and gifts (placement, dates, limits, code pools,
 accounts-only gifts, blocked players, the main prize), profiles and their privacy, friends, ratings (season by first
-verdict, scopes, ties, opt-out), communities (rules, access modes, roles, invite links, limits) and the game API. `tests/fixtures/comic_expected.json` was produced by the PHP comic engine; the
-Python engine must give exactly the same frames, speakers, portraits and scenes for all 48 cases.
+verdict, scopes, ties, opt-out), communities (rules, access modes, roles, invite links, limits), story campaigns,
+reports and bans, security (per-login lock, sign-up brake, token expiry, team password reset) and the game API.
+`tests/fixtures/comic_expected.json` was produced by the PHP comic engine; the Python engine must give exactly the
+same frames, speakers, portraits and scenes for all 48 cases.
+
+### Browser tests
+
+```
+.venv\Scripts\python tests\e2e\run.py                  all scenarios (about a minute)
+.venv\Scripts\python tests\e2e\run.py hunt quick       some of them; -v prints every check
+.venv\Scripts\python tests\e2e\run.py --shots shots    screenshots of the main pages, desktop and phone
+.venv\Scripts\python tests\e2e\run.py --serve          the seeded test site on http://127.0.0.1:8099
+```
+
+They need Chrome (or Chromium, Edge; set `CHROME` for another path) and the same MySQL as pytest; the database
+`verdict_e2e` (`VERDICT_E2E_DB_NAME`) is dropped and rebuilt, then filled with a running hunt, a hunt in preparation,
+a player with a judge profile and a month of made-up activity. Each scenario in `tests/e2e/scenarios/` is a script
+the runner adds to the real pages in headless Chrome: it clicks, types and holds buttons like a player and reports
+PASS/FAIL lines. They cover the archive filters, the judge profile, Быстрый суд with keys and a change of mind, the
+game-feel effects, the comic, the hold-to-confirm verdict, writing a case from sign-up to submission, removing a
+decision that has votes, a whole treasure hunt, placing a spot by clicking, and every main page at 360 px wide.
+Headless Chrome on Windows won't make a window narrower than about 500 px, so phone widths are checked and
+screenshotted inside a frame of the right width (`/__phone`); phone screenshots have a dark strip on the right.
 
 ## Structure
 
@@ -385,7 +406,7 @@ content/               catalog.json, demo cases and story campaigns (shared with
 assets/                CSS, JavaScript, images (served at /assets)
 database/schema.sql    manual schema import (schema v8)
 scripts/build_dist.py  builds dist/
-tests/                 pytest suite
+tests/                 pytest suite; tests/e2e/ — browser scenarios and their runner
 docs/API.md            game-client API
 docs/ARCHITECTURE.md   how the game is put together, and where friends, communities and ratings will go
 ```

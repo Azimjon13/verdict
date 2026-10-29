@@ -180,6 +180,15 @@ body.shockwave-flash::after {
   .header-actions .btn-play { display: none; }
   .brand-tag { display: none; }
 }
+/* Small phones (360–420 px): a signed-in header holds the profile, sign-out, sound and menu buttons next to the logo. */
+@media (max-width: 420px) {
+  .brand { gap: 8px; }
+  .brand-name { font-size: 15px; letter-spacing: .14em; }
+  .header-actions { gap: 6px; }
+  .header-actions .icon-btn { width: 36px; height: 36px; }
+  .header-actions .user-chip { height: 36px; gap: 0; padding-right: 3px; }
+  .header-actions .user-role { display: none; }
+}
 
 /* ==========================================================================
    Кнопки и чипы
