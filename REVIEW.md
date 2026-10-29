@@ -10,7 +10,8 @@ career system, treasure hunts, a social layer (profiles, friends, ratings, commu
 analytics, and a documented JSON API that a Unity client can use for everything the website does, including sign-in.
 The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 190
 automated tests plus real-browser scenarios. It is live at https://verdict.azero.uz on cPanel. The weak spots are not
-in the game logic but around it: **there is no version control, no backups and no monitoring**, a few security
+in the game logic but around it: **there was no version control until 29 October (fixed — the project is a git repository now), and there are
+still no backups and no monitoring**, a few security
 corners need tightening before the player base grows, and the visual side still runs on generated comics rather than
 real illustrations.
 
@@ -24,7 +25,7 @@ real illustrations.
 | Tests | 190 pytest tests (2,366 lines), 10 browser scenarios, screenshots at desktop and phone width | strong; browser tests live outside the repo |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
 | Database | MySQL, schema v8, 17 tables, self-upgrading; manual `schema.sql` | fine |
-| Legacy | 39 PHP files of the old site still in the folder, PHP zips still built | dead weight |
+| Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
 
 ## Strengths (keep these)
 
@@ -47,9 +48,8 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 
 ### Process and operations
 
-1. **High — no version control.** The project folder is not a git repository. One wrong save or a failed upload and
-   there is no way back; there is also no record of what changed when. `git init`, commit, push to a private
-   repository (GitHub/GitLab). `.gitignore` already exists; `dist/`, `.venv/`, `config.json` must stay out.
+1. **Done 29 Oct — version control.** The project is a git repository (branch `main`, first commit holds the PHP
+   site too). Still to do: push it to a private remote (GitHub/GitLab) so a dead disk can't take it.
 2. **High — no database backups.** The live database holds every verdict, account and gift; the host's own backups
    are unknown. Turn on cPanel's backup or a daily `mysqldump` cron job, and download a copy weekly.
 3. **Medium — browser tests are not in the repo.** The 10 headless-Chrome scenarios (vote, quick, comic, play,
@@ -57,9 +57,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
    `tests/e2e/` with the proxy and the runner script, so they survive and others can run them.
 4. **Medium — no monitoring.** Nobody is told when the site is down or erroring. A free uptime check (e.g. every
    5 minutes on `/api/v1/`) and a look at the Passenger log after each deploy are enough for now.
-5. **Low — PHP leftovers.** 39 PHP files and the `--php` zips are no longer used by the live site. Keep one archive
-   zip for history and delete them from the project; it halves the root folder and removes a second copy of game
-   rules that can drift.
+5. **Done 29 Oct — PHP leftovers removed** (the first commit keeps them; `build_dist.py` makes Python packages only).
 6. **Low — no CI.** Tests need a MySQL server, which is why they aren't automated. A GitHub Actions job with a MySQL
    service would run the 190 tests on every push in about a minute.
 
@@ -131,12 +129,12 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 ## Recommended order of work
 
 **This week (protect what exists)**
-1. `git init`, first commit, private remote. (1 hour)
+1. ~~`git init`, first commit~~ done; add a private remote. (15 minutes)
 2. Daily database backup on the host + a downloaded copy. (1 hour)
 3. Move the browser tests into `tests/e2e/`. (2 hours)
 4. Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
    on the player cookie, hide moderation buttons for campaign chapters. (half a day, with tests)
-5. Delete the PHP files and the `--php` build; keep one archive zip. (1 hour)
+5. ~~Delete the PHP files and the `--php` build.~~ done
 
 **Next 2–4 weeks (make players come back)**
 6. End-of-season trophies and a past-seasons page.

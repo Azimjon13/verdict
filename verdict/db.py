@@ -1,6 +1,6 @@
 """MySQL connection (one per request), versioned migrations and demo content.
 
-The PHP version reads the same tables (it stops at schema 4 and ignores the newer ones), so both can use one database.
+Schema steps 1–4 come from the original PHP site; a database created by it upgrades in place.
 """
 import json
 import os
@@ -113,7 +113,7 @@ def insert(sql, params=(), conn=None):
 
 
 def now():
-    """Current time as stored in the database: UTC, like the PHP version (timezone 'UTC')."""
+    """Current time as stored in the database: UTC (as the original site stored it)."""
     return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
 
@@ -241,7 +241,7 @@ def migrate(conn, cfg):
 
     if schema < 5:
         # Judge career: the player's world (from which moment it counts), day streak, case-of-the-day count,
-        # world events seen and achievements unlocked. The PHP version doesn't use this table.
+        # world events seen and achievements unlocked.
         execute("""CREATE TABLE IF NOT EXISTS players (
             voter        CHAR(32)     NOT NULL,
             world_since  DATETIME     NULL,
@@ -261,7 +261,7 @@ def migrate(conn, cfg):
     if schema < 6:
         # Players and accounts: a player's progress follows their account across devices; the team can block a
         # player from the hunt; a title won as a gift. Activity by day for analytics. Treasure hunts: challenges
-        # with hidden spots on the site's pages, gifts set by the team, who found what. The PHP version ignores all this.
+        # with hidden spots on the site's pages, gifts set by the team, who found what.
         if not _column_exists(conn, 'players', 'user_id'):
             execute("""ALTER TABLE players
                 ADD COLUMN user_id INT UNSIGNED NULL AFTER voter,
@@ -385,7 +385,7 @@ def migrate(conn, cfg):
     if schema < 7:
         # Social layer: a public profile (bio, who may see it, whether to appear in ratings), friends, communities
         # with their own rules. votes.first_at — when a case was judged first: a later re-vote moves created_at,
-        # and a monthly rating must not be farmed by re-judging old cases. The PHP version ignores all of it.
+        # and a monthly rating must not be farmed by re-judging old cases.
         if not _column_exists(conn, 'users', 'bio'):
             execute("""ALTER TABLE users
                 ADD COLUMN bio        VARCHAR(280) NOT NULL DEFAULT '',

@@ -155,7 +155,7 @@ API endpoints to add alongside (all need an account token): `/api/v1/auth/login`
 ## Conventions
 
 - Schema changes are versioned steps in `verdict/db.py` (`SCHEMA_VERSION`), mirrored in `database/schema.sql`.
-  The PHP version reads only the old tables, so new tables and new columns are safe for it.
+  Schema steps 1–4 date from the original PHP site; a database created by it upgrades in place.
 - Game data the client needs goes in `content/catalog.json` and `/api/v1/catalog`.
 - Times are stored in UTC.
 - Every page and API change comes with tests (`tests/`), and pages are checked in a real browser before release.

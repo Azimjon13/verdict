@@ -20,7 +20,7 @@ def _secret(password):
 
 
 def hash_password(password):
-    # Stored with PHP's $2y$ prefix (the same algorithm as $2b$), so the PHP version accepts it too.
+    # Stored with PHP's $2y$ prefix (the same algorithm as $2b$), so hashes made by the old PHP site keep working.
     return '$2y$' + bcrypt.hashpw(_secret(password), bcrypt.gensalt(rounds=10)).decode('ascii')[4:]
 
 

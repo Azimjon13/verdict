@@ -1,4 +1,4 @@
-"""Server-side sessions in the MySQL `sessions` table (same table as the PHP version).
+"""Server-side sessions in the MySQL `sessions` table (the table the original PHP site used).
 
 Each row records user_id, so changing the password or «Выйти на других устройствах» can end a user's other
 sessions. Data is stored as JSON; a row the PHP version wrote (PHP serialize format) is not read — the visitor

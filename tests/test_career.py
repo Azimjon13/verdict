@@ -200,18 +200,37 @@ def test_world_event_on_the_result_screen(new_browser, cases):
 
 # ---------- Achievements ----------
 
-def test_achievements(api, cases, db):
+def fresh_cases(app, db, n=4):
+    """Cases nobody else has judged, with mild effects, so «bold» and «world» can't join the achievements under test."""
+    from verdict.repository import situation_insert
+    base = json.loads(db.value("SELECT data FROM situations WHERE status = 'approved' ORDER BY id LIMIT 1"))
+    ids = []
+    with app.test_request_context():
+        for _ in range(n):
+            s = json.loads(json.dumps(base))
+            s['title'] = 'Тихое дело ' + secrets.token_hex(3)
+            s['author'] = 'Тест'
+            for d in s['decisions']:
+                d['effects'] = {'trust': 1}
+            ids.append(situation_insert(s, 'approved'))
+    return ids
+
+
+def test_achievements(api, cases, db, app):
     me = player()
-    ids = [i for i in cases if i != daily_id(api)]  # the case of the day would add its own achievement
-    first = verdict(api, me, ids[7], 'A')['career']['achievements']
-    assert [a['key'] for a in first] == ['first']
-    own = verdict(api, me, ids[8], 'other', reasoning='Созвать совет и решить вместе')['career']['achievements']
-    assert [a['key'] for a in own] == ['own']
-    slow = verdict(api, me, ids[9], 'A', duration_ms=130000)['career']['achievements']
-    assert [a['key'] for a in slow] == ['thinker']
-    assert verdict(api, me, ids[10], 'A')['career']['achievements'] == []
-    stored = json.loads(db.value('SELECT achievements FROM players WHERE voter = %s', (me['X-Voter-Id'],)))
-    assert stored == ['first', 'own', 'thinker']
+    ids = fresh_cases(app, db)
+    try:
+        first = verdict(api, me, ids[0], 'A')['career']['achievements']
+        assert [a['key'] for a in first] == ['first']
+        own = verdict(api, me, ids[1], 'other', reasoning='Созвать совет и решить вместе')['career']['achievements']
+        assert [a['key'] for a in own] == ['own']
+        slow = verdict(api, me, ids[2], 'A', duration_ms=130000)['career']['achievements']
+        assert [a['key'] for a in slow] == ['thinker']
+        assert verdict(api, me, ids[3], 'A')['career']['achievements'] == []
+        stored = json.loads(db.value('SELECT achievements FROM players WHERE voter = %s', (me['X-Voter-Id'],)))
+        assert stored == ['first', 'own', 'thinker']
+    finally:
+        db.rows('DELETE FROM situations WHERE id IN (%s)' % ', '.join(['%s'] * len(ids)), ids)
 
 
 def test_judge_page_shows_the_career(new_browser, cases):

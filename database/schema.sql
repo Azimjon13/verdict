@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY uniq_users_login (login)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Сессии PHP хранятся здесь (см. includes/session.php).
+-- Сессии сайта (см. verdict/sessions.py).
 CREATE TABLE IF NOT EXISTS sessions (
     id            VARCHAR(128) NOT NULL,
     user_id       INT UNSIGNED NULL,

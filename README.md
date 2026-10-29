@@ -8,9 +8,8 @@ The site is written in **Python (Flask)**. The game data lives in plain JSON (`c
 for game clients (`/api/v1`, see [docs/API.md](docs/API.md)), so a Unity or mobile version can use the same cases,
 votes and judge profiles as the website.
 
-> The older PHP version is still in the folder (`*.php`, `includes/`, `api/*.php`) for the switch-over. Both use the
-> same MySQL database, so you can move from one to the other without losing anything. Once the Python site runs on
-> your host, the PHP files can be deleted.
+> Until October 2026 the site ran on PHP. The Python site took over its database in place: accounts, votes and
+> old `.php` links all still work. The PHP code lives in the first commit of the git history.
 
 ## Run it locally
 
@@ -47,13 +46,12 @@ If your MySQL user cannot create databases, create one and import `database/sche
 | `admin` | `verdict-admin` (or `VERDICT_ADMIN_PASSWORD`) | Team |
 
 **Change this password right after the first login** (Профиль → Смена пароля). The config value is used only once,
-when the account is created. Accounts made on the PHP site keep working: both versions use bcrypt.
+when the account is created. Accounts made on the old PHP site keep working (same bcrypt hashes).
 
 ## Upload packages (`dist/`)
 
 ```
-.venv\Scripts\python scripts\build_dist.py          Python packages
-.venv\Scripts\python scripts\build_dist.py --php    … and the PHP packages too
+.venv\Scripts\python scripts\build_dist.py
 ```
 
 | File | What it is |
@@ -61,7 +59,6 @@ when the account is created. Accounts made on the PHP site keep working: both ve
 | `dist/verdict-python/` | the Python site, unpacked: upload its contents to the application folder |
 | `dist/verdict-python.zip` | the same as one zip (files at the top level) |
 | `dist/verdict-python-no-js.zip` | without `assets/js/*.js`, for hosts whose virus scanner wrongly flags the zip; upload `assets/js/` separately |
-| `dist/verdict-php.zip`, `dist/verdict-php-no-js.zip` | the PHP site, for a host without Python apps |
 
 Rebuild after every change; `dist/` is generated and can be deleted at any time.
 
@@ -77,25 +74,9 @@ Rebuild after every change; `dist/` is generated and can be deleted at any time.
    (any long random text), `VERDICT_ADMIN_PASSWORD`. Then *Run Pip Install* with `requirements.txt`, and **Restart**.
 5. Open the site. To update later: upload the new zip over the old files, then *Restart*.
 
-To keep the data of an existing PHP site, point the variables at its database: the Python site only adds its own
-tables (schema v7: players and their activity, treasure hunts and gifts, friends and communities — the PHP site
-ignores them), a few columns
-the PHP site doesn't read, and the demo cases it is missing (a case whose title already exists is skipped).
-Logged-in authors sign in once more; players keep their votes and judge profiles (same `verdict_vid` cookie).
-
-**Switching a live PHP site to Python:**
-
-1. **Back up the database** (phpMyAdmin → Export) and **write down the database name, user and password** from the
-   server's `config.php` — they become the `VERDICT_DB_*` variables.
-2. Delete the PHP site's files from the web folder (`public_html` or the subdomain's folder), **including its
-   `.htaccess`** — do this *before* creating the Python app, because cPanel writes its own `.htaccess` (the
-   `PASSENGER CONFIGURATION` block) there and that one must stay. The database stays untouched.
-3. Create the Python app with its *Application root* **outside** the web folder (e.g. `verdict`, next to
-   `public_html`), so the source code and settings can't be downloaded; *Application URL* is the site's address.
-4. Upload and extract `verdict-python.zip` into the application root (if the host's virus scanner flags the zip,
-   use `verdict-python-no-js.zip` and upload `assets/js/` separately), set the variables, *Run Pip Install*, *Restart*.
-5. Open the site: the first visit upgrades the database. Sign in with the team account you had (passwords carry
-   over), open `/admin`. Old links such as `case.php?id=3` redirect to the new addresses.
+A database created by the old PHP site upgrades in place on the first visit: the Python site adds its own tables
+and columns and the demo cases it is missing (a case whose title already exists is skipped). Accounts and
+verdicts carry over; old links such as `case.php?id=3` redirect to the new addresses.
 
 **The application root is the folder that holds `passenger_wsgi.py`, `requirements.txt` and the folders `verdict`,
 `content`, `assets` side by side** — not the inner `verdict` folder (that one is the code). Pointed one level too
@@ -115,7 +96,7 @@ if the page is Passenger's own grey error instead, the failure is before the sit
 not installed) — see the *Passenger log file* set in the application's settings. Fix, then *Restart*. Set `VERDICT_SECRET_KEY` — without it the site
 keeps a generated key in the database, which works, but a key of your own is cleaner.
 
-If the host has no «Setup Python App», use `dist/verdict-php.zip` as before.
+The site needs a host with Python 3.9+ («Setup Python App» on cPanel, or any WSGI server).
 
 ## Game data — `content/`
 
@@ -123,8 +104,7 @@ If the host has no «Setup Python App», use `dist/verdict-php.zip` as before.
   The site reads its dictionaries from here, and a game client can read the same file (or `GET /api/v1/catalog`).
 - `content/cases/NNN.json` — the demo cases, one per file, with `batch` and `status`. Each batch is inserted into
   the database once (`meta.seeded_vN`), so deleted cases don't come back and a new batch reaches existing databases.
-  Batch 1–2: the 28 original demo cases; batch 3: the 20 cases from classic legal and ethics problems
-  (also in `database/new_cases_20.sql` for the PHP site).
+  Batch 1–2: the 28 original demo cases; batch 3: the 20 cases from classic legal and ethics problems.
 
 To add demo content, put new files with the next batch number into `content/cases/`. Cases written on the site
 live in the database; export them with `/api/export` (team only).
