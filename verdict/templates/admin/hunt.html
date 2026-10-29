@@ -1,0 +1,105 @@
+{% extends 'layout.html' %}
+{% import 'admin/_forms.html' as f with context %}
+{% block content %}
+{% set labels = {'draft': ('Черновик', 'draft'), 'soon': ('Скоро начнётся', 'pending'), 'running': ('Идёт', 'approved'),
+                 'over': ('Время вышло', 'rejected'), 'ended': ('Завершена', 'rejected')} %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('admin.hunts_page') }}">{{ icon('arrow-left') }}Охота за тайниками</a></span>
+        <h1>{{ c.title }} <span class="status status-{{ labels[state][1] }}">{{ labels[state][0] }}</span></h1>
+        <p class="lead">{{ spots|length }} {{ plural(spots|length, 'тайник', 'тайника', 'тайников') }} · {{ totals.finds }} {{ plural(totals.finds, 'находка', 'находки', 'находок') }} · {{ totals.finders }} {{ plural(totals.finders, 'игрок', 'игрока', 'игроков') }} · подарков выдано: {{ totals.gifts }}{% if totals.prizes %}, главных призов: {{ totals.prizes }}{% endif %}</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-toolbar">
+        {% if c.status != 'active' %}
+            <form method="post" class="inline-form" data-confirm="Запустить охоту «{{ c.title }}»? Тайники появятся на страницах{{ ' в ' ~ format_datetime(c.starts_at) ~ ' UTC' if c.starts_at and c.starts_at > now else ' сразу' }}." data-confirm-title="Запуск охоты" data-confirm-ok="Запустить" data-confirm-tone="success">
+                {{ csrf_field() }}<input type="hidden" name="action" value="start">
+                <button class="btn btn-primary btn-sm" type="submit"{{ ' disabled' if not spots }}>{{ icon('play') }}Запустить</button>
+            </form>
+        {% else %}
+            <form method="post" class="inline-form" data-confirm="Завершить охоту? Тайники исчезнут со страниц, выданные подарки останутся у игроков." data-confirm-title="Завершить охоту" data-confirm-ok="Завершить" data-confirm-tone="warn">
+                {{ csrf_field() }}<input type="hidden" name="action" value="stop">
+                <button class="btn btn-sm" type="submit">{{ icon('pause') }}Завершить</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-sm btn-ghost" href="{{ url_for('index', hunt_preview=c.id) }}">{{ icon('eye') }}Предпросмотр на главной</a>
+        <form method="post" class="inline-form" data-confirm="Удалить охоту «{{ c.title }}» вместе с тайниками и историей находок? Подарки останутся у игроков." data-confirm-title="Удалить охоту" data-confirm-ok="Удалить" data-confirm-tone="danger">
+            {{ csrf_field() }}<input type="hidden" name="action" value="delete">
+            <button class="btn btn-sm btn-ghost btn-danger" type="submit">{{ icon('trash') }}Удалить</button>
+        </form>
+    </div>
+
+    <div class="admin-grid admin-grid-wide">
+        <section class="panel admin-card" aria-labelledby="spots-title">
+            <h2 class="vz-title" id="spots-title">Тайники</h2>
+            {% if spots %}
+                <ul class="spot-list">
+                    {% for s in spots %}
+                        {% set unity = s.page.startswith('unity:') %}
+                        <li class="spot-row{{ ' is-off' if not s.active }}">
+                            <span class="spot-row-icon">{{ icon(s.icon) }}</span>
+                            <a class="spot-row-main" href="{{ url_for('admin.spot_page', spot_id=s.id) }}">
+                                <b>{{ s.label or 'Тайник ' ~ s.id }}</b>
+                                <small>
+                                    {{ ('Игра · ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %}
+                                    · {{ s.gift_name or 'без подарка' }}
+                                    · найден {{ s.finds }}{% if s.max_finds %} из {{ s.max_finds }}{% endif %}
+                                </small>
+                            </a>
+                            {% if not unity and not s.selector %}<span class="chip chip-sm chip-warn">{{ icon('crosshair') }}Не размещён</span>{% elif not s.active %}<span class="chip chip-sm">Выключен</span>{% endif %}
+                            {% if not unity %}<a class="btn btn-sm btn-ghost" href="{{ url_for('admin.spot_page', spot_id=s.id) }}#place">{{ icon('crosshair') }}<span class="hide-sm">Разместить</span></a>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="vz-empty">{{ icon('crosshair') }}Тайников пока нет. Добавьте первый ниже.</p>
+            {% endif %}
+
+            <details class="admin-details" id="add-spot"{{ ' open' if spot_errors or not spots }}>
+                <summary>{{ icon('plus') }}Добавить тайник</summary>
+                <form method="post" class="admin-form">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="add_spot">
+                    {{ f.spot_fields(spot_values, spot_errors, gifts) }}
+                    <button class="btn btn-primary" type="submit">{{ icon('plus') }}Добавить и разместить</button>
+                </form>
+            </details>
+        </section>
+
+        <form method="post" class="panel admin-card admin-form" aria-labelledby="hunt-settings">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="save">
+            <h2 class="vz-title" id="hunt-settings">Настройки охоты</h2>
+            {{ f.challenge_fields(c, errors, gifts) }}
+            <button class="btn btn-primary" type="submit">{{ icon('check') }}Сохранить</button>
+        </form>
+    </div>
+
+    <section class="panel admin-card" aria-labelledby="finds-title">
+        <h2 class="vz-title" id="finds-title">Кто что нашёл</h2>
+        {% if finds %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th scope="col">Когда (UTC)</th><th scope="col">Игрок</th><th scope="col">Тайник</th><th scope="col">Подарок</th></tr></thead>
+                    <tbody>
+                        {% for x in finds %}
+                            <tr>
+                                <td>{{ format_datetime(x.created_at) }}</td>
+                                <td><a href="{{ url_for('admin.player_page', voter=x.voter) }}">{{ x.display_name or ('Аноним ' ~ x.voter[:8]) }}</a></td>
+                                <td>{{ x.label or HUNT_PAGES.get(x.page, x.page) }}</td>
+                                <td>{{ x.gift_name or '—' }}{% if x.code %} <code>{{ x.code }}</code>{% endif %}{% if x.revoked_at %} <small>(отозван)</small>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="vz-empty">{{ icon('compass') }}Пока никто ничего не нашёл.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

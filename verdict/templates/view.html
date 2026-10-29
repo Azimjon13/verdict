@@ -1,0 +1,249 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set cat = CATEGORIES.get(s.category, {'name': s.category, 'icon': 'circle'}) %}
+{% set type = SITUATION_TYPES.get(s.type, {'name': s.type, 'icon': 'circle'}) %}
+{% macro row(label, value) %}{% if value %}<div class="kv"><dt>{{ label }}</dt><dd>{{ nl2br(value) }}</dd></div>{% endif %}{% endmacro %}
+
+<section class="case-hero" style="{{ category_style(s.category) }}">
+    <div class="container">
+        <a class="back-link" href="{{ url_for('library') }}">{{ icon('arrow-left') }}Отбор контента</a>
+        <div class="case-meta">
+            <span class="case-no">Досье {{ case_number(s.id) }}</span>
+            <span class="status status-{{ s.status }}">{{ STATUSES.get(s.status, s.status) }}</span>
+            {% if owns_situation(s) %}<span class="chip chip-mine">{{ icon('user') }}Ваша ситуация</span>{% endif %}
+            <span class="chip chip-cat">{{ icon(cat.icon) }}{{ cat.name }}</span>
+            <span class="chip">{{ icon(type.icon) }}{{ type.name }}</span>
+            {{ level_chip(situation_level(s), '') }}
+        </div>
+        <h1 class="case-title">{{ s.title }}</h1>
+        <p class="case-setting">{{ icon('user') }}{{ s.author or 'Без автора' }}<span class="sep">//</span>{{ icon('calendar') }}{{ format_date(s.created_at) }}</p>
+    </div>
+</section>
+
+<div class="container case-layout">
+    <article class="dossier dossier-full">
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">01</span><h2>Основная информация</h2></header>
+            <dl class="kv-list">
+                {{ row('Категория', cat.name) }}
+                {{ row('Тип ситуации', type.name) }}
+                {{ row('Название', s.title) }}
+                {{ row('Автор', s.author) }}
+            </dl>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">02</span><h2>Мир / Сеттинг</h2></header>
+            <dl class="kv-list">
+                {{ row('Тип мира', s.world.setting) }}
+                {{ row('Место', s.world.place) }}
+                {{ row('Время / эпоха', s.world.era) }}
+                {{ row('Обстоятельства', s.world.circumstances) }}
+            </dl>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">03</span><h2>Ситуация</h2><span class="chip chip-sm">{{ word_count(s.story) }} слов</span></header>
+            <div class="prose story">{{ paragraphs(s.story) }}</div>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">04</span><h2>Участники</h2></header>
+            <div class="people">
+                {% for p in s.participants %}
+                    <div class="person">
+                        <span class="avatar" style="--ah: {{ name_hue(p.name) }}">{{ initials(p.name) }}</span>
+                        <div class="person-body">
+                            <span class="label-mono">Участник {{ loop.index }}</span>
+                            <h3>{{ p.name }}{% if p.age %} <small>{{ p.age }}</small>{% endif %}</h3>
+                            <dl class="kv-list kv-compact">
+                                {{ row('Роль', p.role) }}
+                                {{ row('Отношение к другим', p.relations) }}
+                                {{ row('Краткое описание', p.description) }}
+                            </dl>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">05</span><h2>Доказательства и доступная информация</h2></header>
+            <div class="evidence">
+                <div class="evidence-col">
+                    <h3 class="evidence-h facts-h">{{ icon('check-circle') }}Факты</h3>
+                    <ul class="evidence-list facts">
+                        {% for f in s.facts %}<li><span class="ev-num">Факт {{ loop.index }}</span>{{ f }}</li>{% endfor %}
+                    </ul>
+                </div>
+                <div class="evidence-col">
+                    <h3 class="evidence-h unknown-h">{{ icon('help') }}Неизвестно / вызывает сомнение</h3>
+                    {% if s.unknowns %}
+                        <ul class="evidence-list unknowns">{% for u in s.unknowns %}<li>{{ u }}</li>{% endfor %}</ul>
+                    {% else %}<p class="muted">Не указано.</p>{% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">06</span><h2>Свидетели</h2></header>
+            {% if s.witnesses %}
+                <div class="witnesses">
+                    {% for w in s.witnesses %}
+                        <div class="witness">
+                            <div class="witness-head">
+                                <span class="avatar avatar-sm" style="--ah: {{ name_hue(w.name) }}">{{ initials(w.name) }}</span>
+                                <div><span class="label-mono">Свидетель {{ loop.index }}</span><h3>{{ w.name }}</h3></div>
+                            </div>
+                            <blockquote>{{ icon('quote', 'quote-icon') }}{{ w.claim }}</blockquote>
+                            <dl class="witness-meta">
+                                {% if w.trust %}<div><dt>{{ icon('shield') }}Насколько можно доверять</dt><dd>{{ w.trust }}</dd></div>{% endif %}
+                                {% if w.interest %}<div><dt>{{ icon('target') }}Личный интерес</dt><dd>{{ w.interest }}</dd></div>{% endif %}
+                            </dl>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="muted">Частная ситуация — свидетелей нет.</p>
+            {% endif %}
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">07–08</span><h2>Решения и последствия</h2></header>
+            <div class="decisions-full">
+                {% for d in s.decisions %}
+                    {% set n = counts.get(d.key, 0) %}
+                    <div class="decision-full">
+                        <div class="decision-top">
+                            <span class="opt-letter">{{ d.key }}</span>
+                            <div>
+                                <h3>{{ d.text }}</h3>
+                                {% if d.why %}<p class="muted"><b>Почему могут выбрать:</b> {{ d.why }}</p>{% endif %}
+                            </div>
+                            <span class="decision-votes" title="Голосов">{{ n }}<small>{{ pct(n, total) }}%</small></span>
+                        </div>
+                        {% if decision_has_consequences(d) %}
+                            <dl class="kv-list kv-grid">
+                                {{ row('Немедленное последствие', d.immediate) }}
+                                {{ row('Долгосрочное последствие', d.longterm) }}
+                                {{ row('Влияние на персонажей', d.characters) }}
+                                {{ row('Влияние на общество / мир', d.world) }}
+                            </dl>
+                        {% endif %}
+                        {% if (d.effects or {}).values()|select|list %}
+                            <div class="deltas">
+                                {% for k, m in METRICS.items() if d.effects.get(k) %}
+                                    {% set v = d.effects[k]|int %}
+                                    <span class="delta {{ 'up' if v > 0 else 'down' }}">{{ icon(m.icon) }}{{ m.name }} <b>{{ signed(v) }}</b></span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="block panel section-secret">
+            <header class="block-head"><span class="block-num">09</span><h2>Скрытая информация</h2><span class="chip chip-warn">{{ icon('eye-off') }}Команде и автору</span></header>
+            {% if can_see_hidden(s) %}
+                {% if s.hidden %}<div class="prose">{{ paragraphs(s.hidden) }}</div>{% else %}<p class="muted">Автор не заполнил этот раздел.</p>{% endif %}
+            {% else %}
+                <div class="classified">
+                    {{ icon('lock') }}
+                    <div>
+                        <b>Засекречено</b>
+                        <p>{{ 'Раздел заполнен автором и доступен только команде и самому автору.' if s.hidden else 'Автор не заполнил этот раздел.' }}</p>
+                    </div>
+                    {% if not is_logged_in() %}<a class="btn btn-sm" href="{{ url_for('login', back=back) }}">{{ icon('login') }}Войти</a>{% endif %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">10</span><h2>Почему ситуация неоднозначная</h2></header>
+            <dl class="kv-list">
+                {{ row('Главный конфликт', s.ambiguity.conflict) }}
+                {{ row('Аргумент в пользу одного решения', s.ambiguity.for_one) }}
+                {{ row('Аргумент в пользу другого решения', s.ambiguity.for_other) }}
+                {{ row('Что может разделить мнение игроков', s.ambiguity.divide) }}
+            </dl>
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">11</span><h2>Потенциал для продолжения</h2><span class="chip chip-sm">{{ 'Да' if s.continuation.possible else 'Нет' }}</span></header>
+            {% if s.continuation.possible and s.continuation.text %}<div class="prose">{{ paragraphs(s.continuation.text) }}</div>{% else %}<p class="muted">Продолжение не предусмотрено.</p>{% endif %}
+        </section>
+
+        <section class="block panel">
+            <header class="block-head"><span class="block-num">12</span><h2>Дополнительные заметки автора</h2></header>
+            {% if s.notes %}<div class="prose">{{ paragraphs(s.notes) }}</div>{% else %}<p class="muted">Заметок нет.</p>{% endif %}
+        </section>
+    </article>
+
+    <aside class="case-side">
+        <div class="panel side-card">
+            <span class="label-mono">Действия</span>
+            <a class="btn btn-primary btn-block" href="{{ url_for('case', id=s.id) }}">{{ icon('play') }}Пройти как игрок</a>
+            {% if can_edit_situation(s) %}
+                <a class="btn btn-block" href="{{ url_for('edit', id=s.id) }}">{{ icon('edit') }}{{ 'Продолжить черновик' if s.status == 'draft' else 'Редактировать' }}</a>
+            {% endif %}
+            {% if admin %}
+                <a class="btn btn-block" href="{{ url_for('api_export', id=s.id) }}">{{ icon('download') }}Экспорт JSON</a>
+                <div class="side-actions">
+                    {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to %}
+                        <form method="post" action="{{ url_for('action') }}"{{ status_confirm_attrs(to, s.title) }}>
+                            {{ csrf_field() }}
+                            <input type="hidden" name="id" value="{{ s.id }}">
+                            <input type="hidden" name="action" value="{{ to }}">
+                            <input type="hidden" name="back" value="{{ back }}">
+                            <button class="btn btn-sm btn-block act-{{ to }}" type="submit">{{ icon(ic) }}{{ label }}</button>
+                        </form>
+                    {% endfor %}
+                    <form method="post" action="{{ url_for('action') }}" data-confirm="Ситуация «{{ s.title }}» и все голоса по ней будут удалены навсегда. Это действие нельзя отменить." data-confirm-title="Удалить ситуацию?" data-confirm-ok="Удалить навсегда" data-confirm-tone="danger">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="id" value="{{ s.id }}">
+                        <input type="hidden" name="action" value="delete">
+                        <button class="btn btn-sm btn-block btn-danger" type="submit">{{ icon('trash') }}Удалить</button>
+                    </form>
+                </div>
+            {% elif not is_logged_in() %}
+                <p class="muted small">Одобрять и экспортировать ситуации может команда. <a href="{{ url_for('login', back=back) }}">Войти</a></p>
+            {% elif owns_situation(s) and s.status == 'draft' %}
+                <p class="muted small">Это ваш черновик — его видите только вы. Допишите и отправьте на отбор, когда будете готовы.</p>
+                <form method="post" action="{{ url_for('action') }}" data-confirm="Черновик «{{ s.title }}» будет удалён навсегда." data-confirm-title="Удалить черновик?" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="id" value="{{ s.id }}">
+                    <input type="hidden" name="action" value="delete">
+                    <button class="btn btn-sm btn-block btn-danger" type="submit">{{ icon('trash') }}Удалить черновик</button>
+                </form>
+            {% elif owns_situation(s) %}
+                <p class="muted small">{{ 'Это ваша ситуация. Пока она на отборе, её можно редактировать.' if s.status == 'pending' else 'Это ваша ситуация. Она уже прошла отбор — изменения вносит команда.' }}</p>
+            {% endif %}
+        </div>
+
+        <div class="panel side-card">
+            <span class="label-mono">Статистика</span>
+            <div class="side-stats">
+                <div><b>{{ total }}</b><span>{{ plural(total, 'вердикт', 'вердикта', 'вердиктов') }}</span></div>
+                <div class="heat heat-{{ contro.level }}"><b>{{ '—' if contro.value is none else contro.value ~ '%' }}</b><span>{{ contro.label }}</span></div>
+            </div>
+            {% if counts.get('other', 0) > 0 %}
+                <p class="muted small">{{ icon('message') }} Своё решение предложили: {{ counts.other }}</p>
+            {% endif %}
+            {% if timing.avg_ms is not none %}
+                <p class="muted small" title="От открытия дела до вердикта, по {{ timing.n }} {{ plural(timing.n, 'игроку', 'игрокам', 'игрокам') }}">{{ icon('clock') }} Среднее время на решение: {{ format_duration(timing.avg_ms) }}</p>
+            {% endif %}
+        </div>
+
+        <div class="panel side-card">
+            <span class="label-mono">Быстрая проверка · {{ s.checklist|length }}/{{ CHECKLIST|length }}</span>
+            <ul class="check-summary">
+                {% for item in CHECKLIST %}
+                    {% set ok = loop.index0 in s.checklist %}
+                    <li class="{{ 'ok' if ok else 'no' }}">{{ icon('check' if ok else 'x') }}{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+</div>
+{% endblock %}

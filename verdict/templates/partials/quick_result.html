@@ -1,0 +1,99 @@
+{#- Быстрый суд: the screen after the verdict — did the player guess the majority, how everyone decided, the consequence.
+    s, choice, guess (None — skipped), majority (keys of the others' majority before this vote; [] — nobody voted yet),
+    correct (1/0; None — no guess or nobody to compare with), counts (including this vote), stats (quick_stats), judge_info -#}
+{% set decision = situation_decision(s, choice) %}
+{% set total = counts.values()|sum %}
+{% set ns = namespace(parts=[]) %}
+{% for k in majority %}{% set ns.parts = ns.parts + ['«' ~ decision_text(s, k) ~ '»'] %}{% endfor %}
+{% set majority_text = ns.parts|join(' / ') %}
+{% set mine_pct = pct(counts.get(choice, 0), total) %}
+{% set effects = (decision or {}).get('effects') or {} %}
+{% set conseq = ((decision or {}).get('immediate') or '')|trim or ((decision or {}).get('longterm') or '')|trim %}
+{% if correct == 1 %}
+    {% set tone, ic, heading, sub = 'win', 'check-circle', 'Вы угадали большинство!', 'Большинство действительно выбрало ' ~ majority_text ~ '.' %}
+{% elif correct == 0 %}
+    {% set tone, ic, heading, sub = 'miss', 'target', 'Не угадали', 'Большинство выбрало ' ~ majority_text ~ '.' %}
+{% elif not majority %}
+    {% set tone, ic, heading, sub = 'first', 'flag', 'Вы первый судья этого дела', 'Сравнивать пока не с кем — ваш вердикт станет точкой отсчёта для остальных.' %}
+{% else %}
+    {% set tone, ic, heading, sub = 'skip', 'users', 'Вы не угадывали', 'Большинство выбрало ' ~ majority_text ~ '.' %}
+{% endif %}
+<section class="quick-result panel" id="quick-result" tabindex="-1" aria-live="polite">
+    <div class="guess-banner guess-{{ tone }}">
+        <span class="guess-icon">{{ icon(ic) }}</span>
+        <div>
+            <h2>{{ heading }}</h2>
+            <p>{{ sub }}</p>
+        </div>
+        {% if correct == 1 %}<span class="guess-points">+1</span>{% endif %}
+    </div>
+
+    <div class="quick-choice">
+        <span class="opt-letter">{{ '+' if choice == 'other' else choice }}</span>
+        <div>
+            <span class="label-mono">Ваш вердикт</span>
+            <b>{{ decision_text(s, choice) }}</b>
+            {% if total > 1 %}
+                <small>{{ 'Вы решили как большинство.' if majority and choice in majority else 'Так решили ' ~ mine_pct ~ '% игроков.' }}</small>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if conseq or effects.values()|select|list %}
+        <div class="quick-block">
+            <h3 class="result-h">{{ icon('zap') }}Что было дальше</h3>
+            {% if conseq %}<p class="quick-conseq">{{ conseq }}</p>{% endif %}
+            {% if effects.values()|select|list %}
+                <div class="deltas">
+                    {% for k, m in METRICS.items() if effects.get(k) %}
+                        {% set v = effects[k]|int %}
+                        <span class="delta {{ 'up' if v > 0 else 'down' }}">{{ icon(m.icon) }}{{ m.name }} <b>{{ signed(v, METRIC_STEP) }}</b></span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="quick-block">
+        <h3 class="result-h">{{ icon('chart') }}Как решили все <span class="result-sub">{{ total }} {{ plural(total, 'вердикт', 'вердикта', 'вердиктов') }}</span></h3>
+        <ul class="dist">
+            {% for d in s.decisions %}
+                {% set p = pct(counts.get(d.key, 0), total) %}
+                <li class="dist-row{{ ' is-mine' if d.key == choice }}{{ ' is-majority' if d.key in majority }}">
+                    <span class="opt-letter opt-letter-sm">{{ d.key }}</span>
+                    <div class="dist-body">
+                        <div class="dist-top">
+                            <span class="dist-text">{{ d.text }}{% if d.key == choice %} <em>ваш выбор</em>{% endif %}{% if d.key == guess %} <em class="em-guess">ваша догадка</em>{% endif %}</span>
+                            <b>{{ p }}%</b>
+                        </div>
+                        <div class="dist-bar"><i style="--w: {{ p }}%"></i></div>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% if s.ambiguity.conflict %}
+        <p class="quick-conflict">{{ icon('swords') }}<span><b>Почему нет правильного ответа:</b> {{ s.ambiguity.conflict }}</span></p>
+    {% endif %}
+
+    {% if not preview|default(false) %}{% include 'partials/friend_votes.html' %}{% include 'partials/campaign_teaser.html' %}{% endif %}
+    {% if judge_info %}{% include 'partials/judge_teaser.html' %}{% endif %}
+    {% if career_info %}{% include 'partials/career.html' %}{% endif %}
+
+    <div class="quick-foot">
+        <span class="quick-score" title="Сколько раз вы угадали выбор большинства">
+            {{ icon('target') }}Угадано: <b data-quick-score>{{ stats.score }}</b> из {{ stats.guesses }}
+            {% if stats.streak > 1 %}<span class="streak">{{ icon('flame') }}серия {{ stats.streak }}</span>{% endif %}
+        </span>
+        <div class="quick-actions">
+            <a class="btn" href="{{ url_for('case', id=s.id) }}">{{ icon('file') }}Полное досье</a>
+            {% set share_text = 'Дело «' ~ s.title ~ '». Мой вердикт: ' ~ decision_text(s, choice) ~ '. А что решили бы вы?' %}
+            {% set share_url = url_for('case', id=s.id, _external=True) %}
+            <button class="btn btn-ghost" type="button" data-share-link data-share-text="{{ share_text }}" data-share-url="{{ share_url }}">{{ icon('share') }}<span>Поделиться</span></button>
+            <a class="btn btn-ghost" href="https://t.me/share/url?url={{ share_url|urlencode }}&amp;text={{ share_text|urlencode }}" target="_blank" rel="noopener noreferrer">{{ icon('send') }}Telegram</a>
+            <a class="btn btn-primary" href="{{ url_for('quick') }}" data-quick-next>Следующее дело{{ icon('arrow-right') }}</a>
+        </div>
+    </div>
+    {% if not preview|default(false) %}{% from 'partials/report.html' import report_form %}{{ report_form('situation', s.id, url_for('quick_case', id=s.id)) }}{% endif %}
+</section>

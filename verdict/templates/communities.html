@@ -1,0 +1,70 @@
+{% extends 'layout.html' %}
+{% from 'partials/community_form.html' import community_fields %}
+{% block content %}
+{% macro card(c) %}
+<a class="panel community-card" href="{{ url_for('community', slug=c.slug) }}" style="--h: {{ c.hue }}">
+    <span class="community-emblem">{{ icon(c.icon) }}</span>
+    <span class="community-body">
+        <b>{{ c.name }}</b>
+        {% if c.description %}<small>{{ excerpt(c.description, 110) }}</small>{% endif %}
+        <span class="community-meta">
+            <span>{{ icon('users') }}{{ c.members }} {{ plural(c.members, 'участник', 'участника', 'участников') }}</span>
+            <span>{{ icon(SOCIAL.access[c.access].icon) }}{{ SOCIAL.access[c.access].name }}</span>
+            {% if c.my_status == 'active' %}<span class="chip chip-sm chip-mine">{{ SOCIAL.roles[c.my_role] }}</span>{% elif c.my_status == 'requested' %}<span class="chip chip-sm chip-warn">Заявка отправлена</span>{% endif %}
+        </span>
+    </span>
+</a>
+{% endmacro %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Сообщество</span>
+        <h1>Сообщества <span class="grad-text">судей</span></h1>
+        <p class="lead">Свой суд со своими правилами: вступайте, соревнуйтесь в рейтинге сообщества, приглашайте друзей по ссылке.</p>
+        {% include 'partials/social_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="social-columns">
+        <div class="social-main">
+            <form method="get" class="panel admin-filters" role="search">
+                <label class="field admin-search"><span>Поиск</span><input type="text" name="q" value="{{ q }}" placeholder="Название или описание"></label>
+                <button class="btn btn-sm" type="submit">{{ icon('search') }}Найти</button>
+            </form>
+            {% if mine and not q %}
+                <h2 class="social-h2">Мои сообщества</h2>
+                <div class="community-list">{% for c in mine %}{{ card(c) }}{% endfor %}</div>
+                <h2 class="social-h2">Все сообщества</h2>
+            {% endif %}
+            {% if items %}
+                <div class="community-list">{% for c in items if not (c.my_status == 'active' and not q) %}{{ card(c) }}{% else %}<p class="vz-empty">Других сообществ пока нет.</p>{% endfor %}</div>
+            {% else %}
+                <div class="empty panel">
+                    {{ icon('landmark') }}
+                    <h2>{{ 'Ничего не нашлось' if q else 'Сообществ пока нет' }}</h2>
+                    <p>{{ 'Попробуйте другой запрос — или создайте своё.' if q else 'Создайте первое: придумайте название и правила.' }}</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="admin-side">
+            {% if can_create %}
+                <form method="post" class="panel admin-card admin-form" id="new" aria-labelledby="cm-new">
+                    {{ csrf_field() }}
+                    <h2 class="vz-title" id="cm-new">{{ icon('plus') }}Новое сообщество</h2>
+                    {{ community_fields(values, errors) }}
+                    <button class="btn btn-primary" type="submit">{{ icon('plus') }}Создать</button>
+                </form>
+            {% else %}
+                <div class="panel admin-card">
+                    <h2 class="vz-title">{{ icon('plus') }}Своё сообщество</h2>
+                    <p class="vz-sub">Создавать сообщества и вступать в них можно с аккаунтом. Ваши вердикты и прогресс сохранятся.</p>
+                    <a class="btn btn-primary btn-sm" href="{{ url_for('register', back=url_for('communities')) }}">{{ icon('user') }}Завести аккаунт</a>
+                    <a class="link-btn" href="{{ url_for('login', back=url_for('communities')) }}">У меня уже есть аккаунт</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

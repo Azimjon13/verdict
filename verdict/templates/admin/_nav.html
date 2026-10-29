@@ -1,0 +1,18 @@
+{#- The team's sections. section — the current one. -#}
+{% set admin_items = [
+    ('dashboard', url_for('admin.dashboard'), 'dashboard', 'Обзор'),
+    ('players', url_for('admin.players_page'), 'user', 'Игроки'),
+    ('hunts', url_for('admin.hunts_page'), 'compass', 'Охота'),
+    ('gifts', url_for('admin.gifts_page'), 'gift', 'Подарки'),
+    ('communities', url_for('admin.communities_page'), 'users', 'Сообщества'),
+    ('reports', url_for('admin.reports_page'), 'flag', 'Жалобы'),
+    ('game', url_for('admin.game_page'), 'sliders', 'Игра'),
+] %}
+<nav class="admin-nav" aria-label="Разделы админки">
+    {% for key, href, ic, label in admin_items %}
+        <a href="{{ href }}"{% if section == key %} class="active" aria-current="page"{% endif %}>{{ icon(ic) }}{{ label }}</a>
+    {% endfor %}
+    <span class="admin-nav-sep" aria-hidden="true"></span>
+    <a href="{{ url_for('library') }}">{{ icon('clipboard') }}Отбор ситуаций</a>
+    <a href="{{ url_for('users') }}">{{ icon('shield') }}Команда</a>
+</nav>

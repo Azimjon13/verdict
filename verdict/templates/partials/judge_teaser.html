@@ -1,0 +1,24 @@
+{#- The judge-profile strip under a verdict result. judge_info = {'profile': judge_profile(), 'event': None | 'unlocked' | 'changed'} -#}
+{% set jp = judge_info.profile %}
+{% set jtype = JUDGE_ARCHETYPES[jp.archetype] if jp.archetype is not none else none %}
+{% set jevent = judge_info.event %}
+<a class="judge-teaser{{ ' is-' ~ jevent if jevent }}{{ '' if jtype else ' is-locked' }}" href="{{ url_for('judge') }}">
+    <span class="jt-icon">{{ icon(jtype.icon if jtype else 'lock') }}</span>
+    <span class="jt-body">
+        {% if jtype is none %}
+            <small>Профиль судьи</small>
+            <b>Откроется через {{ jp.left }} {{ plural(jp.left, 'вердикт', 'вердикта', 'вердиктов') }}</b>
+            <span class="jt-meter" aria-hidden="true"><i style="width: {{ [100, round_half_up(jp.decided / JUDGE_MIN_VERDICTS * 100)|int]|min }}%"></i></span>
+        {% elif jevent == 'unlocked' %}
+            <small>Профиль судьи открыт!</small>
+            <b>Вы — «{{ jtype.name }}»</b>
+        {% elif jevent == 'changed' %}
+            <small>Ваш стиль изменился</small>
+            <b>Теперь вы — «{{ jtype.name }}»</b>
+        {% else %}
+            <small>Ваш профиль судьи</small>
+            <b>«{{ jtype.name }}»</b>
+        {% endif %}
+    </span>
+    {{ icon('arrow-right', 'jt-arrow') }}
+</a>

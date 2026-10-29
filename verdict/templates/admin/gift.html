@@ -1,0 +1,90 @@
+{% extends 'layout.html' %}
+{% import 'admin/_forms.html' as f with context %}
+{% from 'partials/gift.html' import gift_card %}
+{% block content %}
+{% set kd = GIFT_KINDS.get(gift.kind, {'name': gift.kind, 'icon': 'gift'}) %}
+{% set free = codes|rejectattr('grant_id')|list|length %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('admin.gifts_page') }}">{{ icon('arrow-left') }}Подарки</a></span>
+        <h1>{{ gift.name }}</h1>
+        <p class="lead">{{ kd.name }}{% if gift.xp %} · +{{ gift.xp }} XP{% endif %} · выдан {{ grants|rejectattr('revoked_at')|list|length }} {{ plural(grants|rejectattr('revoked_at')|list|length, 'раз', 'раза', 'раз') }}</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-grid admin-grid-wide">
+        <form method="post" class="panel admin-card admin-form" aria-labelledby="gift-settings">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="save">
+            <h2 class="vz-title" id="gift-settings">Подарок</h2>
+            {{ f.gift_fields(gift, errors) }}
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">{{ icon('check') }}Сохранить</button>
+            </div>
+        </form>
+
+        <div class="admin-side">
+            <section class="panel admin-card" aria-labelledby="gift-preview">
+                <h2 class="vz-title" id="gift-preview">Так его увидит игрок</h2>
+                {{ gift_card(preview) }}
+            </section>
+
+            {% if gift.kind == 'code' %}
+                <section class="panel admin-card" aria-labelledby="gift-codes">
+                    <h2 class="vz-title" id="gift-codes">Коды <span class="vz-count">свободно {{ free }} из {{ codes|length }}</span></h2>
+                    <form method="post" class="admin-form">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="action" value="codes">
+                        <label class="field"><span>Добавить коды <em>— по одному в строке</em></span><textarea name="codes" rows="4" class="mono" placeholder="VERDICT-7Q2K&#10;VERDICT-M4XA"></textarea></label>
+                        <button class="btn btn-sm" type="submit">{{ icon('plus') }}Добавить</button>
+                    </form>
+                    {% if codes %}
+                        <ul class="code-list">
+                            {% for c in codes %}
+                                <li class="{{ 'is-used' if c.grant_id }}"><code>{{ c.code }}</code>{% if c.grant_id %}<small>выдан {{ format_datetime(c.created_at) }} · <a href="{{ url_for('admin.player_page', voter=c.voter) }}">игрок</a></small>{% else %}<small>свободен</small>{% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if free %}
+                            <form method="post" class="inline-form" data-confirm="Удалить все свободные коды ({{ free }})? Выданные останутся у игроков." data-confirm-title="Удалить свободные коды" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                                {{ csrf_field() }}<input type="hidden" name="action" value="clear_codes">
+                                <button class="link-btn" type="submit">Удалить свободные коды</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            <form method="post" class="inline-form" data-confirm="Удалить подарок «{{ gift.name }}»? Тайники с ним станут пустыми, уже выданные подарки останутся у игроков." data-confirm-title="Удалить подарок" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                {{ csrf_field() }}<input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-ghost btn-danger" type="submit">{{ icon('trash') }}Удалить подарок</button>
+            </form>
+        </div>
+    </div>
+
+    <section class="panel admin-card" aria-labelledby="gift-grants">
+        <h2 class="vz-title" id="gift-grants">Кому выдан</h2>
+        {% if grants %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th scope="col">Когда (UTC)</th><th scope="col">Игрок</th><th scope="col">Откуда</th><th scope="col">Код</th></tr></thead>
+                    <tbody>
+                        {% for g in grants %}
+                            <tr class="{{ 'is-revoked' if g.revoked_at }}">
+                                <td>{{ format_datetime(g.created_at) }}</td>
+                                <td><a href="{{ url_for('admin.player_page', voter=g.voter) }}">{{ g.display_name or ('Аноним ' ~ g.voter[:8]) }}</a></td>
+                                <td>{{ {'spot': 'тайник', 'prize': 'главный приз', 'admin': 'команда'}.get(g.source, g.source) }}{% if g.note %} · {{ g.note }}{% endif %}{% if g.revoked_at %} · отозван{% endif %}</td>
+                                <td>{% if g.code %}<code>{{ g.code }}</code>{% else %}—{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="vz-empty">{{ icon('gift') }}Ещё никому.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

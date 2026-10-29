@@ -1,0 +1,42 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Сообщества <span class="grad-text">{{ items|length }}</span></h1>
+        <p class="lead">Сообщества игроков и их правила. Дружеских пар: {{ friendships }}. Сообщество с неподходящим названием или правилами можно удалить — участники останутся игроками.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    {% if items %}
+        <div class="panel admin-table-wrap">
+            <table class="admin-table">
+                <thead><tr><th scope="col">Сообщество</th><th scope="col">Основатель</th><th scope="col">Вход</th><th scope="col" class="num">Участников</th><th scope="col" class="num">Заявок</th><th scope="col">Создано</th><th scope="col"></th></tr></thead>
+                <tbody>
+                    {% for c in items %}
+                        <tr>
+                            <td><a href="{{ url_for('community', slug=c.slug) }}">{{ c.name }}</a>{% if c.description %}<br><small>{{ excerpt(c.description, 80) }}</small>{% endif %}</td>
+                            <td><a href="{{ url_for('profile', login=c.owner_login) }}">{{ c.owner_name }}</a></td>
+                            <td>{{ SOCIAL.access[c.access].name }}</td>
+                            <td class="num">{{ c.members }}</td>
+                            <td class="num">{{ c.requests }}</td>
+                            <td>{{ format_date(c.created_at) }}</td>
+                            <td>
+                                <form method="post" class="inline-form" data-confirm="Удалить сообщество «{{ c.name }}»?" data-confirm-title="Удаление сообщества" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                                    {{ csrf_field() }}<input type="hidden" name="id" value="{{ c.id }}">
+                                    <button class="icon-btn" type="submit" title="Удалить" aria-label="Удалить {{ c.name }}">{{ icon('trash') }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty panel">{{ icon('users') }}<h2>Сообществ пока нет</h2><p>Игроки создают их на странице «Сообщества».</p></div>
+    {% endif %}
+</section>
+{% endblock %}

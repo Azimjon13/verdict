@@ -1,0 +1,37 @@
+{#- A running treasure hunt on this page: the hidden spots (hunt.js places them on their elements) and the hunt
+    badge with progress and hints. hunt_data — hunt.for_page(). -#}
+<script type="application/json" id="hunt-data">{{ hunt_json({'spots': hunt_data.spots, 'claim': url_for('api_hunt'), 'back': request.full_path.rstrip('?')})|safe }}</script>
+{% if hunt_data.hunts %}
+    {% set ns = namespace(found=0, total=0) %}
+    {% for h in hunt_data.hunts %}{% set ns.found = ns.found + h.found %}{% set ns.total = ns.total + h.total %}{% endfor %}
+    <details class="hunt-badge" data-hunt-badge>
+        <summary>{{ icon('compass') }}<span class="hunt-badge-name">Охота за тайниками</span><b data-hunt-count>{{ ns.found }}/{{ ns.total }}</b></summary>
+        <div class="hunt-panel">
+            {% for h in hunt_data.hunts %}
+                <section class="hunt-item" data-hunt="{{ h.id }}" data-total="{{ h.total }}">
+                    <h3>{{ h.title }}</h3>
+                    {% if h.intro %}<p class="hunt-intro">{{ h.intro }}</p>{% endif %}
+                    <div class="hunt-progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ h.total }}" aria-valuenow="{{ h.found }}" aria-label="Найдено тайников"><i style="width: {{ pct(h.found, h.total) }}%"></i></div>
+                    <p class="hunt-meta">Найдено <b data-hunt-found>{{ h.found }}</b> из {{ h.total }}{% if h.seconds_left is not none %} · до конца {{ format_left(h.seconds_left) }}{% endif %}</p>
+                    <ol class="hunt-hints">
+                        {% for x in h.spots %}
+                            <li class="{{ 'is-found' if x.found }}{{ ' is-empty' if x.empty }}" data-spot="{{ x.id }}">
+                                {{ icon('check-circle' if x.found else ('lock' if x.empty else 'search')) }}
+                                <span>
+                                    {%- if x.found %}Найден{% if x.gift %}: {{ x.gift }}{% endif %}
+                                    {%- elif x.empty %}Пуст — успели другие
+                                    {%- else %}{{ x.hint or 'Без подсказки — ищите внимательно' }}{% endif -%}
+                                    <small>{{ x.page }}</small>
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                    {% if h.prize %}
+                        <p class="hunt-prize">{{ icon('crown') }}<span>Главный приз за все тайники: <b>{{ h.prize.name }}</b>{% if h.prize_taken %} — уже ваш{% endif %}</span></p>
+                    {% endif %}
+                </section>
+            {% endfor %}
+        </div>
+    </details>
+{% endif %}
+<script src="{{ asset('js/hunt.js') }}" defer></script>

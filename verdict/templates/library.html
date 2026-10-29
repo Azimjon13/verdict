@@ -1,0 +1,132 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container page-hero-split">
+        <div>
+            <span class="kicker">Отбор контента</span>
+            <h1>Все ситуации <span class="grad-text">проходят отбор</span></h1>
+            <p class="lead">Самые интересные попадут в MVP и будут протестированы на реальных игроках: вовлечённость, completion rate, retention, расхождение мнений и потенциал для обсуждений.</p>
+        </div>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="{{ url_for('create') }}">{{ icon('plus') }}Новая ситуация</a>
+            {% if admin %}
+                <a class="btn" href="{{ url_for('api_export') }}">{{ icon('download') }}Экспорт одобренных (JSON)</a>
+            {% else %}
+                <a class="btn" href="{{ url_for('login', back=url_for('library')) }}">{{ icon('login') }}Войти</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="container">
+    <details class="panel sprint" open>
+        <summary>
+            <span class="sprint-title">{{ icon('hourglass') }}Первый спринт · 7 дней</span>
+            <span class="sprint-sub">Цель на категорию: {{ target_per_category }} ситуаций — {% for t in SITUATION_TYPES.values() %}{{ t.target }} {{ t.many }}{{ ', ' if not loop.last }}{% endfor %}</span>
+            {{ icon('chevron-down', 'chev') }}
+        </summary>
+        <div class="sprint-table" role="table" aria-label="Прогресс спринта">
+            <div class="sprint-row sprint-head" role="row">
+                <span role="columnheader">Категория</span>
+                {% for t in SITUATION_TYPES.values() %}<span role="columnheader">{{ icon(t.icon) }}{{ t.name }}</span>{% endfor %}
+                <span role="columnheader">Итого</span>
+            </div>
+            {% for key, c in CATEGORIES.items() %}
+                <div class="sprint-row" role="row" style="{{ category_style(key) }}">
+                    <span class="sprint-cat" role="cell">{{ icon(c.icon) }}{{ c.name }}</span>
+                    {% for tk, t in SITUATION_TYPES.items() %}
+                        {% set v = matrix[key][tk] %}
+                        <span class="sprint-cell" role="cell">
+                            <span class="mini-bar"><i style="width: {{ [100, pct(v, t.target)]|min }}%"></i></span>
+                            <b>{{ v }}</b>/{{ t.target }}
+                        </span>
+                    {% endfor %}
+                    <span class="sprint-cell sprint-total" role="cell"><b>{{ matrix[key].values()|sum }}</b>/{{ target_per_category }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </details>
+</section>
+
+<section class="section section-top-sm">
+    <div class="container">
+        <div class="lib-toolbar">
+            <div class="tabs" role="tablist" aria-label="Статус">
+                {% for key, label in tabs.items() %}
+                    <a role="tab" href="{{ qs(status=key) }}" class="tab{{ ' active' if status == key }}" aria-selected="{{ 'true' if status == key else 'false' }}">
+                        {{ label }} <span class="tab-count">{{ tab_counts.get(key, 0) }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+            <form method="get" class="lib-filter" action="{{ url_for('library') }}">
+                {% if status != 'all' %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+                <select class="vs" name="category" aria-label="Категория" data-autosubmit>
+                    <option value=""{{ option_icon('layers') }}>Все категории</option>
+                    {% for key, c in CATEGORIES.items() %}
+                        <option value="{{ key }}"{{ option_icon(c.icon, c.hue) }}{{ ' selected' if category == key }}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="vs" name="sort" aria-label="Сортировка" data-autosubmit data-align="right">
+                    {% for key, (label, ic) in sorts.items() %}
+                        <option value="{{ key }}"{{ option_icon(ic) }}{{ ' selected' if sort == key }}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <noscript><button class="btn btn-sm">Показать</button></noscript>
+            </form>
+        </div>
+
+        {% if not items %}
+            <div class="empty panel">
+                {{ icon('archive') }}
+                <h2>Здесь пока пусто</h2>
+                <p>Нет ситуаций с выбранными фильтрами.</p>
+                <a class="btn btn-primary" href="{{ url_for('create') }}">{{ icon('plus') }}Создать ситуацию</a>
+            </div>
+        {% else %}
+            <div class="lib-list">
+                {% for s in items %}
+                    {% set cat = CATEGORIES.get(s.category, {'name': s.category, 'icon': 'circle'}) %}
+                    {% set type = SITUATION_TYPES.get(s.type, {'name': s.type, 'icon': 'circle'}) %}
+                    {% set c = counts.get(s.id, {}) %}
+                    {% set contro = case_controversy(s, c) %}
+                    <article class="panel lib-row" style="{{ category_style(s.category) }}">
+                        <div class="lib-main">
+                            <div class="lib-meta">
+                                <span class="case-no">{{ case_number(s.id) }}</span>
+                                <span class="status status-{{ s.status }}">{{ STATUSES.get(s.status, s.status) }}</span>
+                                {% if uid and s.user_id == uid %}<span class="chip chip-sm chip-mine">{{ icon('user') }}Ваша</span>{% endif %}
+                                <span class="chip chip-cat chip-sm">{{ icon(cat.icon) }}{{ cat.name }}</span>
+                                <span class="chip chip-sm">{{ icon(type.icon) }}{{ type.name }}</span>
+                                {{ level_chip(situation_level(s)) }}
+                            </div>
+                            <h3><a href="{{ url_for('edit', id=s.id) if s.status == 'draft' else url_for('view', id=s.id) }}">{{ s.title }}</a></h3>
+                            <p class="lib-sub">{{ icon('user') }}{{ s.author or 'Без автора' }}<span class="sep">·</span>{{ icon('calendar') }}{{ format_date(s.created_at) }}<span class="sep">·</span>{{ s.decisions|length }} {{ plural(s.decisions|length, 'решение', 'решения', 'решений') }}</p>
+                        </div>
+                        <div class="lib-stats">
+                            <span title="Вердиктов">{{ icon('gavel') }}{{ c.values()|sum }}</span>
+                            <span class="heat heat-{{ contro.level }}" title="Индекс спорности">{{ icon('flame') }}{{ '—' if contro.value is none else contro.value ~ '%' }}</span>
+                            <span title="Пункты быстрой проверки">{{ icon('clipboard') }}{{ s.checklist|length }}/{{ CHECKLIST|length }}</span>
+                        </div>
+                        <div class="lib-actions">
+                            <a class="btn btn-sm" href="{{ url_for('view', id=s.id) }}">{{ icon('file') }}Досье</a>
+                            <a class="btn btn-sm btn-ghost" href="{{ url_for('case', id=s.id) }}" title="Пройти как игрок">{{ icon('play') }}</a>
+                            {% if admin %}
+                                {% for to, ic, label in [('approved', 'check', 'В игру'), ('rejected', 'x', 'Отклонить'), ('pending', 'refresh', 'На отбор')] if s.status != to %}
+                                    <form method="post" action="{{ url_for('action') }}" class="inline-form"{{ status_confirm_attrs(to, s.title) }}>
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="id" value="{{ s.id }}">
+                                        <input type="hidden" name="action" value="{{ to }}">
+                                        <input type="hidden" name="back" value="{{ back }}">
+                                        <button class="btn btn-sm btn-ghost act-{{ to }}" type="submit" title="{{ label }}">{{ icon(ic) }}<span class="act-label">{{ label }}</span></button>
+                                    </form>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+{% import 'admin/_forms.html' as f with context %}
+{% block content %}
+{% set unity = s.page.startswith('unity:') %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('admin.hunt_page', challenge_id=c.id) }}">{{ icon('arrow-left') }}{{ c.title }}</a></span>
+        <h1>{{ s.label or 'Тайник ' ~ s.id }}</h1>
+        <p class="lead">{{ ('Игра · сцена ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %} · найден {{ finds|length }} {{ plural(finds|length, 'раз', 'раза', 'раз') }}{% if s.max_finds %} из {{ s.max_finds }}{% endif %}</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-grid admin-grid-wide">
+        <form method="post" class="panel admin-card admin-form" aria-labelledby="spot-settings">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="save">
+            <h2 class="vz-title" id="spot-settings">Тайник</h2>
+            {{ f.spot_fields(s, errors, gifts) }}
+            <details class="admin-details"{{ ' open' if unity }}>
+                <summary>{{ icon('sliders') }}Точное место{{ ' в сцене' if unity else ' — для продвинутых' }}</summary>
+                {% if not unity %}
+                    <label class="field"><span>Элемент страницы <em>(CSS-селектор)</em></span><input type="text" name="selector" value="{{ s.selector }}" maxlength="500" class="mono"></label>
+                {% else %}
+                    <input type="hidden" name="selector" value="">
+                {% endif %}
+                <div class="field-row">
+                    <label class="field"><span>X, % ширины</span><input type="number" name="x" value="{{ s.x }}" min="0" max="100" step="0.01"></label>
+                    <label class="field"><span>Y, % высоты</span><input type="number" name="y" value="{{ s.y }}" min="0" max="100" step="0.01"></label>
+                </div>
+            </details>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">{{ icon('check') }}Сохранить</button>
+            </div>
+        </form>
+
+        <div class="admin-side">
+            {% if not unity %}
+                <section class="panel admin-card" id="place" aria-labelledby="place-title">
+                    <h2 class="vz-title" id="place-title">{{ icon('crosshair') }}Разместить на странице</h2>
+                    <p class="vz-sub">Откроется страница сайта в режиме размещения: наведите на элемент и кликните, где спрятать тайник. Он будет держаться за этот элемент на любом экране.</p>
+                    {% if s.selector %}<p class="admin-note tone-ok">{{ icon('check-circle') }}<span>Сейчас: <code>{{ s.selector }}</code>, {{ s.x }}% × {{ s.y }}%</span></p>{% endif %}
+                    <form method="post" class="admin-form">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="action" value="open">
+                        <label class="field"><span>Адрес страницы</span><input type="text" name="url" value="{{ place_url }}" maxlength="255"></label>
+                        <button class="btn btn-primary" type="submit">{{ icon('crosshair') }}Открыть и разместить</button>
+                    </form>
+                    {% if s.selector %}
+                        <a class="btn btn-sm btn-ghost" href="{{ place_url }}{{ '&' if '?' in place_url else '?' }}hunt_preview={{ c.id }}">{{ icon('eye') }}Посмотреть на странице</a>
+                    {% endif %}
+                </section>
+            {% else %}
+                <section class="panel admin-card" aria-labelledby="unity-title">
+                    <h2 class="vz-title" id="unity-title">{{ icon('planet') }}Тайник в игре</h2>
+                    <p class="vz-sub">Игровой клиент получает его в <code>GET /api/v1/hunt</code> (поле <code>spots</code>): сцена <code>{{ s.page[6:] }}</code>, координаты в процентах экрана. Находку клиент отправляет в <code>POST /api/v1/hunt/spots/{{ s.id }}/claim</code>.</p>
+                </section>
+            {% endif %}
+
+            <section class="panel admin-card" aria-labelledby="spot-finds">
+                <h2 class="vz-title" id="spot-finds">Нашли</h2>
+                {% if finds %}
+                    <ul class="plain-list">
+                        {% for x in finds %}<li>{{ icon('user') }}<span><a href="{{ url_for('admin.player_page', voter=x.voter) }}">{{ x.display_name or ('Аноним ' ~ x.voter[:8]) }}</a><small>{{ format_datetime(x.created_at) }}{% if x.code %} · {{ x.code }}{% endif %}</small></span></li>{% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="vz-empty">Пока никто.</p>
+                {% endif %}
+            </section>
+
+            <form method="post" class="inline-form" data-confirm="Удалить тайник «{{ s.label or 'Тайник ' ~ s.id }}»? История его находок тоже удалится; подарки останутся у игроков." data-confirm-title="Удалить тайник" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                {{ csrf_field() }}<input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-ghost btn-danger" type="submit">{{ icon('trash') }}Удалить тайник</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

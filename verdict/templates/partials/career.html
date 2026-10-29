@@ -1,0 +1,40 @@
+{#- What a verdict did to the player's career: XP, rank, streak, case of the day, world events, achievements.
+    career_info — career.record_verdict(). -#}
+{% set c = career_info %}
+{% set r = c.rank %}
+<div class="career-strip{{ ' is-rank-up' if c.rank_up }}">
+    <div class="cs-rank">
+        <span class="cs-emblem">{{ icon(r.icon) }}</span>
+        <span class="cs-body">
+            <small>{{ 'Новый ранг!' if c.rank_up else 'Ваш ранг' }}</small>
+            <b>{{ r.name }}</b>
+            <span class="cs-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (r.progress * 100)|round|int }}" aria-label="До следующего ранга"><i style="width: {{ (r.progress * 100)|round|int }}%"></i></span>
+            <small class="cs-next">{% if r.next %}До ранга «{{ r.next.name }}»: {{ r.to_next }} XP{% else %}Высший ранг{% endif %}</small>
+        </span>
+        {% if c.xp_gained > 0 %}<span class="cs-xp">+{{ c.xp_gained }} XP</span>{% endif %}
+    </div>
+    {% if c.daily or (c.streak_up and c.streak > 1) %}
+        <div class="cs-notes">
+            {% if c.daily %}<span class="cs-note cs-daily">{{ icon('calendar') }}Дело дня рассмотрено: +{{ XP.daily }} XP</span>{% endif %}
+            {% if c.streak_up and c.streak > 1 %}<span class="cs-note streak">{{ icon('flame') }}{{ c.streak }} {{ plural(c.streak, 'день', 'дня', 'дней') }} подряд в суде</span>{% endif %}
+        </div>
+    {% endif %}
+    {% for e in c.events %}
+        <div class="world-news tone-{{ e.tone }}">
+            <span class="wn-icon">{{ icon(e.icon) }}</span>
+            <div>
+                <span class="label-mono">Мир откликается · {{ e.meter_name }} {{ c.world.metrics[e.meter] }}</span>
+                <b>{{ e.name }}</b>
+                <p>{{ e.text }}</p>
+            </div>
+        </div>
+    {% endfor %}
+    {% if c.achievements %}
+        <div class="cs-achievements">
+            <span class="label-mono">{{ icon('star') }}{{ 'Новое достижение' if c.achievements|length == 1 else 'Новые достижения' }}</span>
+            {% for a in c.achievements %}
+                <span class="ach-chip is-new" title="{{ a.desc }}">{{ icon(a.icon) }}{{ a.name }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

@@ -1,0 +1,24 @@
+{#- A campaign in a list: emblem, title, teaser, the player's progress. item — campaigns.overview() row. -#}
+{% macro campaign_card(item) %}
+{% set c = item.c %}
+{% set st = item.state %}
+{% set cat = CATEGORIES.get(c.category, {'hue': 190}) %}
+<a class="panel campaign-card" href="{{ url_for('campaign', key=c.key) }}" style="--h: {{ cat.hue }}">
+    <span class="community-emblem campaign-emblem">{{ icon(c.icon) }}</span>
+    <span class="community-body">
+        <span class="label-mono">Кампания · {{ c.chapters|length }} {{ plural(c.chapters|length, 'глава', 'главы', 'глав') }}</span>
+        <b>{{ c.title }}</b>
+        <small>{{ c.teaser }}</small>
+        <span class="community-meta">
+            {% if st and st.finished %}
+                <span class="chip chip-sm chip-mine">{{ icon('check') }}Пройдена: «{{ st.ending.title }}»</span>
+            {% elif st and st.run %}
+                <span class="chip chip-sm chip-warn">{{ icon('play') }}Глава {{ st.index + 1 }} из {{ st.total }}</span>
+            {% else %}
+                <span>{{ icon('play') }}Начать</span>
+            {% endif %}
+            <span>{{ icon('zap') }}+{{ XP.campaign }} XP за прохождение</span>
+        </span>
+    </span>
+</a>
+{% endmacro %}

@@ -1,0 +1,95 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact quick-hero">
+    <div class="container quick-container">
+        <span class="kicker">Быстрый суд</span>
+        <h1>Вынесите вердикт. <span class="grad-text">Угадайте большинство.</span></h1>
+        <div class="quick-stats">
+            <span>{{ icon('gavel') }}Рассмотрено <b>{{ done_count }}</b> из {{ approved_total }}</span>
+            <span title="Сколько раз вы угадали выбор большинства">{{ icon('target') }}Угадано <b>{{ stats.score }}</b> из {{ stats.guesses }}</span>
+            {% if stats.streak > 1 %}<span class="streak">{{ icon('flame') }}серия {{ stats.streak }}</span>{% endif %}
+            <a class="rank-chip" href="{{ url_for('judge') }}#career" title="{{ career.xp }} XP{% if career.rank.next %} · до ранга «{{ career.rank.next.name }}» {{ career.rank.to_next }} XP{% endif %}">{{ icon(career.rank.icon) }}<span>{{ career.rank.name }}</span><b>{{ career.xp }} XP</b></a>
+            {% if career.streak > 1 %}<span class="streak" title="Дней подряд с вердиктом">{{ icon('calendar') }}{{ career.streak }} {{ plural(career.streak, 'день', 'дня', 'дней') }} подряд</span>{% endif %}
+            {% set jstyle = JUDGE_ARCHETYPES[jp.archetype] if jp.archetype else none %}
+            <a class="quick-judge" href="{{ url_for('judge') }}">{{ icon(jstyle.icon if jstyle else 'lock') }}{{ ('Вы — «' ~ jstyle.name ~ '»') if jstyle else 'Профиль судьи: ещё ' ~ jp.left }}{{ icon('arrow-right') }}</a>
+        </div>
+    </div>
+</section>
+
+<section class="container quick-container section-top-0 quick-section">
+    {% if not s %}
+        <div class="empty panel">
+            {{ icon('check-circle') }}
+            <h2>Все дела рассмотрены</h2>
+            <p>Вы вынесли вердикт по каждому делу в игре{{ (' и угадали большинство ' ~ stats.score ~ ' ' ~ plural(stats.score, 'раз', 'раза', 'раз') ~ ' из ' ~ stats.guesses) if stats.guesses }}. Новые дела появляются, когда команда одобряет ситуации авторов.</p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="{{ url_for('play') }}">{{ icon('archive') }}Архив дел</a>
+                <a class="btn" href="{{ url_for('create') }}">{{ icon('edit') }}Предложить своё дело</a>
+            </div>
+        </div>
+    {% else %}
+        {% set cat = CATEGORIES.get(s.category, {'name': s.category, 'icon': 'circle'}) %}
+        {% set type = SITUATION_TYPES.get(s.type, {'name': s.type, 'icon': 'circle'}) %}
+        {% if not is_daily and daily.id and not daily.judged %}
+            <a class="daily-banner" href="{{ url_for('quick_case', id=daily.id) }}">{{ icon('calendar') }}<span><b>Дело дня ещё ждёт вас</b><small>Рассмотрите его сегодня: +{{ daily.bonus }} XP к рангу</small></span>{{ icon('arrow-right') }}</a>
+        {% endif %}
+        <article class="panel quick-card" style="{{ category_style(s.category) }}">
+            <div class="case-meta">
+                {% if is_daily %}<span class="chip chip-daily chip-sm">{{ icon('calendar') }}Дело дня{% if not daily.today and not my_vote %} · +{{ daily.bonus }} XP{% endif %}</span>{% endif %}
+                <span class="case-no">Дело {{ case_number(s.id) }}</span>
+                <span class="chip chip-cat chip-sm">{{ icon(cat.icon) }}{{ cat.name }}</span>
+                <span class="chip chip-sm">{{ icon(type.icon) }}{{ type.name }}</span>
+            </div>
+            <h2 class="quick-title">{{ s.title }}</h2>
+
+            {% with full = true, finish = '[data-quick]:not([hidden]), #quick-result', finish_label = 'К вердикту' %}{% include 'partials/comic.html' %}{% endwith %}
+
+            <div class="quick-steps" data-quick data-situation="{{ s.id }}"{{ ' hidden' if my_vote }}>
+                <div class="quick-step" data-step="1">
+                    <h3 class="quick-step-h"><span class="quick-step-num">1</span>Ваш вердикт</h3>
+                    {% if people %}
+                        <div class="quick-cast" aria-label="Кто есть кто">
+                            {% for i, c in people %}
+                                <span class="qc" style="--ah: {{ c.hue }}"><svg viewBox="0 0 120 140" aria-hidden="true"><use href="#cm{{ s.id }}-{{ i }}"/></svg><b>{{ c.short }}</b>{% if c.role %}<small>{{ excerpt(c.role, 28) }}</small>{% endif %}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="quick-options">
+                        {% for d in s.decisions %}
+                            <button type="button" class="option quick-option" data-pick="{{ d.key }}">
+                                <span class="opt-letter">{{ d.key }}</span>
+                                <span class="opt-text">{{ d.text }}</span>
+                                <kbd>{{ loop.index }}</kbd>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="quick-step" data-step="2" hidden>
+                    <h3 class="quick-step-h"><span class="quick-step-num">2</span>Как решило большинство?</h3>
+                    <p class="quick-step-lead">Ваш вердикт: <b data-picked-text></b> <button type="button" class="link-btn" data-repick>изменить</button><br>Угадайте самый популярный выбор других игроков — за верную догадку +1 к счёту.</p>
+                    <div class="quick-options quick-guesses">
+                        {% for d in s.decisions %}
+                            <button type="button" class="option quick-option" data-guess="{{ d.key }}">
+                                <span class="opt-letter">{{ d.key }}</span>
+                                <span class="opt-text">{{ d.text }}</span>
+                                <kbd>{{ loop.index }}</kbd>
+                            </button>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="link-btn quick-skip" data-guess="">Не угадывать — показать результат</button>
+                </div>
+                <p class="form-error" role="alert" hidden></p>
+            </div>
+
+            <div data-quick-result>
+                {% if result %}
+                    {% with s = result.s, choice = result.choice, guess = result.guess, majority = result.majority, correct = result.correct,
+                            counts = result.counts, stats = result.stats, judge_info = result.judge_info %}{% include 'partials/quick_result.html' %}{% endwith %}
+                {% endif %}
+            </div>
+        </article>
+        <p class="quick-alt">{{ icon('info') }}Хотите разобрать дело подробно, с мотивами и последствиями? <a href="{{ url_for('case', id=s.id) }}">Откройте полное досье</a>.</p>
+    {% endif %}
+</section>
+{% endblock %}

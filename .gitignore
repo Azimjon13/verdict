@@ -1,0 +1,7 @@
+.venv/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+config.json
+startup-error.txt

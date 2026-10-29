@@ -1,0 +1,163 @@
+{#- Form fields of the team's pages: a hunt, a spot, a gift. v — current values, errors — {field: message}. -#}
+
+{% macro check(name, checked, label, hint='') %}
+<label class="check">
+    <input type="checkbox" name="{{ name }}" value="1"{{ ' checked' if checked }}>
+    <span class="check-box">{{ icon('check') }}</span>
+    <span>{{ label }}{% if hint %}<small class="check-hint">{{ hint }}</small>{% endif %}</span>
+</label>
+{% endmacro %}
+
+{% macro stamp(value) %}{{ value.strftime('%Y-%m-%dT%H:%M') if value else '' }}{% endmacro %}
+
+{% macro gift_options(gifts, selected, none_label='Без подарка') %}
+<option value=""{{ ' selected' if not selected }}>{{ none_label }}</option>
+{% for g in gifts %}
+    {% set kd = GIFT_KINDS.get(g.kind, {}) %}
+    <option value="{{ g.id }}"{{ option_icon(g.icon, 190) }} data-desc="{{ kd.name }}{% if g.xp %} · +{{ g.xp }} XP{% endif %}{% if g.kind == 'code' %} · свободных кодов: {{ g.codes_free }}{% endif %}{% if not g.active %} · выключен{% endif %}"{{ ' selected' if selected == g.id }}>{{ g.name }}</option>
+{% endfor %}
+{% endmacro %}
+
+{% macro challenge_fields(v, errors, gifts) %}
+<label class="field{{ ' has-error' if errors.title }}">
+    <span>Название</span>
+    <input type="text" name="title" value="{{ v.title }}" maxlength="120" required placeholder="Например: Неделя тайников">
+    {{ field_error(errors, 'title') }}
+</label>
+<label class="field">
+    <span>Объявление <em>— игроки увидят его в значке охоты</em></span>
+    <textarea name="intro" rows="3" maxlength="4000" placeholder="На сайте спрятаны пять тайников. Первые десять нашедших получат по коду на скидку.">{{ v.intro }}</textarea>
+</label>
+<div class="field-row">
+    <label class="field">
+        <span>Состояние</span>
+        <select class="vs" name="status" data-size="sm">
+            {% for key, label in HUNT_STATUSES.items() %}<option value="{{ key }}"{{ ' selected' if v.status == key }}>{{ label }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="field{{ ' has-error' if errors.starts_at }}">
+        <span>Начало <em>(UTC)</em></span>
+        <input type="datetime-local" name="starts_at" value="{{ stamp(v.starts_at) }}">
+        {{ field_error(errors, 'starts_at') }}
+    </label>
+    <label class="field{{ ' has-error' if errors.ends_at }}">
+        <span>Конец <em>(UTC)</em></span>
+        <input type="datetime-local" name="ends_at" value="{{ stamp(v.ends_at) }}">
+        {{ field_error(errors, 'ends_at') }}
+    </label>
+</div>
+<p class="field-note">{{ icon('clock') }}Сейчас по UTC: {{ format_datetime(now) }}. Пустые даты — охота идёт, пока её не завершат. Тайники видны, только когда состояние «Идёт» и время внутри дат.</p>
+<label class="field">
+    <span>Главный приз <em>— за все тайники охоты</em></span>
+    <select class="vs" name="prize_gift_id" data-size="sm">{{ gift_options(gifts, v.prize_gift_id, 'Без главного приза') }}</select>
+</label>
+{{ check('banner', v.banner, 'Значок охоты на страницах', 'Внизу экрана: название, прогресс игрока и подсказки к тайникам.') }}
+{% endmacro %}
+
+{% macro spot_fields(v, errors, gifts) %}
+{% set unity = v.page.startswith('unity:') %}
+<label class="field">
+    <span>Название <em>— для команды</em></span>
+    <input type="text" name="label" value="{{ v.label }}" maxlength="120" placeholder="Например: за логотипом в подвале">
+</label>
+<div class="field-row">
+    <label class="field{{ ' has-error' if errors.page }}">
+        <span>Где</span>
+        <select class="vs" name="page" data-size="sm" data-spot-page>
+            {% for key, label in HUNT_PAGES.items() %}<option value="{{ key }}"{{ ' selected' if v.page == key }}>{{ label }}</option>{% endfor %}
+            <option value="unity"{{ ' selected' if unity }} data-desc="Сцена игрового клиента">Игра (Unity)</option>
+        </select>
+        {{ field_error(errors, 'page') }}
+    </label>
+    <label class="field" data-spot-scene{{ ' hidden' if not unity }}>
+        <span>Сцена игры</span>
+        <input type="text" name="scene" value="{{ v.page[6:] if unity else '' }}" maxlength="40" placeholder="courtroom">
+    </label>
+    <label class="field{{ ' has-error' if errors.path }}" data-spot-path{{ ' hidden' if unity }}>
+        <span>Только по адресу <em>— необязательно</em></span>
+        <input type="text" name="path" value="{{ v.path }}" maxlength="255" placeholder="/case/12">
+        {{ field_error(errors, 'path') }}
+    </label>
+</div>
+<label class="field">
+    <span>Подарок в тайнике</span>
+    <select class="vs" name="gift_id" data-size="sm">{{ gift_options(gifts, v.gift_id) }}</select>
+</label>
+<label class="field">
+    <span>Подсказка <em>— видна игрокам, пока тайник не найден</em></span>
+    <input type="text" name="hint" value="{{ v.hint }}" maxlength="255" placeholder="Там, где судьи узнают свой ранг">
+</label>
+<div class="field-row">
+    <label class="field">
+        <span>Значок</span>
+        <select class="vs" name="icon" data-size="sm">
+            {% for ic in HUNT.icons %}<option value="{{ ic }}"{{ option_icon(ic, 45) }}{{ ' selected' if v.icon == ic }}>{{ ic }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="field">
+        <span>Размер</span>
+        <select class="vs" name="size" data-size="sm">
+            {% for sz in HUNT.sizes %}<option value="{{ sz }}"{{ ' selected' if v.size == sz }}>{{ sz }} px</option>{% endfor %}
+        </select>
+    </label>
+    <label class="field">
+        <span>Заметность</span>
+        <select class="vs" name="visibility" data-size="sm">
+            {% for key, vis in HUNT.visibility.items() %}<option value="{{ key }}" data-desc="непрозрачность {{ (vis.opacity * 100)|round|int }}%"{{ ' selected' if v.visibility == key }}>{{ vis.name }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="field">
+        <span>Сколько нашедших <em>получат подарок</em></span>
+        <input type="number" name="max_finds" value="{{ v.max_finds }}" min="0" max="1000000" step="1">
+        <small>0 — все, кто найдёт</small>
+    </label>
+</div>
+{{ check('active', v.active, 'Тайник включён', 'Выключенный тайник не виден игрокам и не считается в охоте.') }}
+{% endmacro %}
+
+{% macro gift_fields(v, errors, with_codes=false) %}
+<div class="field-row">
+    <label class="field{{ ' has-error' if errors.kind }}">
+        <span>Вид</span>
+        <select class="vs" name="kind" data-size="sm" data-gift-kind>
+            {% for key, kd in GIFT_KINDS.items() %}<option value="{{ key }}"{{ option_icon(kd.icon, 190) }} data-desc="{{ kd.desc }}"{{ ' selected' if v.kind == key }}>{{ kd.name }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'kind') }}
+    </label>
+    <label class="field">
+        <span>Значок</span>
+        <select class="vs" name="icon" data-size="sm">
+            {% for ic in ['gift', 'medal', 'star', 'crown', 'gem', 'key', 'ticket', 'tag', 'zap', 'sparkles', 'coins', 'flame', 'rocket', 'shield', 'heart-whole', 'scale', 'compass', 'message'] %}
+                <option value="{{ ic }}"{{ option_icon(ic, 45) }}{{ ' selected' if v.icon == ic }}>{{ ic }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="field{{ ' has-error' if errors.xp }}">
+        <span>Опыт <em>XP</em></span>
+        <input type="number" name="xp" value="{{ v.xp }}" min="0" max="10000" step="1">
+        {{ field_error(errors, 'xp') }}
+    </label>
+</div>
+<label class="field{{ ' has-error' if errors.name }}">
+    <span>Название <em>— для титула это и есть титул</em></span>
+    <input type="text" name="name" value="{{ v.name }}" maxlength="120" required placeholder="Например: Искатель тайников">
+    {{ field_error(errors, 'name') }}
+</label>
+<label class="field">
+    <span>Что прочтёт нашедший</span>
+    <textarea name="text" rows="3" maxlength="2000" placeholder="Поздравляем! Покажите этот код на стенде VERDICT и заберите футболку.">{{ v.text }}</textarea>
+</label>
+<label class="field{{ ' has-error' if errors.link }}">
+    <span>Ссылка <em>— необязательно</em></span>
+    <input type="text" name="link" value="{{ v.link }}" maxlength="500" placeholder="https://t.me/…">
+    {{ field_error(errors, 'link') }}
+</label>
+{% if with_codes %}
+    <label class="field" data-gift-codes{{ ' hidden' if v.kind != 'code' }}>
+        <span>Коды <em>— по одному в строке, каждый нашедший получит свой</em></span>
+        <textarea name="codes" rows="4" class="mono" placeholder="VERDICT-7Q2K&#10;VERDICT-M4XA"></textarea>
+    </label>
+{% endif %}
+{{ check('needs_account', v.needs_account, 'Только для игроков с аккаунтом', 'Для ценных призов: вы будете знать, кто выиграл. Анонимному игроку предложат войти.') }}
+{{ check('active', v.active, 'Подарок включён', 'Выключенный подарок не выдаётся из тайников.') }}
+{% endmacro %}

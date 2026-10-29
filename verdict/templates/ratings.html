@@ -1,0 +1,76 @@
+{% extends 'layout.html' %}
+{% from 'partials/person.html' import person, rank_chip %}
+{% block content %}
+{% set b = SOCIAL.boards[kind] %}
+{% set me_user = current_user() %}
+{% macro url(over) %}{{ url_for('ratings', **dict({'board': kind, 'scope': scope}, **over)) }}{% endmacro %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Сообщество</span>
+        <h1>Рейтинг <span class="grad-text">судей</span></h1>
+        <p class="lead">Сезон — {{ season_name }}: до конца {{ days_left }} {{ plural(days_left, 'день', 'дня', 'дней') }}. В рейтинге — игроки с аккаунтом; скрыть себя можно в профиле.</p>
+        {% include 'partials/social_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="panel rating-filters">
+        <div class="tabs" role="tablist" aria-label="Что сравниваем">
+            {% for key, bd in SOCIAL.boards.items() %}
+                <a role="tab" href="{{ url({'board': key}) }}" class="tab{{ ' active' if kind == key }}" aria-selected="{{ 'true' if kind == key else 'false' }}">{{ bd.name }}</a>
+            {% endfor %}
+        </div>
+        <form method="get" class="rating-scope">
+            <input type="hidden" name="board" value="{{ kind }}">
+            <select class="vs" name="scope" data-autosubmit data-size="sm" data-align="right" aria-label="Среди кого">
+                <option value="all"{{ option_icon('globe', 190) }}{{ ' selected' if scope == 'all' }}>Все судьи</option>
+                <option value="friends"{{ option_icon('users', 150) }}{{ ' selected' if scope == 'friends' }}>Мои друзья</option>
+                {% for c in my_communities %}
+                    <option value="c:{{ c.slug }}"{{ option_icon(c.icon, c.hue) }}{{ ' selected' if scope == 'c:' ~ c.slug }}>{{ c.name }}</option>
+                {% endfor %}
+                {% if community and community.slug not in my_communities|map(attribute='slug')|list %}
+                    <option value="c:{{ community.slug }}" selected>{{ community.name }}</option>
+                {% endif %}
+            </select>
+            <noscript><button class="btn btn-sm" type="submit">Показать</button></noscript>
+        </form>
+    </div>
+    <p class="rating-desc">{{ icon('info') }}<span>{{ b.desc }}{% if community %} Среди участников сообщества «<a href="{{ url_for('community', slug=community.slug) }}">{{ community.name }}</a>».{% endif %}</span></p>
+
+    {% if my_row %}
+        <div class="panel rating-me">
+            <span class="rating-place">{{ my_row.place }}</span>
+            <span><span class="label-mono">Ваше место из {{ total }}</span><b>{{ my_row.value }} {{ b.unit }}</b>{% if my_row.note %}<small>{{ my_row.note }}</small>{% endif %}</span>
+            <a class="btn btn-sm" href="{{ url_for('profile', login=me_user.login) }}">{{ icon('user') }}Мой профиль</a>
+        </div>
+    {% elif not me_user %}
+        <div class="panel rating-me rating-me-guest">
+            {{ icon('trending') }}
+            <span>Ваши вердикты уже приносят опыт. <b>Заведите аккаунт</b>, чтобы попасть в рейтинг, добавлять друзей и вступать в сообщества — прогресс сохранится.</span>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('register', back=request.full_path.rstrip('?')) }}">{{ icon('user') }}Завести аккаунт</a>
+        </div>
+    {% endif %}
+
+    {% if rows %}
+        <ol class="rating-list">
+            {% for r in rows %}
+                <li class="rating-row{{ ' is-me' if me_user and r.user_id == me_user.id }}{{ ' is-top top-' ~ r.place if r.place <= 3 }}">
+                    <span class="rating-place">{% if r.place <= 3 %}{{ icon('crown' if r.place == 1 else 'medal') }}{% endif %}<b>{{ r.place }}</b></span>
+                    {{ person(r.login, r.display_name, r.title) }}
+                    <span class="rating-rank">{{ rank_chip(r.rank, r.xp) }}</span>
+                    <span class="rating-value"><b>{{ r.value }}</b> {{ b.unit }}{% if r.note %}<small>{{ r.note }}</small>{% endif %}</span>
+                </li>
+            {% endfor %}
+        </ol>
+        {% if total > rows|length %}<p class="rating-more">Показаны первые {{ rows|length }} из {{ total }}.</p>{% endif %}
+    {% else %}
+        <div class="empty panel">
+            {{ icon('trending') }}
+            <h2>Здесь пока пусто</h2>
+            <p>{% if scope == 'friends' %}Добавьте друзей — и соревнуйтесь с ними. <a href="{{ url_for('friends') }}">Найти друзей</a>.{% elif kind == 'accuracy' %}В «Чутьё» попадают судьи, сделавшие хотя бы {{ SOCIAL.min_guesses }} догадок в «Быстром суде».{% else %}Вынесите вердикт в этом сезоне — и рейтинг откроется.{% endif %}</p>
+            <a class="btn btn-primary" href="{{ url_for('quick') }}">{{ icon('play') }}Играть</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

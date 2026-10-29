@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+{% from 'partials/campaign_card.html' import campaign_card %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Сюжетные кампании</span>
+        <h1>Каждый вердикт <span class="grad-text">меняет следующее дело</span></h1>
+        <p class="lead">Кампания — несколько связанных дел. Перед каждой главой вы узнаёте, к чему привёл ваш прошлый вердикт, а в конце — какой след оставило всё вместе. Концовок несколько: пройдите заново, чтобы увидеть другие.</p>
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="community-list">
+        {% for item in items if item.available %}{{ campaign_card(item) }}{% else %}
+            <div class="empty panel">{{ icon('layers') }}<h2>Кампании скоро появятся</h2><p>Команда готовит первые истории.</p></div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

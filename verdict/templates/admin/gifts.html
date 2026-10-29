@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+{% import 'admin/_forms.html' as f with context %}
+{% block content %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Подарки</h1>
+        <p class="lead">Что можно положить в тайник или выдать игроку вручную: опыт к рангу, трофей, титул, уникальный код из пула или послание со ссылкой. Игрок получает копию подарка — поздние правки её не меняют.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-grid admin-grid-wide">
+        <div class="admin-list">
+            {% for g in items %}
+                {% set kd = GIFT_KINDS.get(g.kind, {'name': g.kind, 'icon': 'gift'}) %}
+                <a class="panel hunt-row{{ ' is-off' if not g.active }}" href="{{ url_for('admin.gift_page', gift_id=g.id) }}">
+                    <span class="hunt-row-icon gift-row-icon">{{ icon(g.icon) }}</span>
+                    <span class="hunt-row-main">
+                        <b>{{ g.name }}</b>
+                        <small>{{ kd.name }}{% if g.xp %} · +{{ g.xp }} XP{% endif %} · выдан {{ g.granted }} {{ plural(g.granted, 'раз', 'раза', 'раз') }}{% if g.kind == 'code' %} · кодов свободно {{ g.codes_free }} из {{ g.codes_total }}{% endif %}{% if g.needs_account %} · только с аккаунтом{% endif %}</small>
+                    </span>
+                    {% if not g.active %}<span class="chip chip-sm">Выключен</span>{% elif g.kind == 'code' and g.codes_free < 5 %}<span class="chip chip-sm chip-warn">{{ icon('alert') }}{{ 'Нет кодов' if not g.codes_free else 'Мало кодов' }}</span>{% endif %}
+                </a>
+            {% else %}
+                <div class="empty panel">
+                    {{ icon('gift') }}
+                    <h2>Подарков пока нет</h2>
+                    <p>Создайте первый справа — например, «+50 XP» или титул «Искатель тайников».</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" class="panel admin-card admin-form" id="new">
+            {{ csrf_field() }}
+            <h2 class="vz-title">Новый подарок</h2>
+            {{ f.gift_fields(values, errors, true) }}
+            <button class="btn btn-primary" type="submit">{{ icon('plus') }}Создать подарок</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

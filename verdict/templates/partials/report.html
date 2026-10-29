@@ -1,0 +1,21 @@
+{#- «Пожаловаться»: a small form for the team. kind — user | community | situation, target — its id. -#}
+{% macro report_form(kind, target, back=none) %}
+<details class="report-box">
+    <summary>{{ icon('flag') }}Пожаловаться</summary>
+    {% if current_user() %}
+        <form method="post" action="{{ url_for('report') }}" class="report-form">
+            {{ csrf_field() }}
+            <input type="hidden" name="target_type" value="{{ kind }}">
+            <input type="hidden" name="target_id" value="{{ target }}">
+            <input type="hidden" name="back" value="{{ back or request.full_path.rstrip('?') }}">
+            <select name="reason" aria-label="Причина">
+                {% for key, label in REPORT_REASONS.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+            </select>
+            <input type="text" name="text" maxlength="500" placeholder="Что случилось? (необязательно)">
+            <button class="btn btn-sm" type="submit">{{ icon('send') }}Отправить команде</button>
+        </form>
+    {% else %}
+        <p><a href="{{ url_for('login', back=back or request.full_path.rstrip('?')) }}">Войдите</a>, чтобы отправить жалобу команде.</p>
+    {% endif %}
+</details>
+{% endmacro %}

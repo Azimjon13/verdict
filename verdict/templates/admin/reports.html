@@ -1,0 +1,65 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set kinds = {'user': ('user', 'Игрок'), 'community': ('users', 'Сообщество'), 'situation': ('file', 'Дело')} %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Жалобы <span class="grad-text">{{ items|length }}</span></h1>
+        <p class="lead">Игроки жалуются на профили, сообщества и дела. Отстранённый игрок пропадает из рейтинга и охоты, не может добавлять друзей и вступать в сообщества.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="tabs" role="tablist" aria-label="Состояние">
+        {% for key, label in [('open', 'Открытые'), ('resolved', 'Решённые'), ('dismissed', 'Отклонённые')] %}
+            <a role="tab" href="{{ url_for('admin.reports_page', status=key) }}" class="tab{{ ' active' if status == key }}" aria-selected="{{ 'true' if status == key else 'false' }}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    {% if items %}
+        <div class="admin-list">
+            {% for r in items %}
+                {% set t = r.target %}
+                <article class="panel report-row">
+                    <span class="hunt-row-icon">{{ icon(kinds[r.target_type][0]) }}</span>
+                    <div class="hunt-row-main">
+                        <b>{{ kinds[r.target_type][1] }}:
+                            {% if not t %}<em>уже удалено</em>
+                            {% elif r.target_type == 'user' %}<a href="{{ url_for('profile', login=t.login) }}">{{ t.name }}</a>
+                            {% elif r.target_type == 'community' %}<a href="{{ url_for('community', slug=t.slug) }}">{{ t.name }}</a>
+                            {% else %}<a href="{{ url_for('view', id=t.id) }}">{{ t.name }}</a> <small>({{ STATUSES.get(t.status, t.status)|lower }})</small>{% endif %}
+                        </b>
+                        <small>{{ REPORT_REASONS.get(r.reason, r.reason) }}{% if r.text %} — «{{ r.text }}»{% endif %}</small>
+                        <small>от {% if r.reporter_login %}<a href="{{ url_for('profile', login=r.reporter_login) }}">{{ r.reporter_name }}</a>{% else %}игрока{% endif %} · {{ format_datetime(r.created_at) }} UTC</small>
+                    </div>
+                    {% if status == 'open' %}
+                        <div class="admin-actions report-actions">
+                            {% if t and r.target_type == 'user' and t.voter %}
+                                <form method="post" class="inline-form" data-confirm="Отстранить {{ t.name }}? Рейтинг, охота, друзья и сообщества для игрока закроются." data-confirm-title="Отстранение" data-confirm-ok="Отстранить" data-confirm-tone="danger">
+                                    {{ csrf_field() }}<input type="hidden" name="action" value="block"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="voter" value="{{ t.voter }}">
+                                    <button class="btn btn-sm btn-danger" type="submit">{{ icon('ban') }}Отстранить</button>
+                                </form>
+                            {% elif t and r.target_type == 'community' %}
+                                <form method="post" class="inline-form" data-confirm="Удалить сообщество «{{ t.name }}»?" data-confirm-title="Удаление сообщества" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                                    {{ csrf_field() }}<input type="hidden" name="action" value="delete_community"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="target_id" value="{{ r.target_id }}">
+                                    <button class="btn btn-sm btn-danger" type="submit">{{ icon('trash') }}Удалить сообщество</button>
+                                </form>
+                            {% elif t and r.target_type == 'situation' and t.status == 'approved' %}
+                                <form method="post" class="inline-form" data-confirm="Снять «{{ t.name }}» с игры и вернуть на отбор?" data-confirm-title="Снять с игры" data-confirm-ok="Снять" data-confirm-tone="warn">
+                                    {{ csrf_field() }}<input type="hidden" name="action" value="unpublish"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="target_id" value="{{ r.target_id }}">
+                                    <button class="btn btn-sm" type="submit">{{ icon('archive') }}Снять с игры</button>
+                                </form>
+                            {% endif %}
+                            <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="resolve"><input type="hidden" name="id" value="{{ r.id }}"><button class="btn btn-sm" type="submit">{{ icon('check') }}Решено</button></form>
+                            <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="dismiss"><input type="hidden" name="id" value="{{ r.id }}"><button class="btn btn-sm btn-ghost" type="submit">Отклонить</button></form>
+                        </div>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty panel">{{ icon('flag') }}<h2>{{ 'Открытых жалоб нет' if status == 'open' else 'Пусто' }}</h2><p>Игроки отправляют жалобы с профилей, страниц сообществ и из итогов дела.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

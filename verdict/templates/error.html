@@ -1,0 +1,13 @@
+{% extends 'layout.html' %}
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="empty panel">
+            {{ icon('search') }}
+            <h1>Страница не найдена</h1>
+            <p>Возможно, её удалили или ссылка указана неверно.</p>
+            <a class="btn btn-primary" href="{{ url_for('index') }}">{{ icon('arrow-left') }}На главную</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,179 @@
+{% extends 'layout.html' %}
+{% import 'admin/_charts.html' as vz %}
+{% block content %}
+{% set k = a.kpis %}
+{% set r = a.retention %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Обзор <span class="grad-text">игры</span></h1>
+        <p class="lead">Активность, удержание и контент за последние 30 дней. Дни и часы — по UTC: Москва UTC+3, Ташкент UTC+5.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="kpi-row">
+        <div class="panel kpi">
+            <span class="kpi-label">Активны сегодня</span>
+            <b class="kpi-value">{{ compact(k.active_today) }}</b>
+            <small class="kpi-sub">за 7 дней — {{ compact(k.active_7) }}, за 30 — {{ compact(k.active_30) }}</small>
+        </div>
+        <div class="panel kpi">
+            <span class="kpi-label">Новых за 7 дней</span>
+            <b class="kpi-value">{{ compact(k.new_7) }}</b>
+            <small class="kpi-sub">всего заходили {{ compact(k.visitors) }}</small>
+        </div>
+        <div class="panel kpi">
+            <span class="kpi-label">Вердиктов сегодня</span>
+            <b class="kpi-value">{{ compact(k.verdicts_today) }}</b>
+            <small class="kpi-sub">за 7 дней — {{ compact(k.verdicts_7) }}, всего {{ compact(k.verdicts) }}</small>
+        </div>
+        <div class="panel kpi">
+            <span class="kpi-label">Вернулись на следующий день</span>
+            <b class="kpi-value">{{ (pct(r.d1 * 1000, 1000) ~ '%') if r.d1 is not none else '—' }}</b>
+            <small class="kpi-sub">{{ ('из ' ~ r.d1_base ~ ' ' ~ plural(r.d1_base, 'новичка', 'новичков', 'новичков')) if r.d1 is not none else 'нужен хотя бы день данных' }}</small>
+        </div>
+        <div class="panel kpi">
+            <span class="kpi-label">Вернулись в течение недели</span>
+            <b class="kpi-value">{{ (pct(r.d7 * 1000, 1000) ~ '%') if r.d7 is not none else '—' }}</b>
+            <small class="kpi-sub">{{ ('из ' ~ r.d7_base ~ ' ' ~ plural(r.d7_base, 'новичка', 'новичков', 'новичков')) if r.d7 is not none else 'нужна неделя данных' }}</small>
+        </div>
+        <div class="panel kpi">
+            <span class="kpi-label">Игроков с вердиктом</span>
+            <b class="kpi-value">{{ compact(k.players) }}</b>
+            <small class="kpi-sub">с аккаунтом — {{ compact(k.accounts) }}</small>
+        </div>
+        <a class="panel kpi kpi-link" href="{{ url_for('library', status='pending') }}">
+            <span class="kpi-label">Ситуаций на отборе</span>
+            <b class="kpi-value">{{ k.pending }}</b>
+            <small class="kpi-sub">в игре — {{ k.in_play }}{{ icon('arrow-right') }}</small>
+        </a>
+    </div>
+
+    {% if running or a.hunt.low_pools or open_reports %}
+        <div class="admin-alerts">
+            {% if open_reports %}
+                <a class="panel admin-alert tone-warn" href="{{ url_for('admin.reports_page') }}">{{ icon('flag') }}<span>Жалоб ждут решения: <b>{{ open_reports }}</b>.</span>{{ icon('arrow-right') }}</a>
+            {% endif %}
+            {% for c in running %}
+                <a class="panel admin-alert tone-ok" href="{{ url_for('admin.hunt_page', challenge_id=c.id) }}">{{ icon('compass') }}<span>Идёт охота <b>«{{ c.title }}»</b>{% if c.ends_at %} — до {{ format_datetime(c.ends_at) }} UTC{% endif %}. Находок сегодня: {{ a.hunt.finds_today }}.</span>{{ icon('arrow-right') }}</a>
+            {% endfor %}
+            {% for g in a.hunt.low_pools %}
+                <a class="panel admin-alert tone-warn" href="{{ url_for('admin.gift_page', gift_id=g.id) }}">{{ icon('alert') }}<span>В подарке <b>«{{ g.name }}»</b> {{ 'не осталось кодов' if not g.free else 'осталось кодов: ' ~ g.free }} — добавьте новые.</span>{{ icon('arrow-right') }}</a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="admin-grid">
+        <section class="panel vz-card" aria-labelledby="vz-activity">
+            <h2 class="vz-title" id="vz-activity">Активные игроки по дням</h2>
+            <p class="vz-sub">Заходили на сайт или в игру: новички и те, кто уже бывал раньше.</p>
+            {{ vz.stacked(ch.activity, 'Активные игроки по дням за 30 дней') }}
+            {% set rows = [] %}
+            {% for s in a.series|reverse %}{% set _ = rows.append([s.day.strftime('%d.%m'), s.visitors, s.visitors - s.new, s.new]) %}{% endfor %}
+            {{ vz.table_view(['День', 'Всего', 'Вернувшиеся', 'Новые'], rows) }}
+        </section>
+        <section class="panel vz-card" aria-labelledby="vz-verdicts">
+            <h2 class="vz-title" id="vz-verdicts">Вердикты по дням</h2>
+            <p class="vz-sub">Все вердикты на сайте и в игре, включая повторные голоса по делу.</p>
+            {{ vz.columns(ch.verdicts, 'Вердикты по дням за 30 дней') }}
+            {% set rows = [] %}
+            {% for s in a.series|reverse %}{% set _ = rows.append([s.day.strftime('%d.%m'), s.verdicts, s.judges]) %}{% endfor %}
+            {{ vz.table_view(['День', 'Вердиктов', 'Судей'], rows) }}
+        </section>
+    </div>
+
+    <div class="admin-grid">
+        <section class="panel vz-card" aria-labelledby="vz-funnel">
+            <h2 class="vz-title" id="vz-funnel">Путь игрока</h2>
+            <p class="vz-sub">Сколько игроков дошло до каждого шага — за всё время. Процент — от всех, кто заходил.</p>
+            {{ vz.hbars(ch.funnel) }}
+        </section>
+        <section class="panel vz-card" aria-labelledby="vz-hours">
+            <h2 class="vz-title" id="vz-hours">Когда играют</h2>
+            <p class="vz-sub">Вердикты по часам за 30 дней, UTC. Удобно, чтобы выбрать время для охоты за тайниками.</p>
+            {{ vz.columns(ch.hours, 'Вердикты по часам суток') }}
+            {% set rows = [] %}
+            {% for v in a.hours %}{% set _ = rows.append(['%02d:00' % loop.index0, v]) %}{% endfor %}
+            {{ vz.table_view(['Час (UTC)', 'Вердиктов'], rows) }}
+        </section>
+    </div>
+
+    <div class="admin-grid">
+        <section class="panel vz-card" aria-labelledby="vz-modes">
+            <h2 class="vz-title" id="vz-modes">Режимы игры за 30 дней</h2>
+            <div class="mode-tiles">
+                {% for key, name, ic in [('quick', 'Быстрый суд', 'zap'), ('full', 'Полное досье', 'file')] %}
+                    {% set m = a.modes[key] %}
+                    <div class="mode-tile">
+                        <span class="label-mono">{{ icon(ic) }}{{ name }}</span>
+                        <b>{{ compact(m.verdicts) }}</b>
+                        <small>{{ plural(m.verdicts, 'вердикт', 'вердикта', 'вердиктов') }}{% if m.median_ms is not none %} · обычно {{ format_duration(m.median_ms) }} на решение{% endif %}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="panel vz-card" aria-labelledby="vz-daily">
+            <h2 class="vz-title" id="vz-daily">Дело дня</h2>
+            <p class="vz-sub">Сколько игроков рассудили дело в его день. Сменить дело на любой день — в разделе <a href="{{ url_for('admin.game_page') }}">«Игра»</a>.</p>
+            {% if a.daily %}
+                <table class="admin-table">
+                    <thead><tr><th scope="col">День</th><th scope="col">Дело</th><th scope="col" class="num">Судей</th></tr></thead>
+                    <tbody>
+                        {% for d in a.daily[:7] %}
+                            <tr><td>{{ d.day.strftime('%d.%m') }}</td><td><a href="{{ url_for('case', id=d.id) }}">{{ d.title }}</a></td><td class="num">{{ d.judged }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="vz-empty">{{ icon('calendar') }}Дело дня ещё ни разу не выбиралось.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="admin-grid admin-grid-3">
+        <section class="panel vz-card" aria-labelledby="vz-cats">
+            <h2 class="vz-title" id="vz-cats">Вердикты по категориям</h2>
+            {{ vz.hbars(ch.categories) }}
+        </section>
+        <section class="panel vz-card" aria-labelledby="vz-ranks">
+            <h2 class="vz-title" id="vz-ranks">Игроки по рангам</h2>
+            {{ vz.hbars(ch.ranks) }}
+        </section>
+        <section class="panel vz-card" aria-labelledby="vz-ach">
+            <h2 class="vz-title" id="vz-ach">Достижения</h2>
+            <p class="vz-sub">Сколько игроков открыли каждое.</p>
+            {{ vz.hbars(ch.achievements) }}
+        </section>
+    </div>
+
+    <div class="admin-grid admin-grid-3">
+        {% for key, title, sub in [('top', 'Самые популярные дела', 'по числу вердиктов'),
+                                   ('divisive', 'Самые спорные', 'мнения разделились сильнее всего (от 3 вердиктов)'),
+                                   ('quiet', 'Почти без вердиктов', 'кандидаты в дело дня')] %}
+            <section class="panel vz-card" aria-labelledby="vz-cases-{{ key }}">
+                <h2 class="vz-title" id="vz-cases-{{ key }}">{{ title }}</h2>
+                <p class="vz-sub">{{ sub }}</p>
+                {% if a.cases[key] %}
+                    <table class="admin-table">
+                        <thead><tr><th scope="col">Дело</th><th scope="col" class="num">Вердиктов</th>{% if key == 'divisive' %}<th scope="col" class="num">Индекс спора</th>{% endif %}</tr></thead>
+                        <tbody>
+                            {% for c in a.cases[key] %}
+                                <tr style="{{ category_style(c.category) }}">
+                                    <td><a href="{{ url_for('case', id=c.id) }}">{{ c.title }}</a></td>
+                                    <td class="num">{{ c.votes }}</td>
+                                    {% if key == 'divisive' %}<td class="num">{{ c.controversy }}</td>{% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="vz-empty">{{ icon('chart') }}Пока мало вердиктов.</p>
+                {% endif %}
+            </section>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

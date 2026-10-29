@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="section auth-section">
+    <div class="container">
+        <form method="post" class="panel auth-card hud" data-validate novalidate>
+            {{ csrf_field() }}
+            <input type="hidden" name="back" value="{{ back }}">
+            <div class="auth-icon">{{ icon('user') }}</div>
+            <span class="kicker">Для авторов контента</span>
+            <h1>Регистрация</h1>
+            <p class="muted">Аккаунт нужен, чтобы добавлять ситуации: под этим именем будет учитываться ваш вклад.</p>
+
+            {% if '_csrf' in errors %}
+                <div class="form-alert" role="alert">{{ icon('alert') }}<span>{{ errors._csrf }}</span></div>
+            {% endif %}
+
+            <label class="field{{ ' has-error' if 'login' in errors }}">
+                <span>Логин <em>— для входа</em></span>
+                <input type="text" name="login" value="{{ values.login }}" required minlength="3" maxlength="40"
+                       pattern="[A-Za-z0-9_.\-]{3,40}" data-pattern-msg="Логин: латинские буквы, цифры, точка, дефис или подчёркивание (3–40 символов)."
+                       autocomplete="username" autocapitalize="none" spellcheck="false" autofocus>
+                {{ field_error(errors, 'login') }}
+            </label>
+            <label class="field{{ ' has-error' if 'display_name' in errors }}">
+                <span>Имя или ник <em>— видно в подписи ситуаций</em></span>
+                <input type="text" name="display_name" value="{{ values.display_name }}" required minlength="2" maxlength="80" autocomplete="nickname" placeholder="Например: Анна К.">
+                {{ field_error(errors, 'display_name') }}
+            </label>
+            <label class="field{{ ' has-error' if 'password' in errors }}">
+                <span>Пароль <em>— не короче {{ PASSWORD_MIN }} символов</em></span>
+                <span class="password-wrap">
+                    <input type="password" name="password" required minlength="{{ PASSWORD_MIN }}" maxlength="200" autocomplete="new-password" data-strength>
+                    <button type="button" class="pw-toggle" aria-label="Показать пароль" data-pw-toggle>{{ icon('eye') }}</button>
+                </span>
+                <span class="strength" aria-hidden="true"><i></i></span>
+                {{ field_error(errors, 'password') }}
+            </label>
+            <label class="field{{ ' has-error' if 'password_confirm' in errors }}">
+                <span>Повторите пароль</span>
+                <input type="password" name="password_confirm" required data-match="password" data-match-msg="Пароли не совпадают." autocomplete="new-password">
+                {{ field_error(errors, 'password_confirm') }}
+            </label>
+            <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('check') }}Создать аккаунт</button>
+            <p class="auth-switch">Уже есть аккаунт? <a href="{{ url_for('login', back=back) if back else url_for('login') }}">Войти</a></p>
+        </form>
+    </div>
+</section>
+{% endblock %}

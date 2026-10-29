@@ -1,0 +1,148 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set cat = CATEGORIES.get(s.category, {'name': s.category, 'icon': 'circle'}) %}
+{% set type = SITUATION_TYPES.get(s.type, {'name': s.type, 'icon': 'circle'}) %}
+{% set num = namespace(n=0) %}
+{% macro block_num() %}{% set num.n = num.n + 1 %}{{ '%02d' % num.n }}{% endmacro %}
+
+<section class="case-hero" style="{{ category_style(s.category) }}">
+    <div class="container">
+        <a class="back-link" href="{{ url_for('view', id=s.id) if preview else url_for('play') }}">{{ icon('arrow-left') }}{{ 'К досье' if preview else 'Архив дел' }}</a>
+        <div class="case-meta">
+            <span class="case-no">Дело {{ case_number(s.id) }}</span>
+            <span class="chip chip-cat">{{ icon(cat.icon) }}{{ cat.name }}</span>
+            <span class="chip">{{ icon(type.icon) }}{{ type.name }}</span>
+            {% if preview %}<span class="chip chip-warn">{{ icon('eye') }}Предпросмотр</span>{% endif %}
+        </div>
+        <h1 class="case-title glitch-once" data-text="{{ s.title }}">{{ s.title }}</h1>
+        <p class="case-setting">{{ icon('map-pin') }}{{ s.world.place }}{% if s.world.era %}<span class="sep">//</span>{{ s.world.era }}{% endif %}</p>
+    </div>
+</section>
+
+<div class="container case-layout">
+    <article class="dossier">
+        <section class="block panel" id="story">
+            <header class="block-head"><span class="block-num">{{ block_num() }}</span><h2>Мир и ситуация</h2></header>
+            {% with full = false, finish = '#people', finish_label = 'К участникам' %}{% include 'partials/comic.html' %}{% endwith %}
+        </section>
+
+        <section class="block panel reveal" id="people">
+            <header class="block-head"><span class="block-num">{{ block_num() }}</span><h2>Участники</h2></header>
+            <div class="people">
+                {% for p in s.participants %}
+                    <div class="person">
+                        <span class="avatar" style="--ah: {{ name_hue(p.name) }}">{{ initials(p.name) }}</span>
+                        <div class="person-body">
+                            <h3>{{ p.name }}{% if p.age %} <small>{{ p.age }}{{ (' ' ~ plural(p.age|int, 'год', 'года', 'лет')) if p.age.isdigit() }}</small>{% endif %}</h3>
+                            {% if p.role %}<span class="person-role">{{ p.role }}</span>{% endif %}
+                            {% if p.description %}<p>{{ p.description }}</p>{% endif %}
+                            {% if p.relations %}<p class="person-rel">{{ icon('link') }}{{ p.relations }}</p>{% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="block panel reveal" id="evidence">
+            <header class="block-head"><span class="block-num">{{ block_num() }}</span><h2>Доказательства и информация</h2></header>
+            <div class="evidence">
+                <div class="evidence-col">
+                    <h3 class="evidence-h facts-h">{{ icon('check-circle') }}Известно точно</h3>
+                    <ul class="evidence-list facts">
+                        {% for f in s.facts %}
+                            <li><span class="ev-num">Факт {{ loop.index }}</span>{{ f }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if s.unknowns %}
+                    <div class="evidence-col">
+                        <h3 class="evidence-h unknown-h">{{ icon('help') }}Неизвестно / вызывает сомнение</h3>
+                        <ul class="evidence-list unknowns">
+                            {% for u in s.unknowns %}
+                                <li>{{ u }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if s.witnesses %}
+            <section class="block panel reveal" id="witnesses">
+                <header class="block-head"><span class="block-num">{{ block_num() }}</span><h2>Показания свидетелей</h2></header>
+                <p class="block-note">{{ icon('alert') }}Свидетели могут ошибаться, лгать, скрывать информацию или иметь собственный интерес.</p>
+                <div class="witnesses">
+                    {% for w in s.witnesses %}
+                        <div class="witness">
+                            <div class="witness-head">
+                                <span class="avatar avatar-sm" style="--ah: {{ name_hue(w.name) }}">{{ initials(w.name) }}</span>
+                                <div><span class="label-mono">Свидетель {{ loop.index }}</span><h3>{{ w.name }}</h3></div>
+                            </div>
+                            <blockquote>{{ icon('quote', 'quote-icon') }}{{ w.claim }}</blockquote>
+                            <dl class="witness-meta">
+                                {% if w.trust %}<div><dt>{{ icon('shield') }}Надёжность</dt><dd>{{ w.trust }}</dd></div>{% endif %}
+                                {% if w.interest %}<div><dt>{{ icon('target') }}Личный интерес</dt><dd>{{ w.interest }}</dd></div>{% endif %}
+                            </dl>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <form class="block panel verdict-form reveal" id="verdict" data-situation="{{ s.id }}"{{ ' hidden' if my_vote }}>
+            <header class="block-head"><span class="block-num">{{ block_num() }}</span><h2>Ваш вердикт</h2></header>
+            <p class="block-lead">Выберите решение. Подумайте, сможете ли вы объяснить его — себе и другим.</p>
+            <input type="hidden" name="situation_id" value="{{ s.id }}">
+            <div class="options" role="radiogroup" aria-label="Варианты решения">
+                {% for d in s.decisions %}
+                    <label class="option">
+                        <input type="radio" name="option" value="{{ d.key }}">
+                        <span class="opt-letter">{{ d.key }}</span>
+                        <span class="opt-text">{{ d.text }}</span>
+                        <span class="opt-check">{{ icon('check') }}</span>
+                    </label>
+                {% endfor %}
+                <label class="option option-other">
+                    <input type="radio" name="option" value="other">
+                    <span class="opt-letter">+</span>
+                    <span class="opt-text">Другое решение<small>Предложите своё обоснованное решение</small></span>
+                    <span class="opt-check">{{ icon('check') }}</span>
+                </label>
+            </div>
+            <label class="field reasoning">
+                <span data-reason-label>Почему вы выбрали это решение? <em>(необязательно)</em></span>
+                <textarea name="reasoning" rows="3" maxlength="1000" placeholder="«Я понимаю, почему он так поступил, но всё равно считаю…»"></textarea>
+            </label>
+            <button type="button" class="hold-btn" disabled aria-describedby="hold-hint">
+                <span class="hold-fill"></span>
+                <span class="hold-label">{{ icon('gavel') }}<span data-hold-text>Удерживайте, чтобы вынести вердикт</span></span>
+            </button>
+            <p class="hold-hint" id="hold-hint">Нажмите и удерживайте кнопку (или клавишу Enter) — решение нельзя принять случайно.</p>
+            <p class="form-error" role="alert" hidden></p>
+        </form>
+
+        <div id="verdict-result">
+            {% if result %}
+                {% with s = result.s, choice = result.choice, reasoning = result.reasoning, counts = result.counts, preview = result.preview,
+                        next = result.next, fresh = result.fresh, judge_info = result.judge_info %}{% include 'partials/result.html' %}{% endwith %}
+            {% endif %}
+        </div>
+    </article>
+
+    <aside class="case-side">
+        <nav class="panel case-nav" aria-label="Разделы дела">
+            <span class="label-mono">Досье</span>
+            {% for anchor, label in sections.items() %}
+                <a href="#{{ anchor }}"><span>{{ '%02d' % loop.index }}</span>{{ label }}</a>
+            {% endfor %}
+        </nav>
+        {% if not preview %}
+            {% with back = url_for('case', id=s.id) %}{% include 'partials/world.html' %}{% endwith %}
+        {% endif %}
+        <div class="panel side-tip">
+            {{ icon('info') }}
+            <p>Не ищите правильный ответ — его нет. Важно, сможете ли вы объяснить своё решение.</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

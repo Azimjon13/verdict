@@ -1,0 +1,16 @@
+{#- After a verdict: how the player's friends judged the same case. s — situation, choice — the player's option. -#}
+{% set fv = friend_votes_for(s.id) %}
+{% if fv %}
+    {% set same = fv|selectattr('option_key', 'equalto', choice)|list|length %}
+    <div class="friend-votes">
+        <h3 class="result-h">{{ icon('users') }}Как решили друзья <span class="result-sub">{{ same }} из {{ fv|length }} — как вы</span></h3>
+        <ul class="fv-list">
+            {% for f in fv %}
+                <li class="fv-item{{ ' is-same' if f.option_key == choice }}">
+                    <a href="{{ url_for('profile', login=f.login) }}"><span class="avatar avatar-xs" style="--ah: {{ name_hue(f.display_name) }}">{{ initials(f.display_name) }}</span>{{ f.display_name }}</a>
+                    <span class="opt-letter opt-letter-sm" title="{{ decision_text(s, f.option_key) }}">{{ '+' if f.option_key == 'other' else f.option_key }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

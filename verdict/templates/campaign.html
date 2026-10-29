@@ -1,0 +1,165 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set cat = CATEGORIES.get(c.category, {'hue': 190, 'name': ''}) %}
+{% set picked = {} %}
+{% for x in st.choices %}{% set _ = picked.update({x.chapter: x.option}) %}{% endfor %}
+{% macro meter_delta(delta) %}
+    {% if delta %}
+        <div class="deltas">
+            {% for k, m in METRICS.items() if delta.get(k) %}
+                <span class="delta {{ 'up' if delta[k] > 0 else 'down' }}">{{ icon(m.icon) }}{{ m.name }} <b>{{ '+' if delta[k] > 0 }}{{ delta[k] }}</b></span>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+<section class="page-hero page-hero-compact" style="--h: {{ cat.hue }}">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('campaigns') }}">{{ icon('arrow-left') }}Кампании</a></span>
+        <div class="community-head">
+            <span class="community-emblem community-emblem-lg">{{ icon(c.icon) }}</span>
+            <div class="community-id">
+                <h1>{{ c.title }}</h1>
+                <p class="profile-bio">{{ c.teaser }}</p>
+                <ol class="camp-steps" aria-label="Главы">
+                    {% for row in chapters %}
+                        {% set k = row.ch.key %}
+                        <li class="{{ 'is-done' if k in picked }}{{ ' is-now' if st.run and not st.finished and loop.index0 == st.index }}">
+                            <span>{{ loop.index }}</span>{{ row.s.title if row.s else '' }}
+                        </li>
+                    {% endfor %}
+                    <li class="{{ 'is-done' if st.finished }}"><span>{{ icon('flag') }}</span>Финал</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-top-0 social-section camp-section">
+    {% if st.run %}
+        <div class="panel camp-meters" aria-label="Мир кампании">
+            <span class="label-mono">{{ icon('globe') }}Мир кампании</span>
+            {% for k, m in METRICS.items() %}
+                {% set v = st.meters[k] %}
+                <div class="camp-meter"><span>{{ icon(m.icon) }}{{ m.name }}</span><i style="--w: {{ v }}%"></i><b>{{ v }}</b></div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if result %}
+        {% set s = result.s %}
+        {% set d = situation_decision(s, result.choice) %}
+        {% set total = result.counts.values()|sum %}
+        <section class="panel camp-result" id="result" tabindex="-1">
+            <span class="label-mono">Глава {{ result.index + 1 }} · {{ s.title }}{% if result.adopted %} · ваш вердикт из архива{% endif %}</span>
+            <div class="quick-choice">
+                <span class="opt-letter">{{ result.choice }}</span>
+                <div><span class="label-mono">Ваш вердикт</span><b>{{ d.text }}</b>{% if total > 1 %}<small>Так решили {{ pct(result.counts.get(result.choice, 0), total) }}% судей этого дела.</small>{% endif %}</div>
+            </div>
+            {% if d.immediate or d.longterm %}
+                <div class="quick-block">
+                    <h3 class="result-h">{{ icon('zap') }}Что было дальше</h3>
+                    {% if d.immediate %}<p class="quick-conseq">{{ d.immediate }}</p>{% endif %}
+                    {% if d.longterm %}<p class="quick-conseq camp-longterm">{{ d.longterm }}</p>{% endif %}
+                    {{ meter_delta(result.delta) }}
+                </div>
+            {% endif %}
+            {% set choice = result.choice %}
+            {% include 'partials/friend_votes.html' %}
+            <div class="result-actions">
+                {% if st.finished %}
+                    <a class="btn btn-primary" href="{{ url_for('campaign', key=c.key) }}#ending">{{ icon('flag') }}К финалу</a>
+                {% else %}
+                    <a class="btn btn-primary" href="{{ url_for('campaign', key=c.key) }}#chapter">Глава {{ st.index + 1 }}{{ icon('arrow-right') }}</a>
+                {% endif %}
+            </div>
+        </section>
+
+    {% elif play %}
+        {% set s = play.s %}
+        {% if play.bridges %}
+            <section class="panel camp-bridges" aria-labelledby="camp-before">
+                <h2 class="vz-title" id="camp-before">{{ icon('branch') }}К чему привели ваши решения</h2>
+                {% for b in play.bridges %}
+                    <p class="camp-bridge"><span class="label-mono">После «{{ b.from }}»</span>{{ b.text }}</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+        <article class="panel quick-card camp-chapter" id="chapter" style="{{ category_style(s.category) }}">
+            <div class="case-meta">
+                <span class="chip chip-cat chip-sm">{{ icon(c.icon) }}Глава {{ play.index + 1 }} из {{ st.total }}</span>
+                <span class="chip chip-sm">{{ icon(SITUATION_TYPES.get(s.type, {'icon': 'circle'}).icon) }}{{ SITUATION_TYPES.get(s.type, {'name': s.type}).name }}</span>
+            </div>
+            <h2 class="quick-title">{{ s.title }}</h2>
+            {% with full = true, finish = '#camp-decide', finish_label = 'К решению' %}{% include 'partials/comic.html' %}{% endwith %}
+            <form method="post" class="camp-decide" id="camp-decide">
+                {{ csrf_field() }}
+                <input type="hidden" name="action" value="choose">
+                <h3 class="quick-step-h"><span class="quick-step-num">{{ icon('gavel') }}</span>Ваш вердикт</h3>
+                <div class="quick-options">
+                    {% for d in s.decisions %}
+                        <button class="option quick-option" type="submit" name="option" value="{{ d.key }}">
+                            <span class="opt-letter">{{ d.key }}</span><span class="opt-text">{{ d.text }}</span>
+                        </button>
+                    {% endfor %}
+                </div>
+                <p class="field-note">{{ icon('info') }}В кампании решают только готовые варианты: от них зависит, как пойдёт история.</p>
+            </form>
+        </article>
+
+    {% elif st.finished %}
+        {% set e = st.ending %}
+        <section class="panel camp-ending tone-{{ e.tone }}" id="ending">
+            <span class="camp-ending-icon">{{ icon(e.icon) }}</span>
+            <span class="label-mono">Финал кампании</span>
+            <h2>{{ e.title }}</h2>
+            <p>{{ e.text }}</p>
+            {% set share_text = 'Кампания «' ~ c.title ~ '» в VERDICT: моя концовка — «' ~ e.title ~ '». А какой будет ваша?' %}
+            {% set share_url = url_for('campaign', key=c.key, _external=True) %}
+            <div class="result-actions">
+                <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="start"><button class="btn btn-primary" type="submit">{{ icon('refresh') }}Пройти заново</button></form>
+                <button class="btn btn-ghost" type="button" data-share-link data-share-text="{{ share_text }}" data-share-url="{{ share_url }}">{{ icon('share') }}<span>Поделиться</span></button>
+                <a class="btn btn-ghost" href="https://t.me/share/url?url={{ share_url|urlencode }}&amp;text={{ share_text|urlencode }}" target="_blank" rel="noopener noreferrer">{{ icon('send') }}Telegram</a>
+            </div>
+        </section>
+        <div class="social-columns">
+            <section class="panel admin-card" aria-labelledby="camp-path">
+                <h2 class="vz-title" id="camp-path">{{ icon('branch') }}Ваш путь</h2>
+                <ol class="camp-path">
+                    {% for row in chapters %}
+                        {% set opt = picked.get(row.ch.key) %}
+                        {% set d = situation_decision(row.s, opt) if opt else none %}
+                        <li><span class="opt-letter opt-letter-sm">{{ opt or '·' }}</span><div><b>{{ row.s.title }}</b><small>{{ d.text if d else '' }}</small>{% if d and d.longterm %}<p>{{ d.longterm }}</p>{% endif %}</div></li>
+                    {% endfor %}
+                </ol>
+            </section>
+            <section class="panel admin-card" aria-labelledby="camp-endings">
+                <h2 class="vz-title" id="camp-endings">{{ icon('flag') }}Концовки</h2>
+                <p class="vz-sub">{{ finished_total }} {{ plural(finished_total, 'судья прошёл', 'судьи прошли', 'судей прошли') }} кампанию с первого раза.</p>
+                <ul class="camp-endings">
+                    {% for x in c.endings %}
+                        <li class="{{ 'is-mine' if x.key == e.key }}">
+                            <span>{{ icon(x.icon if x.key == e.key else 'lock') }}{{ x.title if x.key == e.key else 'Другая концовка' }}</span>
+                            <b>{{ (shares.get(x.key, 0) * 100)|round|int }}%</b>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+
+    {% else %}
+        <section class="panel camp-intro">
+            <p>{{ c.intro }}</p>
+            {% set first = chapters[0] %}
+            <ol class="camp-path">
+                {% for row in chapters %}<li><span class="opt-letter opt-letter-sm">{{ loop.index }}</span><div><b>{{ row.s.title }}</b><small>{{ excerpt(row.s.story, 140) }}</small></div></li>{% endfor %}
+            </ol>
+            <form method="post" class="inline-form">
+                {{ csrf_field() }}<input type="hidden" name="action" value="start">
+                <button class="btn btn-primary btn-lg" type="submit">{{ icon('play') }}Начать кампанию</button>
+            </form>
+            <p class="field-note">{{ icon('zap') }}За первое прохождение — трофей и +{{ XP.campaign }} XP.</p>
+        </section>
+    {% endif %}
+</section>
+{% endblock %}

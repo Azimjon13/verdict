@@ -1,0 +1,20 @@
+{#- After a hidden spot was found (shown in a modal). res — hunt.claim(); before, after — career.summary(). -#}
+{% from 'partials/gift.html' import gift_card %}
+<div class="hunt-found">
+    <p class="hunt-found-lead">{{ icon('compass') }}<span>«{{ res.challenge.title }}»: найдено <b>{{ res.found }}</b> из {{ res.total }}</span></p>
+    {% if res.grant %}
+        {{ gift_card(res.grant, true) }}
+    {% else %}
+        <p class="hunt-found-empty">В этом тайнике пусто, но находка засчитана в охоту.</p>
+    {% endif %}
+    {% if res.prize %}
+        <span class="label-mono hunt-prize-label">{{ icon('crown') }}Все тайники найдены — главный приз</span>
+        {{ gift_card(res.prize, true) }}
+    {% elif res.found < res.total %}
+        <p class="hunt-found-more">Осталось найти: {{ res.total - res.found }}. Подсказки — в значке охоты внизу экрана.</p>
+    {% endif %}
+    {% if after.xp > before.xp %}
+        <p class="hunt-found-xp">{{ icon('zap') }}<span>+{{ after.xp - before.xp }} XP{% if after.rank.key != before.rank.key %} · новый ранг: <b>{{ after.rank.name }}</b>{% endif %}</span></p>
+    {% endif %}
+    <a class="hunt-found-link" href="{{ url_for('judge') }}#gifts">Все ваши подарки — в профиле судьи{{ icon('arrow-right') }}</a>
+</div>

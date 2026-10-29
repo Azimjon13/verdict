@@ -1,0 +1,133 @@
+{#- The case as comic frames. Without JS — plain text by frame; with JS (comic.js) — a flip-through comic.
+    s — situation; full — «Кто есть кто», «Улики», «Свидетели», «Ваш вердикт» frames (Быстрый суд);
+    finish — where to go after the last frame (CSS selector); finish_label — the last frame's button. -#}
+{% set cast = comic_cast(s) %}
+{% set panels = comic_panels(s, cast, full) %}
+{% set uid = 'cm' ~ (s.id or 0) %}
+{% set hue = CATEGORIES.get(s.category, {}).get('hue', 190) %}
+{% set titles = {'world': 'Мир', 'story': 'Что произошло', 'cast': 'Кто есть кто', 'evidence': 'Что известно',
+                 'witnesses': 'Что говорят свидетели', 'decide': 'Ваш вердикт'} %}
+{% macro use(i, cls='') %}<svg class="{{ cls }}" viewBox="0 0 120 140" aria-hidden="true"><use href="#{{ uid }}-{{ i }}"/></svg>{% endmacro %}
+{% macro name(i) %}<b class="cm-name" style="--ah:{{ cast[i].hue }}">{{ cast[i].short }}</b>{% endmacro %}
+{% macro figure(i, k) %}<figure class="cm-fig" data-who="{{ i }}" style="--ah:{{ cast[i].hue }};--k:{{ k }}">{{ use(i) }}<figcaption>{{ cast[i].short }}</figcaption></figure>{% endmacro %}
+{% macro bubble(who, text, tag='', note='') -%}
+<div class="cm-bubble" data-seq{% if who is not none %} data-who="{{ who }}"{% endif %}>
+{%- if who is none %}<span class="cm-bubble-av cm-voice">{{ icon('message') }}</span>{% else %}{{ use(who, 'cm-bubble-av') }}{% endif -%}
+<div class="cm-bubble-body">
+{%- if who is none %}<b class="cm-name cm-anon">{{ (tag[:1]|upper ~ tag[1:]) if tag else 'Голос' }}</b>{% else %}{{ name(who) }}{% endif -%}
+<p>«{{ text }}»</p>{% if note %}<small>{{ note }}</small>{% endif %}</div></div>
+{%- endmacro %}
+<section class="comic" data-comic data-finish="{{ finish or '' }}" data-finish-label="{{ finish_label or 'Дальше' }}"
+         style="--h: {{ hue }}" aria-label="Дело в кадрах: {{ s.title }}">
+    <svg class="cm-sprite" aria-hidden="true" focusable="false">
+        {% for c in cast %}
+            <symbol id="{{ uid }}-{{ loop.index0 }}" viewBox="0 0 120 140">{{ comic_avatar(c.avatar)|safe }}</symbol>
+        {% endfor %}
+    </svg>
+
+    <div class="cm-top">
+        <span class="label-mono">{{ icon('play') }}Дело в кадрах</span>
+        <button type="button" class="link-btn cm-mode" data-cm-mode aria-pressed="false">{{ icon('file') }}<span>Читать текстом</span></button>
+    </div>
+
+    <div class="cm-viewport" data-cm-viewport>
+        <div class="cm-scene" data-cm-scene aria-hidden="true">
+            <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">{{ comic_scene(s.world.setting or '', hue)|safe }}</svg>
+        </div>
+        <div class="cm-shade" aria-hidden="true"></div>
+        {% for p in panels %}
+            {% set k = loop.index0 %}
+            <div class="cm-figures cm-figures-{{ p.kind }}" data-cm-figures="{{ k }}" aria-hidden="true"{{ ' hidden' if k }}>
+                {% if p.kind == 'world' %}
+                    <div class="cm-titlecard">
+                        <span class="cm-case-no">{{ s.world.setting if s.world.setting else CATEGORIES.get(s.category, {}).get('name', '') }}</span>
+                        <strong>{{ s.title }}</strong>
+                        <span>{{ icon('map-pin') }}{{ p.place }}</span>
+                    </div>
+                {% elif p.kind == 'evidence' %}
+                    <div class="cm-board"><span class="cm-pin ok">{{ icon('check-circle') }}{{ p.facts|length }}</span><span class="cm-pin q">{{ icon('help') }}{{ p.unknowns|length }}</span></div>
+                {% elif p.kind == 'decide' %}
+                    <div class="cm-gavel">{{ icon('gavel') }}</div>
+                {% else %}
+                    {% for i in p.present %}{{ figure(i, loop.index0) }}{% endfor %}
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div class="cm-hud">
+            <span class="cm-count" data-cm-count>1 / {{ panels|length }}</span>
+            <button type="button" class="cm-skip" data-cm-skip>{{ finish_label or 'Пропустить' }}{{ icon('arrow-right') }}</button>
+        </div>
+    </div>
+
+    <ol class="cm-panels">
+        {% for p in panels %}
+            {% set k = loop.index0 %}
+            <li class="cm-panel cm-{{ p.kind }}" data-cm-panel="{{ k }}" data-cam="{{ comic_camera(k) }}">
+                <h3 class="cm-panel-h">{{ titles[p.kind] }}</h3>
+                {% if p.kind == 'world' %}
+                    {% if p.role %}
+                        <p class="cm-role" data-seq>{{ icon('user') }}<span>Ваша роль: <b>{{ p.role }}</b></span></p>
+                    {% endif %}
+                    <p class="cm-place" data-seq>{{ icon('globe') }}<span>{{ p.place }}{% if p.era %} · {{ p.era }}{% endif %}</span></p>
+                    <p class="cm-caption" data-seq>{{ comic_highlight(p.text, cast) }}</p>
+
+                {% elif p.kind == 'story' %}
+                    {% for seg in p.segments %}
+                        {% if seg.type == 'caption' %}
+                            <p class="cm-caption" data-seq>{{ comic_highlight(seg.text, cast) }}</p>
+                        {% else %}
+                            {{ bubble(seg.who, seg.text, seg.tag) }}
+                        {% endif %}
+                    {% endfor %}
+
+                {% elif p.kind == 'cast' %}
+                    <div class="cm-cards">
+                        {% for i in p.people %}
+                            {% set c = cast[i] %}
+                            <div class="cm-card" data-seq data-who="{{ i }}" style="--ah: {{ c.hue }}">
+                                {{ use(i, 'cm-card-av') }}
+                                <div>
+                                    <b>{{ c.short }}{% if c.age %} <small>{{ c.age }}</small>{% endif %}</b>
+                                    {% if c.role %}<span class="cm-card-role">{{ c.role }}</span>{% endif %}
+                                    {% if c.relations %}<span class="cm-card-rel">{{ icon('link') }}{{ comic_highlight(c.relations, cast) }}</span>{% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                {% elif p.kind == 'evidence' %}
+                    <div class="cm-evidence">
+                        {% for f in p.facts %}
+                            <div class="cm-ev ok" data-seq>{{ icon('check-circle') }}<span>{{ comic_highlight(f, cast) }}</span></div>
+                        {% endfor %}
+                        {% for u in p.unknowns %}
+                            <div class="cm-ev q" data-seq>{{ icon('help') }}<span>{{ comic_highlight(u, cast) }}</span></div>
+                        {% endfor %}
+                    </div>
+                    <p class="cm-legend"><span class="ok">{{ icon('check-circle') }}известно точно</span><span class="q">{{ icon('help') }}под сомнением</span></p>
+
+                {% elif p.kind == 'witnesses' %}
+                    <p class="cm-caption cm-warn" data-seq>{{ icon('alert') }}Свидетели могут ошибаться, лгать или иметь свой интерес.</p>
+                    {% for i in p.people %}
+                        {{ bubble(i, cast[i].claim, '', 'Надёжность: ' ~ cast[i].trust if cast[i].trust else '') }}
+                    {% endfor %}
+
+                {% else %}
+                    <p class="cm-caption cm-final" data-seq>Вы знаете всё, что знают остальные. Правильного ответа нет — есть ваш вердикт.</p>
+                    <button type="button" class="btn btn-primary cm-finish" data-seq data-cm-finish>{{ icon('gavel') }}Вынести вердикт</button>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+
+    <div class="cm-nav">
+        <button type="button" class="btn btn-ghost cm-prev" data-cm-prev aria-label="Предыдущий кадр">{{ icon('arrow-left') }}</button>
+        <div class="cm-dots" role="tablist" aria-label="Кадры">
+            {% for p in panels %}
+                <button type="button" class="cm-dot" data-cm-dot="{{ loop.index0 }}" aria-label="Кадр {{ loop.index }}: {{ titles[p.kind] }}"></button>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-primary cm-next" data-cm-next><span data-cm-next-label>Дальше</span>{{ icon('arrow-right') }}</button>
+    </div>
+    <p class="cm-hint">{{ icon('info') }}Листайте кадры кнопкой «Дальше», стрелками ← → или свайпом. Нажмите на кадр, чтобы показать весь текст сразу.</p>
+</section>

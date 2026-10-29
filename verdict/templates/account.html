@@ -1,0 +1,128 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container account-hero">
+        <span class="avatar avatar-lg" style="--ah: {{ name_hue(me.display_name) }}">{{ initials(me.display_name) }}</span>
+        <div>
+            <span class="kicker">Профиль · {{ role_name }}</span>
+            <h1>{{ me.display_name }}</h1>
+            <p class="account-meta">
+                <span>{{ icon('user') }}@{{ me.login }}</span>
+                <span>{{ icon('calendar') }}с {{ format_date(me.created_at) }}</span>
+                <span>{{ icon('shield') }}{{ sessions }} {{ plural(sessions, 'активный сеанс', 'активных сеанса', 'активных сеансов') }}</span>
+            </p>
+        </div>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="{{ url_for('create') }}">{{ icon('plus') }}Новая ситуация</a>
+            {% if is_admin() %}<a class="btn" href="{{ url_for('users') }}">{{ icon('users') }}Пользователи</a>{% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="container account-layout">
+    <section class="account-main">
+        <div class="account-stats">
+            <div class="panel"><b>{{ mine|length }}</b><span>всего ситуаций</span></div>
+            {% for key, label in STATUSES.items() if key != 'campaign' %}
+                <div class="panel stat-{{ key }}"><b>{{ by_status[key] }}</b><span>{{ label|lower }}</span></div>
+            {% endfor %}
+        </div>
+
+        <div class="panel block">
+            <header class="block-head"><span class="block-num">{{ icon('file') }}</span><h2>Мои ситуации</h2></header>
+            {% if not mine %}
+                <div class="empty-inline">
+                    <p class="muted">Вы ещё не создали ни одной ситуации.</p>
+                    <a class="btn btn-primary btn-sm" href="{{ url_for('create') }}">{{ icon('plus') }}Создать первую</a>
+                </div>
+            {% else %}
+                <ul class="my-list">
+                    {% for s in mine %}
+                        {% set cat = CATEGORIES.get(s.category, {'name': s.category, 'icon': 'circle'}) %}
+                        <li style="{{ category_style(s.category) }}">
+                            <span class="my-icon">{{ icon(cat.icon) }}</span>
+                            <div class="my-body">
+                                <a href="{{ url_for('edit', id=s.id) if s.status == 'draft' else url_for('view', id=s.id) }}">{{ s.title }}</a>
+                                <span>{{ cat.name }} · {{ SITUATION_TYPES.get(s.type, {}).get('name', s.type) }} · {{ format_date(s.created_at) }}</span>
+                            </div>
+                            {{ level_chip(situation_level(s)) }}
+                            <span class="my-votes" title="Вердиктов">{{ icon('gavel') }}{{ counts.get(s.id, {}).values()|sum }}</span>
+                            <span class="status status-{{ s.status }}">{{ STATUSES.get(s.status, s.status) }}</span>
+                            {% if can_edit_situation(s) %}
+                                <a class="icon-btn" href="{{ url_for('edit', id=s.id) }}" title="Редактировать" aria-label="Редактировать">{{ icon('edit') }}</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <p class="muted small">Черновики видите только вы — дописывайте их в любое время. Отправленные ситуации можно редактировать, пока они на отборе.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <aside class="account-side">
+        <form method="post" class="panel side-card" id="public">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="profile">
+            <span class="label-mono">Публичный профиль</span>
+            <p class="side-note"><a href="{{ url_for('profile', login=me.login) }}">{{ icon('user') }}/u/{{ me.login }}</a> — так вас видят другие игроки.</p>
+            <label class="field">
+                <span>О себе <em>— до 280 символов</em></span>
+                <textarea name="bio" rows="3" maxlength="280" placeholder="Судья из Ташкента. Люблю дела о власти.">{{ me.bio }}</textarea>
+            </label>
+            <label class="field">
+                <span>Кто видит профиль</span>
+                <select class="vs" name="visibility" data-size="sm">
+                    {% for key, v in SOCIAL.visibility.items() %}<option value="{{ key }}" data-desc="{{ v.desc }}"{{ ' selected' if me.visibility == key }}>{{ v.name }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="check"><input type="checkbox" name="in_ratings" value="1"{{ ' checked' if me.in_ratings }}><span class="check-box">{{ icon('check') }}</span><span>Показывать меня в рейтингах</span></label>
+            <button class="btn btn-sm btn-block" type="submit">{{ icon('check') }}Сохранить профиль</button>
+        </form>
+
+        <form method="post" class="panel side-card" data-validate novalidate>
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="name">
+            <span class="label-mono">Имя в подписи</span>
+            <label class="field{{ ' has-error' if 'display_name' in errors }}">
+                <span>Имя или ник</span>
+                <input type="text" name="display_name" value="{{ name_value }}" required minlength="2" maxlength="80">
+                {{ field_error(errors, 'display_name') }}
+            </label>
+            <button class="btn btn-sm btn-block" type="submit">{{ icon('check') }}Сохранить имя</button>
+        </form>
+
+        <form method="post" class="panel side-card" data-validate novalidate>
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="password">
+            <span class="label-mono">Смена пароля</span>
+            <label class="field{{ ' has-error' if 'current_password' in errors }}">
+                <span>Текущий пароль</span>
+                <input type="password" name="current_password" required autocomplete="current-password">
+                {{ field_error(errors, 'current_password') }}
+            </label>
+            <label class="field{{ ' has-error' if 'new_password' in errors }}">
+                <span>Новый пароль</span>
+                <input type="password" name="new_password" required minlength="{{ PASSWORD_MIN }}" maxlength="200" autocomplete="new-password" data-strength>
+                <span class="strength" aria-hidden="true"><i></i></span>
+                {{ field_error(errors, 'new_password') }}
+            </label>
+            <label class="field{{ ' has-error' if 'new_password_confirm' in errors }}">
+                <span>Повторите новый пароль</span>
+                <input type="password" name="new_password_confirm" required data-match="new_password" data-match-msg="Новые пароли не совпадают." autocomplete="new-password">
+                {{ field_error(errors, 'new_password_confirm') }}
+            </label>
+            <button class="btn btn-sm btn-block" type="submit">{{ icon('lock') }}Изменить пароль</button>
+            <p class="muted small">После смены пароля все другие сеансы входа будут завершены.</p>
+        </form>
+
+        <form method="post" class="panel side-card" data-confirm="Завершить все сеансы входа, кроме этого? На других устройствах придётся войти заново." data-confirm-title="Завершить сеансы" data-confirm-ok="Завершить" data-confirm-tone="danger">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="sessions">
+            <span class="label-mono">Безопасность</span>
+            <p class="muted small">Сессии хранятся на сервере. Если вы входили с чужого устройства, завершите остальные сеансы.</p>
+            <button class="btn btn-sm btn-block btn-danger" type="submit">{{ icon('logout') }}Выйти на других устройствах</button>
+        </form>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,154 @@
+{#- Page frame. Views pass: title, active (nav key), body_class, bg (high | calm), scripts. -#}
+{% set flashes = take_flashes() %}
+{% set autosave_clear = take_autosave_clear() %}
+{% set me = current_user() %}
+{% set nav = [
+    ('home', url_for('index'), 'Главная'),
+    ('quick', url_for('quick'), 'Быстрый суд'),
+    ('play', url_for('play'), 'Архив дел'),
+    ('ratings', url_for('ratings'), 'Рейтинг'),
+    ('create', url_for('create'), 'Создать ситуацию'),
+    ('library', url_for('library'), 'Отбор'),
+] + ([('admin', url_for('admin.dashboard'), 'Админка')] if me and me.role == 'admin' else []) %}
+{# where the neon sun stands on a wide screen #}
+{% set vp = {'page-home': '0.72', 'page-play': '0.79'}.get(body_class, '0.5') %}
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{{ title ~ ' — VERDICT' if title else 'VERDICT — симулятор решений и суждений' }}</title>
+    {% set page_desc = og_desc or 'VERDICT — игра-симулятор решений: вымышленные миры, спорные поступки, свидетели, которые могут лгать, и последствия вашего выбора.' %}
+    <meta name="description" content="{{ page_desc }}">
+    <meta property="og:site_name" content="VERDICT">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ title or 'VERDICT — симулятор решений и суждений' }}">
+    <meta property="og:description" content="{{ page_desc }}">
+    <meta property="og:url" content="{{ request.base_url }}">
+    <meta name="twitter:card" content="summary">
+    <meta name="theme-color" content="#03040a">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800;900&display=swap">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <script>document.documentElement.classList.add('js');</script>
+</head>
+<body class="{{ body_class }}" data-bg="{{ bg }}" data-vp="{{ vp }}" data-csrf="{{ csrf_token() }}" data-vote-url="{{ url_for('api_vote') }}"{% if autosave_clear %} data-autosave-clear="{{ autosave_clear|tojson|forceescape }}"{% endif %}>
+<a class="skip-link" href="#main">Перейти к содержимому</a>
+
+<div class="bg-base" aria-hidden="true">
+    <div class="bg-aurora bg-aurora-1"></div>
+    <div class="bg-aurora bg-aurora-2"></div>
+    <div class="bg-aurora bg-aurora-3"></div>
+</div>
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+<div class="bg-fx" aria-hidden="true">
+    <div class="bg-hex"></div>
+    <div class="bg-beam"></div>
+    <div class="bg-scan"></div>
+    <div class="bg-vignette"></div>
+</div>
+
+<header class="site-header">
+    <a class="brand" href="{{ url_for('index') }}" aria-label="VERDICT — на главную">
+        {{ logo_svg('logo') }}
+        <span class="brand-name" data-text="VERDICT">VERDICT</span>
+        <span class="brand-tag">MVP</span>
+    </a>
+
+    <nav class="nav" id="site-nav" aria-label="Основная навигация">
+        {% for key, href, label in nav %}
+            <a href="{{ href }}"{% if active == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+
+    <div class="header-actions">
+        {% if me %}
+            <a class="user-chip{{ ' active' if active == 'account' }}" href="{{ url_for('account') }}" title="Профиль">
+                <span class="avatar avatar-xs" style="--ah: {{ name_hue(me.display_name) }}">{{ initials(me.display_name) }}</span>
+                <span class="user-name">{{ me.display_name }}</span>
+                {% if me.role == 'admin' %}<span class="user-role" title="Команда">{{ icon('shield') }}</span>{% endif %}
+            </a>
+            <form method="post" action="{{ url_for('logout') }}" class="inline-form" data-confirm="Выйти из аккаунта на этом устройстве?" data-confirm-title="Выход" data-confirm-ok="Выйти">
+                {{ csrf_field() }}
+                <button class="icon-btn" type="submit" title="Выйти" aria-label="Выйти">{{ icon('logout') }}</button>
+            </form>
+        {% else %}
+            <a class="btn btn-sm btn-ghost btn-login" href="{{ url_for('login') }}">{{ icon('login') }}Войти</a>
+        {% endif %}
+        <a class="btn btn-primary btn-sm btn-play" href="{{ url_for('quick') }}">{{ icon('play') }}Играть</a>
+        <button class="icon-btn nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Меню">{{ icon('menu') }}</button>
+    </div>
+</header>
+
+{% if flashes %}
+    <div class="toasts" role="status">
+        {% for f in flashes %}
+            <div class="toast toast-{{ f.type }}">
+                {{ icon('alert' if f.type == 'error' else 'check-circle') }}
+                <span>{{ f.message }}</span>
+                <button type="button" class="toast-close" aria-label="Закрыть">{{ icon('x') }}</button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div class="footer-brand">
+            <a class="brand" href="{{ url_for('index') }}">{{ logo_svg('logo') }}<span class="brand-name">VERDICT</span></a>
+            <p>Нет правильного ответа.<br>Есть только ваш вердикт.</p>
+        </div>
+        <div>
+            <h4>Игра</h4>
+            <a href="{{ url_for('quick') }}">Быстрый суд</a>
+            <a href="{{ url_for('play') }}">Архив дел</a>
+            <a href="{{ url_for('campaigns') }}">Кампании</a>
+            <a href="{{ url_for('judge') }}">Профиль судьи</a>
+            <a href="{{ url_for('ratings') }}">Рейтинг</a>
+            <a href="{{ url_for('communities') }}">Сообщества</a>
+            <a href="{{ url_for('index') }}#how">Как это работает</a>
+            <a href="{{ url_for('index') }}#categories">Категории</a>
+        </div>
+        <div>
+            <h4>Авторам</h4>
+            <a href="{{ url_for('brief') }}">Бриф для авторов</a>
+            <a href="{{ url_for('create') }}">Создать ситуацию</a>
+            <a href="{{ url_for('library') }}">Отбор контента</a>
+        </div>
+        <div>
+            <h4>Путь проекта</h4>
+            <ol class="footer-road">
+                {% for step in ROADMAP %}
+                    <li class="{{ 'now' if loop.first }}">{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+    <div class="container footer-bottom">
+        <span>© {{ year }} VERDICT · MVP</span>
+        <span>Все миры вымышлены и не связаны с реальными странами, политикой или законами.</span>
+    </div>
+</footer>
+
+{% set hunt_data = hunt_for_page() %}
+{% if hunt_data %}{% include 'partials/hunt.html' %}{% endif %}
+{% set hunt_admin = hunt_tools() %}
+{% if hunt_admin %}
+<script type="application/json" id="hunt-tools">{{ hunt_json(hunt_admin)|safe }}</script>
+<script src="{{ asset('js/hunt-tools.js') }}" defer></script>
+{% endif %}
+<script src="{{ asset('js/background.js') }}"></script>
+<script src="{{ asset('js/modal.js') }}"></script>
+<script src="{{ asset('js/select.js') }}"></script>
+<script src="{{ asset('js/app.js') }}"></script>
+{% for s in scripts or [] %}
+<script src="{{ asset('js/' ~ s) }}"></script>
+{% endfor %}
+</body>
+</html>

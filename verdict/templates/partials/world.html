@@ -1,0 +1,36 @@
+{#- The player's world (stored with their verdicts). back — where the reset form returns. -#}
+{% set w = player_world() %}
+{% set metrics = w.metrics %}
+{% set verdicts = w.count %}
+<div class="panel world-panel" data-world>
+    <div class="world-head">
+        <span class="kicker">Состояние мира</span>
+        <span class="world-count mono"><b data-world-count>{{ verdicts }}</b> <span data-world-word>{{ plural(verdicts, 'вердикт', 'вердикта', 'вердиктов') }}</span></span>
+    </div>
+    {% for key, m in METRICS.items() %}
+        {% set v = metrics[key] %}
+        <div class="meter" data-metric="{{ key }}">
+            <div class="meter-top">
+                <span class="meter-name">{{ icon(m.icon) }}{{ m.name }}</span>
+                <span class="meter-delta" data-delta></span>
+                <b class="meter-value" data-value>{{ v }}</b>
+            </div>
+            <div class="meter-bar"><i style="width: {{ v }}%"></i><span class="meter-mid"></span></div>
+        </div>
+    {% endfor %}
+    {% if w.active %}
+        <ul class="world-events" aria-label="Что происходит в мире">
+            {% for e in w.active %}
+                <li class="world-event tone-{{ e.tone }}" title="{{ e.text }}">{{ icon(e.icon) }}<span><b>{{ e.name }}</b><small>{{ e.meter_name }}: {{ metrics[e.meter] }}</small></span></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <p class="world-hint">Каждое решение меняет мир. Мир помнит ваши вердикты — даже когда вы вернётесь через неделю.</p>
+    {% if verdicts > 0 %}
+        <form method="post" action="{{ url_for('api_world') }}" class="world-reset" data-confirm="Все показатели мира вернутся к исходным 50, события мира забудутся. Ваши вердикты, ранг и достижения сохранятся." data-confirm-title="Начать мир заново?" data-confirm-ok="Сбросить мир" data-confirm-tone="warn">
+            {{ csrf_field() }}
+            <input type="hidden" name="back" value="{{ back or url_for('play') }}">
+            <button type="submit" class="link-btn">{{ icon('refresh') }}Начать мир заново</button>
+        </form>
+    {% endif %}
+</div>

@@ -1,0 +1,89 @@
+{#- Dashboard charts: HTML + CSS, data from verdict/charts.py. Every mark shows its value on hover and focus
+    (admin.js), every chart has a table view, and a chart with two series has a legend. -#}
+
+{% macro table_view(head, rows) %}
+<details class="vz-table">
+    <summary>{{ icon('file') }}Таблица</summary>
+    <div class="vz-table-wrap">
+        <table>
+            <thead><tr>{% for h in head %}<th scope="col">{{ h }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for r in rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table>
+    </div>
+</details>
+{% endmacro %}
+
+{% macro axis(ticks) %}
+<div class="vz-y" aria-hidden="true">{% for t in ticks %}<span style="bottom: {{ t.p }}%">{{ compact(t.value) }}</span>{% endfor %}</div>
+{% endmacro %}
+
+{% macro grid(ticks) %}{% for t in ticks if t.p > 0 %}<i class="vz-gridline" style="bottom: {{ t.p }}%"></i>{% endfor %}{% endmacro %}
+
+{#- One series over time. -#}
+{% macro columns(c, label) %}
+{% if c.empty %}
+    <p class="vz-empty">{{ icon('chart') }}Пока нет данных за этот период.</p>
+{% else %}
+    <div class="vz-cols" role="img" aria-label="{{ label }}" style="--n: {{ c.n }}">
+        {{ axis(c.ticks) }}
+        <div class="vz-plot">
+            {{ grid(c.ticks) }}
+            <div class="vz-bars">
+                {% for b in c.bars %}
+                    <div class="vz-col" tabindex="0" data-tip="{{ b.tip }}" data-tip-label="{{ b.label }}">
+                        {% if b.value %}<span class="vz-bar s1" style="height: {{ b.h }}%"></span>{% endif %}
+                        {% if b.direct %}<span class="vz-val" style="bottom: {{ b.h }}%">{{ compact(b.value) }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="vz-x" aria-hidden="true">{% for b in c.bars %}<span>{{ b.axis }}</span>{% endfor %}</div>
+    </div>
+{% endif %}
+{% endmacro %}
+
+{#- Two series stacked (slot 1 below, slot 2 on top), with a legend. -#}
+{% macro stacked(c, label) %}
+<ul class="vz-legend">
+    <li><i class="s1"></i>{{ c.names[0] }}</li>
+    <li><i class="s2"></i>{{ c.names[1] }}</li>
+</ul>
+{% if c.empty %}
+    <p class="vz-empty">{{ icon('chart') }}Пока нет данных за этот период.</p>
+{% else %}
+    <div class="vz-cols" role="img" aria-label="{{ label }}" style="--n: {{ c.n }}">
+        {{ axis(c.ticks) }}
+        <div class="vz-plot">
+            {{ grid(c.ticks) }}
+            <div class="vz-bars">
+                {% for b in c.bars %}
+                    <div class="vz-col" tabindex="0" data-tip="{{ b.tip }}" data-tip-label="{{ b.label }}">
+                        {% for s in b.segments %}<span class="vz-bar {{ s.series }}" style="height: {{ s.h }}%"></span>{% endfor %}
+                        {% if b.direct %}<span class="vz-val" style="bottom: {{ b.h }}%">{{ compact(b.total) }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="vz-x" aria-hidden="true">{% for b in c.bars %}<span>{{ b.axis }}</span>{% endfor %}</div>
+    </div>
+{% endif %}
+{% endmacro %}
+
+{#- Horizontal bars with the value at the tip. -#}
+{% macro hbars(c, extra=none) %}
+{% if c.empty %}
+    <p class="vz-empty">{{ icon('chart') }}Пока нет данных.</p>
+{% else %}
+    <ul class="vz-hbars">
+        {% for r in c.rows %}
+            <li class="vz-hrow" tabindex="0" data-tip="{{ r.tip }}" data-tip-label="{{ r.label }}">
+                <span class="vz-hlabel">{% if r.icon %}{{ icon(r.icon) }}{% endif %}<span>{{ r.label }}</span></span>
+                <span class="vz-htrack">
+                    {% if r.value %}<span class="vz-hbar s1" style="width: calc((100% - 64px) * {{ r.f }})"></span>{% endif %}
+                    <b class="vz-hval">{{ compact(r.value) }}{% if r.note %} <small>{{ r.note }}</small>{% endif %}</b>
+                </span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% endmacro %}

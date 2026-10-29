@@ -1,0 +1,63 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Игра</h1>
+        <p class="lead">Дело дня на неделю вперёд, настройки карьеры и ссылки на отбор ситуаций и команду.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-grid admin-grid-wide">
+        <section class="panel admin-card" aria-labelledby="daily-title">
+            <h2 class="vz-title" id="daily-title">{{ icon('calendar') }}Дело дня</h2>
+            <p class="vz-sub">Одно дело для всех игроков, меняется в полночь UTC. Обычно выбирается само — из дел, которых не было последние 30 дней. Здесь его можно заменить.</p>
+            <ul class="daily-plan">
+                {% for d in days %}
+                    <li>
+                        <span class="daily-plan-day"><b>{{ 'Сегодня' if loop.first else ('Завтра' if loop.index == 2 else d.day.strftime('%d.%m')) }}</b><small>{{ d.day.strftime('%d.%m.%Y') }}</small></span>
+                        <form method="post" class="inline-form daily-plan-form">
+                            {{ csrf_field() }}
+                            <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
+                            <select class="vs" name="situation_id" data-autosubmit data-size="sm" aria-label="Дело дня на {{ d.day.strftime('%d.%m') }}">
+                                {% for s in cases %}
+                                    {% set cat = CATEGORIES.get(s.category, {'icon': 'circle', 'hue': 190}) %}
+                                    <option value="{{ s.id }}"{{ option_icon(cat.icon, cat.hue) }}{{ ' selected' if d.case and d.case.id == s.id }}>{{ s.title }}</option>
+                                {% endfor %}
+                            </select>
+                            <noscript><button class="btn btn-sm" type="submit">Сохранить</button></noscript>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <div class="admin-side">
+            <section class="panel admin-card" aria-labelledby="xp-title">
+                <h2 class="vz-title" id="xp-title">{{ icon('zap') }}Опыт и ранги</h2>
+                <ul class="plain-list">
+                    <li>{{ icon('gavel') }}<span>Вердикт <b>+{{ XP.verdict }} XP</b></span></li>
+                    <li>{{ icon('target') }}<span>Угаданное большинство <b>+{{ XP.guess }} XP</b></span></li>
+                    <li>{{ icon('calendar') }}<span>Дело дня в свой день <b>+{{ XP.daily }} XP</b></span></li>
+                    <li>{{ icon('gift') }}<span>Подарки — сколько задано в подарке</span></li>
+                </ul>
+                <ol class="rank-plan">
+                    {% for r in RANKS %}<li>{{ icon(r.icon) }}<span>{{ r.name }}</span><small>{{ r.xp }} XP</small></li>{% endfor %}
+                </ol>
+                <p class="field-note">{{ icon('info') }}Опыт, ранги, достижения и события мира задаются в файле <code>content/catalog.json</code> — его же читает игровой клиент.</p>
+            </section>
+            <section class="panel admin-card" aria-labelledby="links-title">
+                <h2 class="vz-title" id="links-title">{{ icon('layers') }}Контент и команда</h2>
+                <div class="admin-links">
+                    <a class="btn btn-sm" href="{{ url_for('library', status='pending') }}">{{ icon('clipboard') }}Ситуации на отборе</a>
+                    <a class="btn btn-sm" href="{{ url_for('users') }}">{{ icon('shield') }}Команда и авторы</a>
+                    <a class="btn btn-sm" href="{{ url_for('api_export') }}">{{ icon('download') }}Экспорт дел (JSON)</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</section>
+{% endblock %}

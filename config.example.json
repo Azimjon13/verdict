@@ -1,0 +1,12 @@
+{
+    "db": {
+        "host": "localhost",
+        "port": 3306,
+        "name": "cpaneluser_verdict",
+        "user": "cpaneluser_verdict",
+        "password": "change-me"
+    },
+    "admin_password": "change-me-too",
+    "secret_key": "any-long-random-string",
+    "session_lifetime": 1209600
+}

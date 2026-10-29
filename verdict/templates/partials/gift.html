@@ -1,0 +1,20 @@
+{#- A gift as the player sees it. r — a gift_grants row (a copy of the gift as it was given). -#}
+{% macro gift_card(r, fresh=false) %}
+{% set kind = GIFT_KINDS.get(r.kind, {'name': r.kind, 'icon': 'gift'}) %}
+<article class="gift-card kind-{{ r.kind }}{{ ' is-new' if fresh }}">
+    <span class="gift-icon">{{ icon(r.icon) }}</span>
+    <div class="gift-body">
+        <span class="label-mono">{{ icon(kind.icon) }}{{ kind.name }}{% if r.xp %} · +{{ r.xp }} XP{% endif %}</span>
+        <b class="gift-name">{{ r.name }}</b>
+        {% if r.text %}<p class="gift-text">{{ r.text }}</p>{% endif %}
+        {% if r.kind == 'code' %}
+            {% if r.code %}
+                <div class="gift-code"><code>{{ r.code }}</code><button type="button" class="btn btn-sm btn-ghost" data-copy="{{ r.code }}">{{ icon('copy') }}<span>Копировать</span></button></div>
+            {% else %}
+                <p class="gift-missing">{{ icon('alert') }}Коды закончились. Команда видит это и пришлёт ваш код.</p>
+            {% endif %}
+        {% endif %}
+        {% if r.link %}<a class="gift-link" href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ icon('link') }}Открыть ссылку</a>{% endif %}
+    </div>
+</article>
+{% endmacro %}

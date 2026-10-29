@@ -1,0 +1,9 @@
+{#- Under the result of an archive case that opens a campaign. s — situation. -#}
+{% set camp = campaign_of(s.id) %}
+{% if camp %}
+    <a class="campaign-teaser" href="{{ url_for('campaign', key=camp.key) }}">
+        <span class="community-emblem campaign-emblem">{{ icon(camp.icon) }}</span>
+        <span><span class="label-mono">У этой истории есть продолжение</span><b>Кампания «{{ camp.title }}»</b><small>Ваш вердикт станет первой главой — дальше {{ camp.chapters|length - 1 }} {{ plural(camp.chapters|length - 1, 'дело', 'дела', 'дел') }}.</small></span>
+        {{ icon('arrow-right') }}
+    </a>
+{% endif %}

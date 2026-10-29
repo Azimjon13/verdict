@@ -1,0 +1,41 @@
+{#- Fields of a community: name, description, rules, access, emblem. v — values, errors. -#}
+{% macro community_fields(v, errors) %}
+<label class="field{{ ' has-error' if errors.name }}">
+    <span>Название</span>
+    <input type="text" name="name" value="{{ v.name }}" maxlength="80" required placeholder="Например: Клуб строгих судей">
+    {{ field_error(errors, 'name') }}
+</label>
+<label class="field">
+    <span>О сообществе <em>— одна-две фразы</em></span>
+    <textarea name="description" rows="2" maxlength="500" placeholder="Судим только дела о власти и выбираем лучшие приговоры недели.">{{ v.description }}</textarea>
+</label>
+<label class="field">
+    <span>Правила <em>— каждый, кто вступает, принимает их</em></span>
+    <textarea name="rules" rows="5" maxlength="3000" placeholder="1. Уважайте чужие вердикты.&#10;2. Спорим о делах, а не о людях.&#10;3. Раз в неделю — общее дело дня.">{{ v.rules }}</textarea>
+</label>
+<fieldset class="field">
+    <legend>Как вступают</legend>
+    <div class="choice-row">
+        {% for key, a in SOCIAL.access.items() %}
+            <label class="choice{{ ' is-on' if v.access == key }}">
+                <input type="radio" name="access" value="{{ key }}"{{ ' checked' if v.access == key }}>
+                <span>{{ icon(a.icon) }}<b>{{ a.name }}</b><small>{{ a.desc }}</small></span>
+            </label>
+        {% endfor %}
+    </div>
+</fieldset>
+<div class="field-row">
+    <label class="field">
+        <span>Знак</span>
+        <select class="vs" name="icon" data-size="sm">
+            {% for ic in SOCIAL.community_icons %}<option value="{{ ic }}"{{ option_icon(ic, v.hue) }}{{ ' selected' if v.icon == ic }}>{{ ic }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="field">
+        <span>Цвет</span>
+        <select class="vs" name="hue" data-size="sm">
+            {% for h in SOCIAL.community_hues %}<option value="{{ h }}"{{ option_icon('circle', h) }}{{ ' selected' if v.hue == h }}>оттенок {{ h }}</option>{% endfor %}
+        </select>
+    </label>
+</div>
+{% endmacro %}

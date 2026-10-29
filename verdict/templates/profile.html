@@ -1,0 +1,136 @@
+{% extends 'layout.html' %}
+{% from 'partials/report.html' import report_form %}
+{% block content %}
+{% set u = p.user %}
+{% set rel = p.relation %}
+{% macro friend_button() %}
+    {% if rel == 'self' %}
+        <a class="btn" href="{{ url_for('account') }}#public">{{ icon('edit') }}Настроить профиль</a>
+    {% elif rel == 'friends' %}
+        <form method="post" class="inline-form" data-confirm="Удалить {{ u.display_name }} из друзей?" data-confirm-title="Друзья" data-confirm-ok="Удалить" data-confirm-tone="danger">
+            {{ csrf_field() }}<input type="hidden" name="action" value="remove">
+            <button class="btn btn-ghost" type="submit">{{ icon('check') }}Вы друзья</button>
+        </form>
+    {% elif rel == 'sent' %}
+        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="cancel"><button class="btn btn-ghost" type="submit">{{ icon('clock') }}Заявка отправлена · отменить</button></form>
+    {% elif rel == 'received' %}
+        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="accept"><button class="btn btn-primary" type="submit">{{ icon('check') }}Принять в друзья</button></form>
+        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="decline"><button class="btn btn-ghost" type="submit">Отклонить</button></form>
+    {% else %}
+        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="add"><button class="btn btn-primary" type="submit">{{ icon('plus') }}Добавить в друзья</button></form>
+    {% endif %}
+{% endmacro %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        {% include 'partials/social_nav.html' %}
+        <div class="profile-head">
+            <span class="avatar avatar-lg" style="--ah: {{ name_hue(u.display_name) }}">{{ initials(u.display_name) }}</span>
+            <div class="profile-id">
+                <span class="kicker">Судья{% if rel == 'self' %} · это вы{% elif rel == 'friends' %} · ваш друг{% endif %}</span>
+                <h1>{{ u.display_name }}</h1>
+                <p class="profile-meta">
+                    <span>{{ icon('user') }}@{{ u.login }}</span>
+                    <span>{{ icon('calendar') }}в игре с {{ format_date(u.created_at) }}</span>
+                    <span>{{ icon('users') }}{{ p.friends }} {{ plural(p.friends, 'друг', 'друга', 'друзей') }}</span>
+                </p>
+                {% if p.visible and p.summary.title %}<span class="cp-title">{{ icon('tag') }}{{ p.summary.title }}</span>{% endif %}
+                {% if p.visible and u.bio %}<p class="profile-bio">{{ u.bio }}</p>{% endif %}
+            </div>
+            <div class="hero-actions profile-actions">
+                {{ friend_button() }}
+                {% if p.visible %}<button type="button" class="btn btn-ghost" data-copy="{{ share_url }}">{{ icon('share') }}<span>Скопировать ссылку</span></button>{% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    {% if not p.visible %}
+        <div class="empty panel">
+            {{ icon('lock') }}
+            <h2>Профиль скрыт</h2>
+            <p>{{ 'Его видят только друзья. Добавьте игрока в друзья — когда он примет заявку, профиль откроется.' if u.visibility == 'friends' else 'Игрок решил не показывать свой профиль.' }}</p>
+        </div>
+    {% else %}
+        {% set s = p.summary %}
+        {% set r = s.rank %}
+        <div class="profile-grid">
+            <section class="panel career-panel" aria-labelledby="pr-rank">
+                <div class="cp-rank">
+                    <span class="cp-emblem">{{ icon(r.icon) }}<small>{{ r.level }}/{{ r.levels }}</small></span>
+                    <div class="cp-body">
+                        <span class="label-mono">Ранг</span>
+                        <h2 id="pr-rank">{{ r.name }}</h2>
+                        <div class="cp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (r.progress * 100)|round|int }}" aria-label="До следующего ранга"><i style="width: {{ (r.progress * 100)|round|int }}%"></i></div>
+                        <p class="cp-next"><b>{{ s.xp }} XP</b>{% if r.next %} · до ранга «{{ r.next.name }}» {{ r.to_next }} XP{% else %} · высший ранг{% endif %}</p>
+                    </div>
+                </div>
+                <div class="cp-stats">
+                    <div><b>{{ s.verdicts }}</b><span>{{ plural(s.verdicts, 'вердикт', 'вердикта', 'вердиктов') }}</span></div>
+                    <div><b>{{ s.streak }}</b><span>{{ plural(s.streak, 'день', 'дня', 'дней') }} подряд · рекорд {{ s.best_streak }}</span></div>
+                    <div><b>{{ s.daily_done }}</b><span>{{ plural(s.daily_done, 'дело дня', 'дела дня', 'дел дня') }}</span></div>
+                    <div><b>{{ p.place or '—' }}</b><span>место в сезоне</span></div>
+                </div>
+            </section>
+
+            {% set style = JUDGE_ARCHETYPES[p.judge.archetype] if p.judge and p.judge.archetype else none %}
+            <section class="panel profile-style" aria-labelledby="pr-style">
+                <span class="label-mono">Стиль судьи</span>
+                {% if style %}
+                    <h2 id="pr-style">{{ icon(style.icon) }}{{ style.name }}</h2>
+                    {% if rel == 'self' %}
+                        <p>{{ style.desc }}</p>
+                    {% else %}
+                        <p>Один из {{ JUDGE_ARCHETYPES|length }} стилей судьи — складывается из того, какие показатели мира игрок поднимает своими вердиктами.</p>
+                        <a class="link-btn" href="{{ url_for('judge') }}">Сравнить со своим стилем{{ icon('arrow-right') }}</a>
+                    {% endif %}
+                {% else %}
+                    <h2 id="pr-style">{{ icon('lock') }}Ещё не определился</h2>
+                    <p>Стиль открывается после {{ JUDGE_MIN_VERDICTS }} вердиктов.</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <section class="panel ach-panel" aria-labelledby="pr-ach">
+            <h2 class="jd-chart-title" id="pr-ach">Достижения <span class="vz-count">{{ p.achievements|length }}/{{ ACHIEVEMENTS|length }}</span></h2>
+            {% if p.achievements %}
+                <ul class="ach-grid">
+                    {% for a in p.achievements %}
+                        <li class="ach is-on"><span class="ach-icon">{{ icon(a.icon) }}</span><span><b>{{ a.name }}</b><small>{{ a.desc }}</small></span></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="vz-empty">{{ icon('star') }}Пока ни одного.</p>
+            {% endif %}
+        </section>
+
+        {% if p.trophies or p.communities %}
+            <div class="profile-grid">
+                {% if p.trophies %}
+                    <section class="panel profile-card" aria-labelledby="pr-trophies">
+                        <h2 class="jd-chart-title" id="pr-trophies">Трофеи</h2>
+                        <ul class="chips">
+                            {% for t in p.trophies %}<li class="ach-chip" title="{{ t.text }}">{{ icon(t.icon) }}{{ t.name }}</li>{% endfor %}
+                        </ul>
+                    </section>
+                {% endif %}
+                {% if p.communities %}
+                    <section class="panel profile-card" aria-labelledby="pr-comm">
+                        <h2 class="jd-chart-title" id="pr-comm">Сообщества</h2>
+                        <ul class="chips">
+                            {% for c in p.communities %}
+                                <li><a class="chip chip-cat" style="--h: {{ c.hue }}" href="{{ url_for('community', slug=c.slug) }}">{{ icon(c.icon) }}{{ c.name }}{% if c.role != 'member' %} · {{ SOCIAL.roles[c.role]|lower }}{% endif %}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if rel != 'self' %}{{ report_form('user', u.id) }}{% endif %}
+        {% if rel == 'self' %}
+            <p class="jd-footnote">{{ icon('eye') }}<span>Профиль видят: {{ SOCIAL.visibility[u.visibility].name|lower }}. В рейтинге: {{ 'да' if u.in_ratings else 'нет' }}. Ваши вердикты по конкретным делам здесь не показываются — их видят только друзья в итогах дела. <a href="{{ url_for('account') }}#public">Изменить</a></span></p>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends 'layout.html' %}
+{% from 'partials/gift.html' import gift_card %}
+{% block content %}
+{% set r = summary.rank %}
+{% set style = JUDGE_ARCHETYPES[profile.archetype] if profile.archetype else none %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('admin.players_page') }}">{{ icon('arrow-left') }}Игроки</a></span>
+        <h1>{{ info.display_name or 'Анонимный игрок' }}</h1>
+        <p class="lead player-ids">
+            {% if info.login %}{{ icon('user') }}@{{ info.login }} · {% endif %}
+            <span class="mono" title="Id игрока: ключ к его вердиктам, не показывайте его другим">{{ icon('lock') }}{{ voter }}</span>
+        </p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="kpi-row">
+        <div class="panel kpi"><span class="kpi-label">Ранг</span><b class="kpi-value kpi-value-sm">{{ icon(r.icon) }}{{ r.name }}</b><small class="kpi-sub">{{ summary.xp }} XP{% if summary.title %} · «{{ summary.title }}»{% endif %}</small></div>
+        <div class="panel kpi"><span class="kpi-label">Вердиктов</span><b class="kpi-value">{{ summary.verdicts }}</b><small class="kpi-sub">своих решений — {{ profile.own }}</small></div>
+        <div class="panel kpi"><span class="kpi-label">Серия дней</span><b class="kpi-value">{{ summary.streak }}</b><small class="kpi-sub">рекорд — {{ summary.best_streak }}, дел дня — {{ summary.daily_done }}</small></div>
+        <div class="panel kpi"><span class="kpi-label">Активность</span><b class="kpi-value">{{ info.days }}</b><small class="kpi-sub">{{ plural(info.days, 'день', 'дня', 'дней') }}{% if info.first_day %} · с {{ format_date(info.first_day) }} по {{ format_date(info.last_day) }}{% endif %}</small></div>
+        <div class="panel kpi"><span class="kpi-label">Стиль судьи</span><b class="kpi-value kpi-value-sm">{% if style %}{{ icon(style.icon) }}{{ style.name }}{% else %}—{% endif %}</b><small class="kpi-sub">{{ 'открыт' if style else 'ещё ' ~ profile.left ~ ' ' ~ plural(profile.left, 'вердикт', 'вердикта', 'вердиктов') }}</small></div>
+        <div class="panel kpi"><span class="kpi-label">Мир игрока</span><b class="kpi-value">{{ world.count }}</b><small class="kpi-sub">{{ plural(world.count, 'вердикт', 'вердикта', 'вердиктов') }} в мире{% if world.active %} · событий: {{ world.active|length }}{% endif %}</small></div>
+    </div>
+
+    <div class="admin-grid">
+        <section class="panel admin-card" aria-labelledby="pl-actions">
+            <h2 class="vz-title" id="pl-actions">Действия</h2>
+            <form method="post" class="admin-form grant-form">
+                {{ csrf_field() }}
+                <input type="hidden" name="action" value="grant">
+                <label class="field">
+                    <span>Выдать подарок</span>
+                    <select class="vs" name="gift_id" data-size="sm">
+                        {% for g in gifts %}
+                            {% set kd = GIFT_KINDS.get(g.kind, {}) %}
+                            <option value="{{ g.id }}"{{ option_icon(g.icon, 190) }} data-desc="{{ kd.name }}{% if g.xp %} · +{{ g.xp }} XP{% endif %}">{{ g.name }}</option>
+                        {% else %}
+                            <option value="">Сначала создайте подарок</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="field"><span>Пометка <em>— видна только команде</em></span><input type="text" name="note" maxlength="255" placeholder="Например: победитель конкурса отзывов"></label>
+                <button class="btn btn-primary btn-sm" type="submit"{{ ' disabled' if not gifts }}>{{ icon('gift') }}Выдать</button>
+            </form>
+            <div class="admin-actions">
+                <form method="post" class="inline-form" data-confirm="{{ 'Вернуть игрока в охоту, рейтинг и сообщества?' if info.blocked else 'Отстранить игрока? Он пропадёт из рейтинга, не сможет искать тайники, добавлять друзей и вступать в сообщества.' }}" data-confirm-title="Охота за тайниками" data-confirm-ok="{{ 'Вернуть' if info.blocked else 'Отстранить' }}" data-confirm-tone="warn">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="{{ 'unblock' if info.blocked else 'block' }}">
+                    <button class="btn btn-sm" type="submit">{{ icon('check' if info.blocked else 'ban') }}{{ 'Вернуть игрока' if info.blocked else 'Отстранить' }}</button>
+                </form>
+                <form method="post" class="inline-form" data-confirm="Мир игрока начнётся заново: показатели вернутся к 50. Вердикты и карьера останутся." data-confirm-title="Начать мир заново" data-confirm-ok="Начать заново" data-confirm-tone="warn">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="reset_world">
+                    <button class="btn btn-sm" type="submit">{{ icon('refresh') }}Начать мир заново</button>
+                </form>
+                <form method="post" class="inline-form" data-confirm="Удалить все игровые данные игрока: вердикты, карьеру, подарки, находки и активность? Это нельзя отменить.{{ ' Аккаунт останется.' if info.login }}" data-confirm-title="Удалить данные игрока" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="delete">
+                    <button class="btn btn-sm btn-danger" type="submit">{{ icon('trash') }}Удалить данные</button>
+                </form>
+            </div>
+            {% if info.blocked %}<p class="admin-note tone-warn">{{ icon('ban') }}Игрок отстранён: охота, рейтинг, друзья и сообщества для него закрыты.</p>{% endif %}
+        </section>
+
+        <section class="panel admin-card" aria-labelledby="pl-gifts">
+            <h2 class="vz-title" id="pl-gifts">Подарки <span class="vz-count">{{ grants|length }}</span></h2>
+            {% if grants %}
+                <ul class="grant-list">
+                    {% for g in grants %}
+                        <li class="{{ 'is-revoked' if g.revoked_at }}">
+                            {{ gift_card(g) }}
+                            <div class="grant-meta">
+                                <small>{{ {'spot': 'из тайника', 'prize': 'главный приз охоты', 'admin': 'выдан командой'}.get(g.source, g.source) }} · {{ format_datetime(g.created_at) }}{% if g.note %} · {{ g.note }}{% endif %}{% if g.revoked_at %} · отозван {{ format_datetime(g.revoked_at) }}{% endif %}</small>
+                                {% if not g.revoked_at %}
+                                    <form method="post" class="inline-form" data-confirm="Отозвать подарок «{{ g.name }}»? Его опыт перестанет считаться, титул снимется." data-confirm-title="Отозвать подарок" data-confirm-ok="Отозвать" data-confirm-tone="danger">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="action" value="revoke">
+                                        <input type="hidden" name="grant_id" value="{{ g.id }}">
+                                        <button class="link-btn" type="submit">Отозвать</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="vz-empty">{{ icon('gift') }}Подарков нет.</p>
+            {% endif %}
+            {% if finds %}
+                <h3 class="admin-h3">Находки в охоте</h3>
+                <ul class="plain-list">
+                    {% for f in finds %}<li>{{ icon('compass') }}<span>«{{ f.challenge }}» · {{ f.label or HUNT_PAGES.get(f.page, f.page) }}<small>{{ format_datetime(f.created_at) }}</small></span></li>{% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="panel admin-card" aria-labelledby="pl-votes">
+        <h2 class="vz-title" id="pl-votes">Последние вердикты</h2>
+        {% if votes %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th scope="col">Когда</th><th scope="col">Дело</th><th scope="col">Вердикт</th><th scope="col">Режим</th><th scope="col" class="num">Время</th></tr></thead>
+                    <tbody>
+                        {% for v in votes %}
+                            <tr style="{{ category_style(v.category) }}">
+                                <td>{{ format_datetime(v.created_at) }}</td>
+                                <td><a href="{{ url_for('case', id=v.situation_id) }}">{{ v.title }}</a>{% if v.status != 'approved' %} <small>({{ STATUSES.get(v.status, v.status)|lower }})</small>{% endif %}</td>
+                                <td><span class="opt-letter opt-letter-sm">{{ '+' if v.option_key == 'other' else v.option_key }}</span>{% if v.option_key == 'other' and v.reasoning %} <small>{{ excerpt(v.reasoning, 60) }}</small>{% endif %}</td>
+                                <td>{{ 'Быстрый суд' if v.mode == 'quick' else 'Досье' }}{% if v.guess_correct is not none %} · {{ 'угадал' if v.guess_correct else 'не угадал' }}{% endif %}</td>
+                                <td class="num">{{ format_duration(v.duration_ms) if v.duration_ms else '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="vz-empty">{{ icon('gavel') }}Вердиктов пока нет.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel admin-card" aria-labelledby="pl-ach">
+        <h2 class="vz-title" id="pl-ach">Достижения <span class="vz-count">{{ badges|selectattr('unlocked')|list|length }}/{{ badges|length }}</span></h2>
+        <ul class="chips">
+            {% for b in badges if b.unlocked %}<li class="chip chip-accent">{{ icon(b.icon) }}{{ b.name }}</li>{% else %}<li class="vz-empty">Пока ни одного.</li>{% endfor %}
+        </ul>
+    </section>
+</section>
+{% endblock %}

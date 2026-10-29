@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+{% from 'partials/person.html' import person, rank_chip %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Сообщество</span>
+        <h1>Друзья <span class="grad-text">{{ friends|length }}</span></h1>
+        <p class="lead">Друзья видят, как вы решили то же дело, — в итогах после своего вердикта. Соревнуйтесь в <a href="{{ url_for('ratings', scope='friends') }}">рейтинге друзей</a>.</p>
+        {% include 'partials/social_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="social-columns">
+        <div class="social-main">
+            {% if incoming %}
+                <section class="panel admin-card" aria-labelledby="fr-in">
+                    <h2 class="vz-title" id="fr-in">{{ icon('users') }}Хотят дружить <span class="vz-count">{{ incoming|length }}</span></h2>
+                    <ul class="people-list">
+                        {% for r in incoming %}
+                            <li class="people-row">
+                                {{ person(r.login, r.display_name) }}
+                                <span class="people-actions">
+                                    <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="accept"><input type="hidden" name="user_id" value="{{ r.id }}"><button class="btn btn-primary btn-sm" type="submit">{{ icon('check') }}Принять</button></form>
+                                    <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="decline"><input type="hidden" name="user_id" value="{{ r.id }}"><button class="btn btn-ghost btn-sm" type="submit">Отклонить</button></form>
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            <section class="panel admin-card" aria-labelledby="fr-list">
+                <h2 class="vz-title" id="fr-list">Мои друзья</h2>
+                {% if friends %}
+                    <ul class="people-list">
+                        {% for f in friends %}
+                            <li class="people-row">
+                                {{ person(f.login, f.display_name, f.title) }}
+                                <span class="people-meta">{{ rank_chip(f.rank, f.xp) }}{% if f.streak > 1 %}<span class="streak">{{ icon('flame') }}{{ f.streak }} {{ plural(f.streak, 'день', 'дня', 'дней') }}</span>{% endif %}</span>
+                                <form method="post" class="inline-form" data-confirm="Удалить {{ f.display_name }} из друзей?" data-confirm-title="Друзья" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                                    {{ csrf_field() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="user_id" value="{{ f.user_id }}">
+                                    <button class="icon-btn" type="submit" title="Удалить из друзей" aria-label="Удалить {{ f.display_name }} из друзей">{{ icon('x') }}</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="vz-empty">{{ icon('users') }}Пока никого. Добавьте друга по логину — или со страницы игрока в рейтинге.</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <div class="admin-side">
+            <form method="post" class="panel admin-card admin-form" aria-labelledby="fr-add">
+                {{ csrf_field() }}
+                <input type="hidden" name="action" value="add">
+                <h2 class="vz-title" id="fr-add">{{ icon('plus') }}Добавить друга</h2>
+                <label class="field"><span>Логин игрока</span><input type="text" name="login" maxlength="41" placeholder="например, judge_anna" autocomplete="off" required></label>
+                <button class="btn btn-primary btn-sm" type="submit">{{ icon('send') }}Отправить заявку</button>
+                <p class="field-note">{{ icon('info') }}Ваш логин для друзей — <b>{{ current_user().login }}</b>.</p>
+            </form>
+            {% if outgoing %}
+                <section class="panel admin-card" aria-labelledby="fr-out">
+                    <h2 class="vz-title" id="fr-out">Ждут ответа</h2>
+                    <ul class="people-list">
+                        {% for r in outgoing %}
+                            <li class="people-row">
+                                {{ person(r.login, r.display_name, small=true) }}
+                                <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="cancel"><input type="hidden" name="user_id" value="{{ r.id }}"><button class="link-btn" type="submit">Отозвать</button></form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

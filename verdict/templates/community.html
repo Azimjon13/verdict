@@ -1,0 +1,166 @@
+{% extends 'layout.html' %}
+{% from 'partials/report.html' import report_form %}
+{% from 'partials/person.html' import person, rank_chip %}
+{% from 'partials/community_form.html' import community_fields %}
+{% block content %}
+{% set b = SOCIAL.boards[kind] %}
+{% set access = SOCIAL.access[c.access] %}
+{% set me_user = current_user() %}
+{% set active = m and m.status == 'active' %}
+
+<section class="page-hero page-hero-compact" style="--h: {{ c.hue }}">
+    <div class="container">
+        {% include 'partials/social_nav.html' %}
+        <div class="community-head">
+            <span class="community-emblem community-emblem-lg">{{ icon(c.icon) }}</span>
+            <div class="community-id">
+                <span class="kicker">Сообщество · {{ access.name|lower }}</span>
+                <h1>{{ c.name }}</h1>
+                <p class="profile-meta">
+                    <span>{{ icon('users') }}{{ c.members }} {{ plural(c.members, 'участник', 'участника', 'участников') }}</span>
+                    <span>{{ icon('crown') }}основатель <a href="{{ url_for('profile', login=c.owner_login) }}">{{ c.owner_name }}</a></span>
+                    <span>{{ icon('calendar') }}с {{ format_date(c.created_at) }}</span>
+                </p>
+                {% if c.description %}<p class="profile-bio">{{ c.description }}</p>{% endif %}
+            </div>
+            <div class="hero-actions">
+                {% if active %}
+                    <span class="chip chip-mine">{{ icon('check') }}{{ SOCIAL.roles[m.role] }}</span>
+                    {% if m.role != 'owner' %}
+                        <form method="post" class="inline-form" data-confirm="Выйти из сообщества «{{ c.name }}»?" data-confirm-title="Выход из сообщества" data-confirm-ok="Выйти" data-confirm-tone="warn">
+                            {{ csrf_field() }}<input type="hidden" name="action" value="leave"><button class="btn btn-ghost btn-sm" type="submit">{{ icon('logout') }}Выйти</button>
+                        </form>
+                    {% endif %}
+                {% elif m and m.status == 'requested' %}
+                    <span class="chip chip-warn">{{ icon('clock') }}Заявка ждёт одобрения</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="social-columns">
+        <div class="social-main">
+            {% if not m %}
+                <form method="post" class="panel admin-card join-card" aria-labelledby="cm-join">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="join">
+                    <input type="hidden" name="code" value="{{ invite }}">
+                    <h2 class="vz-title" id="cm-join">{{ icon(access.icon) }}{{ 'Вас пригласили' if invite else 'Вступить' }}</h2>
+                    {% if c.rules.strip() %}
+                        <div class="rules-box">{{ paragraphs(c.rules) }}</div>
+                        <label class="check"><input type="checkbox" name="accept_rules" value="1"><span class="check-box">{{ icon('check') }}</span><span>Я принимаю правила сообщества</span></label>
+                    {% endif %}
+                    {% if not me_user %}
+                        <a class="btn btn-primary" href="{{ url_for('login', back=request.full_path.rstrip('?')) }}">{{ icon('login') }}Войти, чтобы вступить</a>
+                    {% elif c.access == 'invite' and not invite %}
+                        <p class="vz-empty">{{ icon('lock') }}Сюда вступают только по ссылке-приглашению — попросите её у участников.</p>
+                    {% else %}
+                        <button class="btn btn-primary" type="submit">{{ icon('plus') }}{{ 'Отправить заявку' if c.access == 'request' and not invite else 'Вступить' }}</button>
+                    {% endif %}
+                </form>
+            {% elif c.rules.strip() %}
+                <details class="panel admin-card rules-card">
+                    <summary class="vz-title">{{ icon('clipboard') }}Правила сообщества</summary>
+                    <div class="rules-box">{{ paragraphs(c.rules) }}</div>
+                </details>
+            {% endif %}
+
+            <section class="panel admin-card" aria-labelledby="cm-rating">
+                <div class="gifts-head">
+                    <h2 class="vz-title" id="cm-rating">{{ icon('trending') }}Рейтинг сообщества</h2>
+                    <div class="tabs tabs-sm" role="tablist" aria-label="Что сравниваем">
+                        {% for key, bd in SOCIAL.boards.items() %}
+                            <a role="tab" href="{{ url_for('community', slug=c.slug, board=key) }}" class="tab{{ ' active' if kind == key }}" aria-selected="{{ 'true' if kind == key else 'false' }}">{{ bd.name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <p class="vz-sub">{{ b.desc }}{% if kind == 'season' %} Сезон — {{ season_name }}.{% endif %}</p>
+                {% if rows %}
+                    <ol class="rating-list rating-list-compact">
+                        {% for r in rows[:50] %}
+                            <li class="rating-row{{ ' is-me' if me_user and r.user_id == me_user.id }}{{ ' is-top top-' ~ r.place if r.place <= 3 }}">
+                                <span class="rating-place">{% if r.place <= 3 %}{{ icon('crown' if r.place == 1 else 'medal') }}{% endif %}<b>{{ r.place }}</b></span>
+                                {{ person(r.login, r.display_name, r.title, small=true) }}
+                                <span class="rating-value"><b>{{ r.value }}</b> {{ b.unit }}{% if r.note %}<small>{{ r.note }}</small>{% endif %}</span>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="vz-empty">{{ icon('trending') }}В этом рейтинге пока никого — выносите вердикты!</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <div class="admin-side">
+            {% if manage and requests %}
+                <section class="panel admin-card" aria-labelledby="cm-req">
+                    <h2 class="vz-title" id="cm-req">{{ icon('clipboard') }}Заявки <span class="vz-count">{{ requests|length }}</span></h2>
+                    <ul class="people-list">
+                        {% for r in requests %}
+                            <li class="people-row">
+                                {{ person(r.login, r.display_name, small=true) }}
+                                <span class="people-actions">
+                                    <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="approve"><input type="hidden" name="user_id" value="{{ r.id }}"><button class="btn btn-primary btn-sm" type="submit">{{ icon('check') }}Принять</button></form>
+                                    <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="decline"><input type="hidden" name="user_id" value="{{ r.id }}"><button class="icon-btn" type="submit" aria-label="Отклонить {{ r.display_name }}" title="Отклонить">{{ icon('x') }}</button></form>
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            <section class="panel admin-card" aria-labelledby="cm-people">
+                <h2 class="vz-title" id="cm-people">{{ icon('users') }}Участники <span class="vz-count">{{ active_members|length }}</span></h2>
+                <ul class="people-list">
+                    {% for p in active_members %}
+                        <li class="people-row">
+                            {{ person(p.login, p.display_name, small=true) }}
+                            {% if p.role != 'member' %}<span class="chip chip-sm{{ ' chip-accent' if p.role == 'owner' else '' }}">{{ SOCIAL.roles[p.role] }}</span>{% endif %}
+                            {% if manage and p.role != 'owner' and (owner or p.role == 'member') and p.id != me_user.id %}
+                                <span class="people-actions">
+                                    {% if owner %}
+                                        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="{{ 'demote' if p.role == 'moderator' else 'promote' }}"><input type="hidden" name="user_id" value="{{ p.id }}"><button class="link-btn" type="submit">{{ 'Снять модератора' if p.role == 'moderator' else 'Сделать модератором' }}</button></form>
+                                    {% endif %}
+                                    <form method="post" class="inline-form" data-confirm="Исключить {{ p.display_name }} из сообщества?" data-confirm-title="Исключение" data-confirm-ok="Исключить" data-confirm-tone="danger">{{ csrf_field() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="user_id" value="{{ p.id }}"><button class="icon-btn" type="submit" aria-label="Исключить {{ p.display_name }}" title="Исключить">{{ icon('x') }}</button></form>
+                                </span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            {% if manage %}
+                <section class="panel admin-card" aria-labelledby="cm-invite">
+                    <h2 class="vz-title" id="cm-invite">{{ icon('link') }}Ссылка-приглашение</h2>
+                    <p class="vz-sub">По ней вступают сразу, без заявки — даже в закрытое сообщество. Отправьте её тем, кого зовёте.</p>
+                    <div class="gift-code"><code class="invite-code">{{ invite_url }}</code></div>
+                    <button type="button" class="btn btn-sm" data-copy="{{ invite_url }}">{{ icon('copy') }}<span>Скопировать</span></button>
+                    {% if owner %}
+                        <form method="post" class="inline-form" data-confirm="Создать новую ссылку? Старая перестанет работать." data-confirm-title="Новая ссылка" data-confirm-ok="Создать" data-confirm-tone="warn">
+                            {{ csrf_field() }}<input type="hidden" name="action" value="regen"><button class="link-btn" type="submit">Новая ссылка (старая перестанет работать)</button>
+                        </form>
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            {% if owner %}
+                <details class="panel admin-card"{{ ' open' if errors }} id="settings">
+                    <summary class="vz-title">{{ icon('sliders') }}Настройки сообщества</summary>
+                    <form method="post" class="admin-form">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="action" value="save">
+                        {{ community_fields(c, errors) }}
+                        <button class="btn btn-primary btn-sm" type="submit">{{ icon('check') }}Сохранить</button>
+                    </form>
+                    <form method="post" class="inline-form" data-confirm="Удалить сообщество «{{ c.name }}» со всеми участниками? Это нельзя отменить." data-confirm-title="Удаление сообщества" data-confirm-ok="Удалить" data-confirm-tone="danger">
+                        {{ csrf_field() }}<input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-ghost btn-danger" type="submit">{{ icon('trash') }}Удалить сообщество</button>
+                    </form>
+                </details>
+            {% endif %}
+            {% if not owner %}{{ report_form('community', c.id) }}{% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

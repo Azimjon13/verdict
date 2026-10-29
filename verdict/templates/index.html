@@ -1,0 +1,269 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="hero">
+    <div class="container hero-grid">
+        <div class="hero-copy">
+            <span class="kicker reveal">Симулятор решений и суждений · MVP</span>
+            <h1 class="hero-title reveal">
+                Нет правильного ответа.<br>
+                Есть только твой <span class="glitch grad-text" data-text="вердикт">вердикт</span>.
+            </h1>
+            <p class="lead reveal">Вымышленные миры, спорные поступки и свидетели, которые могут лгать. Оцени обстоятельства, прими решение — и столкнись с его последствиями.</p>
+
+            <div class="terminal reveal" aria-hidden="true">
+                <span class="t-dot"></span><span class="t-dot"></span><span class="t-dot"></span>
+                <code><span class="t-prompt">&gt;</span> обвиняемый признан: <span class="t-word" data-words='["ВИНОВЕН","ОПРАВДАН","ПРОЩЁН","ИЗГНАН","ЧАСТИЧНО ОТВЕТСТВЕНЕН","???"]'>ВИНОВЕН</span><span class="t-caret"></span></code>
+            </div>
+
+            <div class="hero-actions reveal">
+                <a class="btn btn-primary btn-lg" href="{{ url_for('quick') }}">{{ icon('play') }}Начать игру</a>
+                <a class="btn btn-lg" href="{{ url_for('create') }}">{{ icon('edit') }}Стать автором</a>
+            </div>
+
+            <div class="stats reveal">
+                <div class="stat"><b data-count="{{ stats.approved }}">{{ stats.approved }}</b><span>дел в игре</span></div>
+                <div class="stat"><b data-count="{{ CATEGORIES|length }}">{{ CATEGORIES|length }}</b><span>категорий</span></div>
+                <div class="stat"><b data-count="{{ WORLDS|length }}">{{ WORLDS|length }}</b><span>типов миров</span></div>
+                <div class="stat"><b data-count="{{ stats.votes }}">{{ stats.votes }}</b><span>вердиктов</span></div>
+            </div>
+        </div>
+
+        <div class="hero-visual reveal" aria-hidden="true">
+            <div class="core">
+                <div class="core-halo"></div>
+                <div class="ring ring-1"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-3"></div>
+                <svg class="ring-ticks" viewBox="0 0 100 100"><circle cx="50" cy="50" r="47"/></svg>
+                <svg class="ring-arc" viewBox="0 0 100 100"><circle cx="50" cy="50" r="41"/></svg>
+                <div class="ring ring-core"></div>
+                <div class="core-icon">{{ icon('scale') }}</div>
+                <span class="orbit-tag t1">ВИНОВЕН</span>
+                <span class="orbit-tag t2">ОПРАВДАН</span>
+                <span class="orbit-tag t3">ИЗГНАН</span>
+                <span class="orbit-tag t4">ПРОЩЁН</span>
+                <span class="orbit-tag t5">КОМПЕНСАЦИЯ</span>
+                <span class="core-readout r1">ДОВЕРИЕ <b>+12</b></span>
+                <span class="core-readout r2">АВТОРИТЕТ <b class="neg">−8</b></span>
+            </div>
+        </div>
+    </div>
+    <a class="scroll-cue" href="#how" aria-label="Листать вниз"><span></span></a>
+</section>
+
+{% if daily_case %}
+{% set dc = daily_case %}
+{% set dcat = CATEGORIES.get(dc.category, {'name': dc.category, 'icon': 'circle'}) %}
+{% set left = daily.seconds_left %}
+<section class="section section-tight" id="daily">
+    <div class="container">
+        <article class="panel daily-card reveal" style="{{ category_style(dc.category) }}">
+            <div class="daily-main">
+                <span class="kicker">Дело дня</span>
+                <h2 class="daily-title">{{ dc.title }}</h2>
+                <div class="featured-meta">
+                    <span class="chip chip-cat chip-sm">{{ icon(dcat.icon) }}{{ dcat.name }}</span>
+                    <span class="chip chip-sm">{{ icon('map-pin') }}{{ excerpt(dc.world.place, 60) }}</span>
+                </div>
+                <p class="daily-teaser">{{ excerpt(dc.story, 230) }}</p>
+                <div class="hero-actions">
+                    {% if daily.today %}
+                        <a class="btn" href="{{ url_for('quick_case', id=dc.id) }}">{{ icon('check-circle') }}Вердикт вынесен — посмотреть итог</a>
+                    {% elif daily.judged %}
+                        <a class="btn" href="{{ url_for('quick_case', id=dc.id) }}">{{ icon('check-circle') }}Вы уже судили это дело</a>
+                    {% else %}
+                        <a class="btn btn-primary" href="{{ url_for('quick_case', id=dc.id) }}">{{ icon('gavel') }}Судить дело дня<span class="btn-badge">+{{ daily.bonus }} XP</span></a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="daily-side">
+                <div class="daily-stat"><span class="label-mono">{{ icon('clock') }}Новое дело через</span><b>{{ left // 3600 }} ч {{ (left % 3600) // 60 }} мин</b></div>
+                <div class="daily-stat"><span class="label-mono">{{ icon('flame') }}Дней подряд</span><b>{{ career.streak }}</b>{% if career.best_streak > career.streak %}<small>рекорд: {{ career.best_streak }}</small>{% endif %}</div>
+                <a class="daily-stat daily-rank" href="{{ url_for('judge') }}#career"><span class="label-mono">{{ icon(career.rank.icon) }}Ваш ранг</span><b>{{ career.rank.name }}</b><small>{{ career.xp }} XP</small></a>
+            </div>
+        </article>
+    </div>
+</section>
+{% endif %}
+
+{% if campaign_items %}
+{% from 'partials/campaign_card.html' import campaign_card %}
+<section class="section section-tight" id="campaigns">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">Сюжетные кампании</span>
+            <h2>Вердикт, который <span class="grad-text">не забудут</span></h2>
+            <p>Несколько связанных дел: каждое следующее начинается с последствий вашего прошлого решения.</p>
+        </div>
+        <div class="campaign-grid">{% for item in campaign_items %}{{ campaign_card(item) }}{% endfor %}</div>
+    </div>
+</section>
+{% endif %}
+
+<section class="section" id="how">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">01 // Как это работает</span>
+            <h2>Четыре шага до приговора</h2>
+            <p class="lead">Хорошее дело заставляет остановиться и подумать. Здесь сложно сразу понять, кто прав, кто виноват и какое решение верное.</p>
+        </div>
+        <div class="steps">
+            {% for ic, heading, text in [
+                ('globe', 'Изучи мир', 'Постапокалипсис, древнее царство или космическая колония: законы каждого мира меняют цену решения.'),
+                ('search', 'Взвесь улики', 'Отдели факты от догадок. Свидетели могут ошибаться, лгать или преследовать свой интерес.'),
+                ('gavel', 'Вынеси вердикт', 'Виновен, оправдан, изгнан, прощён — или собственное обоснованное решение.'),
+                ('activity', 'Живи с последствиями', 'Репутация, авторитет, ресурсы и доверие меняются. Мир помнит твои решения.'),
+            ] %}
+                <div class="card step reveal" style="--delay: {{ loop.index0 * 80 }}ms">
+                    <span class="step-num">0{{ loop.index }}</span>
+                    <span class="step-icon">{{ icon(ic) }}</span>
+                    <h3>{{ heading }}</h3>
+                    <p>{{ text }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">02 // Форматы дел</span>
+            <h2>Наедине с собой — или на глазах у толпы</h2>
+        </div>
+        <div class="types">
+            {% for key, t in SITUATION_TYPES.items() %}
+                <div class="card type-card reveal type-{{ key }}" style="--delay: {{ loop.index0 * 90 }}ms">
+                    <div class="type-visual" aria-hidden="true">
+                        {% for i in range({'private': 1, 'witness': 4, 'public': 14}[key]) %}<i style="--i: {{ i }}"></i>{% endfor %}
+                    </div>
+                    <span class="type-icon">{{ icon(t.icon) }}</span>
+                    <h3>{{ t.name }}</h3>
+                    <p>{{ t.desc }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section" id="categories">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">03 // Категории</span>
+            <h2>Десять арен для твоей совести</h2>
+        </div>
+        <div class="cat-grid">
+            {% for key, c in CATEGORIES.items() %}
+                {% set n = by_category[key] %}
+                <a class="card cat-card interactive reveal" href="{{ url_for('play', category=key) }}" style="{{ category_style(key) }}; --delay: {{ (loop.index0 % 5) * 60 }}ms">
+                    <span class="cat-icon">{{ icon(c.icon) }}</span>
+                    <h3>{{ c.name }}</h3>
+                    <p>{{ c.desc }}</p>
+                    <span class="cat-count">{{ (n ~ ' ' ~ plural(n, 'дело', 'дела', 'дел')) if n else 'Скоро' }}</span>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section section-tight">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">04 // Миры</span>
+            <h2>Полностью вымышленные миры</h2>
+            <p class="lead">Ни одной реальной страны, современной политики или действующих законов. Решение зависит от обстоятельств конкретного мира.</p>
+        </div>
+    </div>
+    <div class="marquee reveal" aria-label="Сеттинги">
+        <div class="marquee-track">
+            {% for k in range(2) %}{% for w in WORLDS %}
+                <span class="world-chip"{% if k %} aria-hidden="true"{% endif %}>{{ icon(w.icon) }}{{ w.name }}</span>
+            {% endfor %}{% endfor %}
+        </div>
+    </div>
+</section>
+
+{% if featured %}
+{% set fc = CATEGORIES.get(featured.category) %}
+{% set ft = SITUATION_TYPES.get(featured.type, {}) %}
+<section class="section">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">05 // {{ 'Самое спорное дело' if featured_contro.value is not none else 'Дело дня' }}</span>
+            <h2>Игроки не могут договориться</h2>
+        </div>
+        <article class="panel featured reveal hud" style="{{ category_style(featured.category) }}">
+            <div class="featured-main">
+                <div class="featured-meta">
+                    <span class="case-no">{{ case_number(featured.id) }}</span>
+                    <span class="chip chip-cat">{{ icon(fc.icon if fc else 'circle') }}{{ fc.name if fc else '' }}</span>
+                    <span class="chip">{{ icon(ft.get('icon', 'circle')) }}{{ ft.get('name', '') }}</span>
+                </div>
+                <h3 class="featured-title">{{ featured.title }}</h3>
+                <p class="featured-setting">{{ icon('map-pin') }}{{ featured.world.place }} · {{ featured.world.era }}</p>
+                <p class="featured-teaser">{{ excerpt(featured.story, 320) }}</p>
+                {% if featured.ambiguity.conflict %}
+                    <p class="featured-conflict">{{ icon('swords') }}{{ featured.ambiguity.conflict }}</p>
+                {% endif %}
+                <a class="btn btn-primary" href="{{ url_for('case', id=featured.id) }}">Открыть дело{{ icon('arrow-right') }}</a>
+            </div>
+            <div class="featured-side">
+                <div class="featured-heat">
+                    <span class="label-mono">Индекс спорности</span>
+                    <b>{{ '—' if featured_contro.value is none else featured_contro.value ~ '%' }}</b>
+                    <span>{{ featured_contro.label }}</span>
+                </div>
+                <ul class="featured-options">
+                    {% for d in featured.decisions[:4] %}
+                        <li><span class="opt-letter opt-letter-sm">{{ d.key }}</span>{{ excerpt(d.text, 60) }}</li>
+                    {% endfor %}
+                    {% if featured.decisions|length > 4 %}<li class="more">+ ещё {{ featured.decisions|length - 4 }} и «своё решение»</li>{% endif %}
+                </ul>
+            </div>
+        </article>
+    </div>
+</section>
+{% endif %}
+
+<section class="section">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="kicker">06 // Путь проекта</span>
+            <h2>Мы в самом начале</h2>
+            <p class="lead">Free-to-play с рекламой и premium-функциями. Сейчас формируем первый массив игрового контента для MVP.</p>
+        </div>
+        <ol class="roadmap reveal">
+            {% for step in ROADMAP %}
+                <li class="{{ 'now' if loop.first }}">
+                    <span class="road-dot"></span>
+                    <span class="road-step">Этап 0{{ loop.index }}</span>
+                    <b>{{ step }}</b>
+                    {% if loop.first %}<span class="road-now">Вы здесь</span>{% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="cta panel reveal">
+            <div class="cta-copy">
+                <span class="kicker">Для авторов контента</span>
+                <h2>Создай дело, о котором будут спорить</h2>
+                <p class="lead">Если после прохождения два игрока начинают спорить — «Я бы его оправдал» / «Нет, он был угрозой для всех» — это лучший результат. Участие в долгосрочной программе вознаграждения авторов.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('create') }}">{{ icon('edit') }}Создать ситуацию</a>
+                    <a class="btn btn-lg" href="{{ url_for('brief') }}">{{ icon('file') }}Прочитать бриф</a>
+                </div>
+            </div>
+            <div class="cta-quotes" aria-hidden="true">
+                <div class="bubble bubble-a">«Я бы его оправдал».</div>
+                <div class="bubble bubble-b">«Нет, он представлял угрозу для всех».</div>
+                <div class="bubble bubble-c">«По закону он виновен, но если учитывать обстоятельства…»</div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

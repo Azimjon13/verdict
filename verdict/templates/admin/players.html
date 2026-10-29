@@ -1,0 +1,92 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% macro qs(over) %}{{ url_for('admin.players_page', **dict({'q': q, 'who': who, 'sort': sort, 'page': 1}, **over)) }}{% endmacro %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Игроки <span class="grad-text">{{ compact(total) }}</span></h1>
+        <p class="lead">Каждый, кто заходил в игру: анонимный игрок из cookie или с аккаунтом. Откройте игрока, чтобы увидеть его вердикты, подарки и находки, выдать подарок или отстранить от охоты.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <form method="get" class="panel admin-filters" role="search">
+        <label class="field admin-search">
+            <span>Поиск</span>
+            <input type="text" name="q" value="{{ q }}" placeholder="Логин, имя или начало id игрока">
+        </label>
+        <div class="tabs" role="tablist" aria-label="Кто">
+            {% for key, label in [('players', 'С вердиктами'), ('accounts', 'С аккаунтом'), ('blocked', 'Отстранены'), ('all', 'Все посетители')] %}
+                <a role="tab" href="{{ qs({'who': key}) }}" class="tab{{ ' active' if who == key }}" aria-selected="{{ 'true' if who == key else 'false' }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+        <label class="admin-sort">
+            <span class="label-mono">Сортировка</span>
+            <select class="vs" name="sort" data-autosubmit data-size="sm">
+                {% for key, label in [('recent', 'Недавно заходили'), ('xp', 'Больше опыта'), ('verdicts', 'Больше вердиктов'), ('new', 'Новые'), ('finds', 'Больше находок')] %}
+                    <option value="{{ key }}"{{ ' selected' if sort == key }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <input type="hidden" name="who" value="{{ who }}">
+        <button class="btn btn-sm" type="submit">{{ icon('search') }}Найти</button>
+    </form>
+
+    {% if rows %}
+        <div class="panel admin-table-wrap">
+            <table class="admin-table admin-players">
+                <thead>
+                    <tr>
+                        <th scope="col">Игрок</th>
+                        <th scope="col">Ранг</th>
+                        <th scope="col" class="num">Вердиктов</th>
+                        <th scope="col" class="num">Серия</th>
+                        <th scope="col" class="num">Дней</th>
+                        <th scope="col" class="num">Подарков</th>
+                        <th scope="col">Последний раз</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                        <tr>
+                            <td>
+                                <a class="player-cell" href="{{ url_for('admin.player_page', voter=r.voter) }}">
+                                    {% if r.display_name %}
+                                        <span class="avatar avatar-xs" style="--ah: {{ name_hue(r.display_name) }}">{{ initials(r.display_name) }}</span>
+                                        <span><b>{{ r.display_name }}</b><small>@{{ r.login }}</small></span>
+                                    {% else %}
+                                        <span class="avatar avatar-xs avatar-anon">{{ icon('user') }}</span>
+                                        <span><b>Аноним</b><small class="mono">{{ r.voter[:10] }}…</small></span>
+                                    {% endif %}
+                                    {% if r.blocked %}<span class="chip chip-sm chip-danger">{{ icon('ban') }}Отстранён</span>{% endif %}
+                                </a>
+                            </td>
+                            <td><span class="rank-cell">{{ icon(r.rank.icon) }}{{ r.rank.name }}<small>{{ r.xp }} XP</small></span></td>
+                            <td class="num">{{ r.verdicts }}</td>
+                            <td class="num">{{ r.streak or 0 }}{% if r.best_streak and r.best_streak > (r.streak or 0) %}<small> / {{ r.best_streak }}</small>{% endif %}</td>
+                            <td class="num">{{ r.days }}</td>
+                            <td class="num">{{ r.gifts }}{% if r.finds %}<small> · {{ r.finds }} {{ icon('compass') }}</small>{% endif %}</td>
+                            <td>{{ format_date(r.last_day) if r.last_day else (format_date(r.last_vote) or '—') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if pages > 1 %}
+            <nav class="pager" aria-label="Страницы">
+                {% if pg > 1 %}<a class="btn btn-sm" href="{{ qs({'page': pg - 1}) }}">{{ icon('arrow-left') }}Назад</a>{% endif %}
+                <span>Страница {{ pg }} из {{ pages }}</span>
+                {% if pg < pages %}<a class="btn btn-sm" href="{{ qs({'page': pg + 1}) }}">Дальше{{ icon('arrow-right') }}</a>{% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="empty panel">
+            {{ icon('users') }}
+            <h2>{{ 'Никого не нашлось' if q else 'Игроков пока нет' }}</h2>
+            <p>{{ 'Попробуйте другой запрос или вкладку.' if q else 'Игроки появятся, когда кто-нибудь вынесет первый вердикт.' }}</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

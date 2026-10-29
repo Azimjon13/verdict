@@ -1,0 +1,43 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Команда</span>
+        <h1>Пользователи <span class="grad-text">и авторы</span></h1>
+        <p class="lead">Авторы добавляют ситуации, команда отбирает их, видит скрытую информацию и экспортирует контент для игры.</p>
+    </div>
+</section>
+
+<section class="container section-top-0 users-section">
+    <div class="users-list">
+        {% for u in users %}
+            {% set is_me = u.id == me_id %}
+            {% set team = u.role == 'admin' %}
+            <article class="panel user-row">
+                <span class="avatar" style="--ah: {{ name_hue(u.display_name) }}">{{ initials(u.display_name) }}</span>
+                <div class="user-main">
+                    <h3>{{ u.display_name }}{% if is_me %} <small>(вы)</small>{% endif %}</h3>
+                    <p class="lib-sub">{{ icon('user') }}@{{ u.login }}<span class="sep">·</span>{{ icon('calendar') }}с {{ format_date(u.created_at) }}<span class="sep">·</span>{{ ('последний вход ' ~ format_date(u.last_login_at)) if u.last_login_at else 'входа ещё не было' }}</p>
+                </div>
+                <div class="lib-stats">
+                    <span title="Ситуаций">{{ icon('file') }}{{ u.situations|int }}</span>
+                    <span title="В игре">{{ icon('check') }}{{ u.approved|int }}</span>
+                </div>
+                <form method="post" class="inline-form role-form"
+                      data-confirm="{{ ('Снять с «' ~ u.display_name ~ '» права команды? Пользователь останется автором.') if team else ('Дать «' ~ u.display_name ~ '» права команды? Пользователь сможет одобрять, удалять и экспортировать ситуации и видеть скрытую информацию.') }}"
+                      data-confirm-title="{{ 'Снять права команды' if team else 'Права команды' }}"
+                      data-confirm-ok="{{ 'Снять права' if team else 'Дать права' }}"
+                      data-confirm-tone="{{ 'danger' if team else 'warn' }}">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="id" value="{{ u.id }}">
+                    <select class="vs" name="role" data-autosubmit data-size="sm" data-align="right" aria-label="Роль: {{ u.display_name }}">
+                        <option value="author"{{ option_icon('user', 190) }} data-desc="Добавляет ситуации"{{ ' selected' if u.role == 'author' }}>{{ ROLES.author }}</option>
+                        <option value="admin"{{ option_icon('shield', 150) }} data-desc="Отбор, скрытое, экспорт"{{ ' selected' if u.role == 'admin' }}>{{ ROLES.admin }}</option>
+                    </select>
+                </form>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

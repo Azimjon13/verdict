@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+{% import 'admin/_forms.html' as f %}
+{% block content %}
+{% set states = {'draft': ('Черновик', 'draft'), 'soon': ('Скоро начнётся', 'pending'), 'running': ('Идёт', 'approved'),
+                 'over': ('Время вышло', 'rejected'), 'ended': ('Завершена', 'rejected')} %}
+
+<section class="page-hero page-hero-compact admin-hero">
+    <div class="container">
+        <span class="kicker">Админка</span>
+        <h1>Охота <span class="grad-text">за тайниками</span></h1>
+        <p class="lead">Спрячьте на страницах сайта тайники с подарками. Игрок, который заметит тайник и нажмёт на него, получит подарок. Охота идёт в заданные даты; за все тайники можно назначить главный приз.</p>
+        {% include 'admin/_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 admin-section">
+    <div class="admin-grid admin-grid-wide">
+        <div class="admin-list">
+            {% for c in items %}
+                {% set st = states[c.state] %}
+                <a class="panel hunt-row" href="{{ url_for('admin.hunt_page', challenge_id=c.id) }}">
+                    <span class="hunt-row-icon">{{ icon('compass') }}</span>
+                    <span class="hunt-row-main">
+                        <b>{{ c.title }}</b>
+                        <small>
+                            {% if c.starts_at or c.ends_at %}{{ format_datetime(c.starts_at) or 'сразу' }} — {{ format_datetime(c.ends_at) or 'без конца' }} UTC{% else %}без сроков{% endif %}
+                            · {{ c.spots }} {{ plural(c.spots, 'тайник', 'тайника', 'тайников') }} · {{ c.finds }} {{ plural(c.finds, 'находка', 'находки', 'находок') }}, {{ c.finders }} {{ plural(c.finders, 'игрок', 'игрока', 'игроков') }}
+                        </small>
+                    </span>
+                    <span class="status status-{{ st[1] }}">{{ st[0] }}</span>
+                </a>
+            {% else %}
+                <div class="empty panel">
+                    {{ icon('compass') }}
+                    <h2>Охот ещё не было</h2>
+                    <p>Создайте первую: дайте ей название и даты, затем добавьте тайники и разместите их кликом на нужных страницах. Сначала заведите <a href="{{ url_for('admin.gifts_page') }}">подарки</a> — их кладут в тайники.</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" class="panel admin-card admin-form" id="new">
+            {{ csrf_field() }}
+            <h2 class="vz-title">Новая охота</h2>
+            {{ f.challenge_fields(values, errors, gifts) }}
+            <button class="btn btn-primary" type="submit">{{ icon('plus') }}Создать охоту</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

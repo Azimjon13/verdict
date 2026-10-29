@@ -1,0 +1,215 @@
+{% extends 'layout.html' %}
+{% from 'partials/gift.html' import gift_card %}
+{% block content %}
+{% macro lean_pct(x) %}{{ ('+' if x > 0 else ('−' if x < 0 else '')) ~ (round_half_up(x * 100)|int|abs) ~ '%' }}{% endmacro %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container judge-container">
+        <span class="kicker">Профиль судьи</span>
+        <h1>Какой вы <span class="grad-text">судья?</span></h1>
+        <p class="lead">Профиль складывается из ваших вердиктов: какие показатели мира вы склонны поднимать, как часто решаете так же, как большинство, и сколько думаете над делом. Он меняется с каждым вердиктом и хранится в этом браузере.</p>
+    </div>
+</section>
+
+<section class="container judge-container section-top-0 judge-section">
+    {% set r = career.rank %}
+    <section class="panel career-panel" id="career" aria-labelledby="career-title">
+        <div class="cp-rank">
+            <span class="cp-emblem">{{ icon(r.icon) }}<small>{{ r.level }}/{{ r.levels }}</small></span>
+            <div class="cp-body">
+                <span class="label-mono">Карьера судьи</span>
+                <h2 id="career-title">{{ r.name }}</h2>
+                {% if career.title %}<span class="cp-title">{{ icon('tag') }}{{ career.title }}</span>{% endif %}
+                <div class="cp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (r.progress * 100)|round|int }}" aria-label="До следующего ранга"><i style="width: {{ (r.progress * 100)|round|int }}%"></i></div>
+                <p class="cp-next"><b>{{ career.xp }} XP</b>{% if r.next %} · до ранга «{{ r.next.name }}» {{ r.to_next }} XP{% else %} · высший ранг{% endif %}</p>
+            </div>
+        </div>
+        <ul class="cp-ladder" aria-label="Ранги">
+            {% for k in RANKS %}
+                <li class="{{ 'is-done' if career.xp >= k.xp }}{{ ' is-now' if k.key == r.key }}" title="{{ k.xp }} XP">{{ icon(k.icon) }}<span>{{ k.name }}</span></li>
+            {% endfor %}
+        </ul>
+        <div class="cp-stats">
+            <div><b>{{ career.streak }}</b><span>{{ plural(career.streak, 'день', 'дня', 'дней') }} подряд</span></div>
+            <div><b>{{ career.best_streak }}</b><span>рекорд серии</span></div>
+            <div><b>{{ career.daily_done }}</b><span>{{ plural(career.daily_done, 'дело дня', 'дела дня', 'дел дня') }}</span></div>
+            <div><b>{{ badges|selectattr('unlocked')|list|length }}/{{ badges|length }}</b><span>достижений</span></div>
+        </div>
+        <p class="cp-how">{{ icon('info') }}<span>XP: вердикт +{{ XP.verdict }}, угаданное большинство +{{ XP.guess }}, дело дня в тот же день +{{ XP.daily }}.{% if daily.id and not daily.judged %} <a href="{{ url_for('quick_case', id=daily.id) }}">Сегодняшнее дело дня ждёт вас</a>.{% endif %}</span></p>
+    </section>
+
+    {% if shared %}
+        {% set st = JUDGE_ARCHETYPES[shared] %}
+        <div class="panel judge-shared">
+            <span class="jd-emblem jd-emblem-sm">{{ icon(st.icon) }}</span>
+            <div>
+                <span class="label-mono">Вам прислали профиль судьи</span>
+                <h2>«{{ st.name }}»</h2>
+                <p>{{ st.desc }}</p>
+                {% if not style %}<a class="btn btn-primary btn-sm" href="{{ url_for('quick') }}">{{ icon('play') }}Узнать, какой судья вы</a>{% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if not style %}
+        {% set shown = [p.decided, JUDGE_MIN_VERDICTS]|min %}
+        <div class="panel judge-locked">
+            <span class="jd-emblem jd-emblem-locked">{{ icon('lock') }}</span>
+            <h2>Профиль откроется после {{ JUDGE_MIN_VERDICTS }} вердиктов</h2>
+            <p class="muted">Осталось {{ p.left }} {{ plural(p.left, 'вердикт', 'вердикта', 'вердиктов') }}. Вариант «Другое решение» не считается: профиль строится по тому, какие варианты вы выбираете.</p>
+            <div class="jd-progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ JUDGE_MIN_VERDICTS }}" aria-valuenow="{{ shown }}" aria-label="Вердиктов для профиля">
+                <i style="width: {{ [100, round_half_up(p.decided / JUDGE_MIN_VERDICTS * 100)|int]|min }}%"></i>
+            </div>
+            <p class="jd-progress-label">{{ shown }} из {{ JUDGE_MIN_VERDICTS }}</p>
+            <ul class="jd-preview">
+                <li>{{ icon('sparkles') }}Ваш судейский стиль — один из {{ JUDGE_ARCHETYPES|length }}</li>
+                <li>{{ icon('chart') }}Какие показатели мира вы склонны поднимать и опускать</li>
+                <li>{{ icon('users') }}Как часто вы решаете так же, как большинство</li>
+            </ul>
+            <a class="btn btn-primary" href="{{ url_for('quick') }}">{{ icon('play') }}Быстрый суд</a>
+        </div>
+    {% else %}
+        <article class="panel judge-card">
+            <span class="jd-emblem">{{ icon(style.icon) }}</span>
+            <div class="jd-head">
+                <span class="label-mono">Ваш стиль</span>
+                <h2>{{ style.name }}</h2>
+                {% if census.players >= 5 %}
+                    <p class="jd-census">{{ icon('users') }}Так судят {{ round_half_up(census.shares.get(p.archetype, 0) * 100)|int }}% игроков с открытым профилем</p>
+                {% endif %}
+            </div>
+            <p class="jd-desc">{{ style.desc }}</p>
+            <div class="jd-sides">
+                <div><span class="label-mono">{{ icon('check-circle') }}Сильная сторона</span><p>{{ style.strength }}</p></div>
+                <div><span class="label-mono">{{ icon('eye-off') }}Слепое пятно</span><p>{{ style.blind }}</p></div>
+            </div>
+            {% if traits %}
+                <ul class="jd-traits" aria-label="Черты">
+                    {% for ic, label in traits %}<li>{{ icon(ic) }}{{ label }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+            <div class="jd-actions">
+                <button type="button" class="btn" data-share data-share-url="{{ url_for('judge', a=p.archetype) }}"
+                        data-share-text="Мой стиль в VERDICT — «{{ style.name }}». А какой судья вы?">{{ icon('share') }}<span>Поделиться</span></button>
+                <a class="btn btn-primary" href="{{ url_for('quick') }}">{{ icon('play') }}Судить дальше</a>
+            </div>
+        </article>
+
+        <section class="panel jd-chart" aria-labelledby="jd-chart-title">
+            <h2 class="jd-chart-title" id="jd-chart-title">Какие показатели мира вы поднимаете</h2>
+            <p class="jd-chart-sub">По сравнению с другими вариантами в тех же делах. +100% — вы всегда выбирали вариант, который поднимает показатель сильнее всех; −100% — сильнее всех опускает; 0 — как в среднем.</p>
+            <div class="jd-legend" aria-hidden="true"><span class="down"><i></i>опускаете</span><span class="up"><i></i>поднимаете</span></div>
+            <div class="jd-rows">
+                {% for m, meta in METRICS.items() %}
+                    {% set l = p.leans[m] %}
+                    {% set w = [100, (l.lean|abs) * 100]|min %}
+                    <div class="jd-row" tabindex="0" aria-describedby="jd-tip-{{ m }}">
+                        <span class="jd-metric">{{ icon(meta.icon) }}{{ meta.name }}</span>
+                        <span class="jd-track">
+                            <span class="jd-zero"></span>
+                            {% if l.relevant > 0 and w >= 1 %}
+                                <span class="jd-bar {{ 'up' if l.lean > 0 else 'down' }}" style="width: {{ (w / 2)|round(1) }}%"></span>
+                            {% endif %}
+                        </span>
+                        <span class="jd-value">{{ lean_pct(l.lean) if l.relevant > 0 else '—' }}</span>
+                        <span class="jd-tip" role="tooltip" id="jd-tip-{{ m }}">
+                            {% if l.relevant > 0 %}
+                                <b>{{ lean_pct(l.lean) }}</b> {{ meta.name }}<br>
+                                Сильнее других вариантов: {{ l.more }} из {{ l.relevant }} · слабее: {{ l.less }}
+                            {% else %}
+                                В ваших делах варианты не различались по этому показателю.
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endfor %}
+                <div class="jd-axis" aria-hidden="true"><span>−100%</span><span>0</span><span>+100%</span></div>
+            </div>
+            <details class="jd-table">
+                <summary>{{ icon('layers') }}Показать таблицей</summary>
+                <table>
+                    <thead><tr><th scope="col">Показатель</th><th scope="col">Склонность</th><th scope="col">Сильнее других</th><th scope="col">Слабее других</th><th scope="col">Дел с выбором</th></tr></thead>
+                    <tbody>
+                        {% for m, meta in METRICS.items() %}
+                            {% set l = p.leans[m] %}
+                            <tr><th scope="row">{{ meta.name }}</th><td>{{ lean_pct(l.lean) if l.relevant > 0 else '—' }}</td><td>{{ l.more }}</td><td>{{ l.less }}</td><td>{{ l.relevant }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </details>
+        </section>
+    {% endif %}
+
+    {% if p.verdicts > 0 %}{# with no verdicts yet, tiles of dashes are only noise #}
+    <div class="jd-tiles">
+        <div class="panel jd-tile"><span class="jd-tile-label">Вердиктов</span><b>{{ p.verdicts }}</b>{% if p.own %}<small>своих решений: {{ p.own }}</small>{% endif %}</div>
+        <div class="panel jd-tile"><span class="jd-tile-label">Решали как большинство</span><b>{{ (majority_pct ~ '%') if majority_pct is not none else '—' }}</b><small>{{ ('в ' ~ p.with_majority ~ ' из ' ~ p.compared ~ ' дел') if majority_pct is not none else 'пока мало голосов для сравнения' }}</small></div>
+        <div class="panel jd-tile"><span class="jd-tile-label">Угадали большинство</span><b>{{ (p.quick.score ~ ' из ' ~ p.quick.guesses) if p.quick.guesses else '—' }}</b><small>{{ 'в «Быстром суде»' if p.quick.guesses else 'угадывайте в «Быстром суде»' }}</small></div>
+        <div class="panel jd-tile"><span class="jd-tile-label">Обычно на решение</span><b>{{ format_duration(p.median_ms) if p.median_ms is not none else '—' }}</b><small>{{ 'медиана по вашим делам' if p.median_ms is not none else 'нужно хотя бы 3 вердикта' }}</small></div>
+    </div>
+    {% endif %}
+
+    <section class="panel ach-panel" id="achievements" aria-labelledby="ach-title">
+        <h2 class="jd-chart-title" id="ach-title">Достижения</h2>
+        <ul class="ach-grid">
+            {% for a in badges %}
+                <li class="ach{{ ' is-on' if a.unlocked }}">
+                    <span class="ach-icon">{{ icon(a.icon if a.unlocked else 'lock') }}</span>
+                    <span><b>{{ a.name }}</b><small>{{ a.desc }}</small></span>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="panel gifts-panel" id="gifts" aria-labelledby="gifts-title">
+        <div class="gifts-head">
+            <h2 class="jd-chart-title" id="gifts-title">Подарки и трофеи</h2>
+            {% if titles %}
+                <form method="post" action="{{ url_for('judge_title') }}" class="inline-form title-form">
+                    {{ csrf_field() }}
+                    <span class="label-mono">{{ icon('tag') }}Титул под рангом</span>
+                    <select class="vs" name="title" data-autosubmit data-size="sm" data-align="right" aria-label="Титул под рангом">
+                        <option value=""{{ ' selected' if not career.title }}>Без титула</option>
+                        {% for t in titles %}<option value="{{ t }}"{{ ' selected' if career.title == t }}>{{ t }}</option>{% endfor %}
+                    </select>
+                    <noscript><button class="btn btn-sm" type="submit">Сохранить</button></noscript>
+                </form>
+            {% endif %}
+        </div>
+        {% if gifts %}
+            <div class="gift-grid">{% for r in gifts %}{{ gift_card(r) }}{% endfor %}</div>
+        {% else %}
+            <p class="gifts-empty">{{ icon('gift') }}<span>Подарков пока нет. Время от времени команда прячет на сайте тайники: заметите странный значок — нажмите на него.</span></p>
+        {% endif %}
+    </section>
+
+    {% if p.boldest is not none or p.top_category is not none %}
+        <div class="jd-notes">
+            {% if p.boldest is not none %}
+                {% set b = p.boldest %}
+                {% set bp = round_half_up(b.share * 100)|int %}
+                <a class="panel jd-note" href="{{ url_for('case', id=b.id) }}">
+                    {{ icon('flag') }}
+                    <span><span class="label-mono">Самое смелое решение</span>
+                    {% if bp == 0 %}В деле «{{ b.title }}» никто из {{ b.others }} игроков не выбрал то же, что вы.{% else %}В деле «{{ b.title }}» с вами согласились только {{ bp }}% игроков.{% endif %}</span>
+                    {{ icon('arrow-right') }}
+                </a>
+            {% endif %}
+            {% if p.top_category is not none %}
+                {% set c = CATEGORIES.get(p.top_category) %}
+                <a class="panel jd-note" href="{{ url_for('play', category=p.top_category) }}" style="{{ category_style(p.top_category) }}">
+                    {{ icon(c.icon if c else 'circle') }}
+                    <span><span class="label-mono">Чаще всего судите</span>{{ c.name if c else p.top_category }}</span>
+                    {{ icon('arrow-right') }}
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% set me = current_user() %}
+    {% if me %}
+        <p class="jd-footnote">{{ icon('shield') }}<span>Профиль сохранён в аккаунте «{{ me.display_name }}»: войдите с любого устройства, чтобы продолжить с того же места. Ваш публичный профиль — <a href="{{ url_for('profile', login=me.login) }}">/u/{{ me.login }}</a>.</span></p>
+    {% else %}
+        <p class="jd-footnote">{{ icon('info') }}<span>Профиль хранится в этом браузере: в другом браузере или после очистки cookie он начнётся заново. <a href="{{ url_for('register', back=url_for('judge')) }}">Заведите аккаунт</a> или <a href="{{ url_for('login', back=url_for('judge')) }}">войдите</a> — и прогресс будет с вами на любом устройстве.</span></p>
+    {% endif %}
+</section>
+{% endblock %}

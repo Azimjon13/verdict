@@ -1,0 +1,308 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% macro lvl(section) %}{% if sections[section][2] > 1 %} data-lvl="{{ sections[section][2] }}"{% endif %}{% endmacro %}
+{% macro has_error(key) %}{{ ' has-error' if key in errors }}{% endmacro %}
+{% set is_private = form.type == 'private' %}
+{% set sends_to_review = not editing or is_draft %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Шаблон игровой ситуации</span>
+        <h1>{% if editing %}{{ 'Черновик: ' if is_draft else 'Редактирование: ' }}{{ editing.title }}{% else %}Создать <span class="grad-text">ситуацию</span>{% endif %}</h1>
+        <p class="lead">Главное правило — не должно быть очевидного правильного ответа. Хорошая ситуация заставляет игрока остановиться, подумать и сомневаться. <a href="{{ url_for('brief') }}">Прочитать бриф</a></p>
+    </div>
+</section>
+
+<div class="container create-layout" data-level="{{ view_level }}">
+    <aside class="create-nav">
+        <nav class="panel" aria-label="Разделы шаблона">
+            <span class="label-mono">Разделы шаблона</span>
+            {% for anchor, (n, label, from_level) in sections.items() %}
+                <a href="#{{ anchor }}" data-nav="{{ anchor }}"{{ lvl(anchor) }}><span class="nav-num">{{ n }}</span>{{ label }}<i class="nav-dot"></i></a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <form class="create-form" method="post" action="{{ url_for('edit', id=editing.id) if editing else url_for('create') }}" novalidate data-create-form
+          data-autosave="{{ autosave }}" data-saved-at="{{ saved_at }}"{{ ' data-fresh-input' if errors or restored }}>
+        {{ csrf_field() }}
+        <input type="hidden" name="intent" value="submit" data-intent>
+
+        <div class="panel level-bar">
+            <div class="level-bar-head">
+                <span class="label-mono">{{ icon('layers') }}Уровень заполнения</span>
+                <span class="level-bar-note">{{ 'Остановитесь на любом уровне и сохраните черновик — текст также хранится в этом браузере. На отбор отправляется уровень 2.' if can_draft
+                    else 'Уровень меняет только набор видимых разделов — заполненные поля не теряются.' }}</span>
+            </div>
+            <div class="level-steps">
+                {% for n, l in LEVELS.items() %}
+                    <button type="button" class="level-step{{ ' is-done' if achieved >= n }}" data-level-tab="{{ n }}" data-desc="{{ l.desc }}" aria-pressed="{{ 'true' if view_level == n else 'false' }}">
+                        <span class="level-num">{{ n }}</span>
+                        <span class="level-body"><b>{{ l.name }}</b><small>{{ l.time }}</small></span>
+                        <span class="level-state" data-level-state>{% if achieved >= n %}{{ icon('check') }}Готово{% endif %}</span>
+                    </button>
+                {% endfor %}
+            </div>
+            <p class="level-desc" data-level-desc>{{ LEVELS[view_level].desc }}</p>
+        </div>
+
+        {% if restored %}
+            <div class="panel notice notice-warn" role="status">{{ icon('refresh') }}<span>Мы вернули текст, который вы отправляли, когда сессия уже закончилась. Проверьте его и сохраните ещё раз.</span></div>
+        {% endif %}
+
+        {% if errors %}
+            <div class="panel error-summary" role="alert" tabindex="-1" data-error-summary>
+                <h2>{{ icon('alert') }}Проверьте, пожалуйста, форму</h2>
+                <ul>
+                    {% for key, msg in errors.items() %}
+                        <li><a href="#{{ error_anchors.get(key, 's1') }}">{{ msg }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <!-- 1. Основная информация -->
+        <section class="panel form-section" id="s1" data-section{{ lvl('s1') }}>
+            <header class="block-head"><span class="block-num">01</span><h2>Основная информация</h2></header>
+
+            <div class="author-line">
+                <span class="avatar avatar-xs" style="--ah: {{ name_hue(form.author) }}">{{ initials(form.author) }}</span>
+                <span>Автор: <b>{{ form.author }}</b></span>
+                {% if not editing %}<a href="{{ url_for('account') }}" class="author-change">изменить имя в профиле</a>{% endif %}
+            </div>
+
+            <fieldset class="field{{ has_error('category') }}">
+                <legend>Категория</legend>
+                <div class="choice-grid">
+                    {% for key, c in CATEGORIES.items() %}
+                        <label class="choice" style="{{ category_style(key) }}">
+                            <input type="radio" name="category" value="{{ key }}"{{ ' checked' if form.category == key }} required>
+                            <span class="choice-body">{{ icon(c.icon) }}<span>{{ c.name }}</span></span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {{ field_error(errors, 'category') }}
+            </fieldset>
+
+            <fieldset class="field{{ has_error('type') }}">
+                <legend>Тип ситуации</legend>
+                <div class="type-choices">
+                    {% for key, t in SITUATION_TYPES.items() %}
+                        <label class="choice choice-type">
+                            <input type="radio" name="type" value="{{ key }}"{{ ' checked' if form.type == key }} data-type-input>
+                            <span class="choice-body">
+                                <span class="choice-icon">{{ icon(t.icon) }}</span>
+                                <b>{{ t.name }}</b>
+                                <small>{{ t.desc }}</small>
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {{ field_error(errors, 'type') }}
+            </fieldset>
+
+            <label class="field{{ has_error('title') }}">
+                <span>Название</span>
+                <input type="text" name="title" value="{{ form.title }}" maxlength="120" required placeholder="Короткое и интригующее">
+                <small>Короткое название ситуации. Не должно раскрывать правильный ответ.</small>
+                {{ field_error(errors, 'title') }}
+            </label>
+        </section>
+
+        <!-- 2. Мир / Сеттинг -->
+        <section class="panel form-section" id="s2" data-section{{ lvl('s2') }}>
+            <header class="block-head"><span class="block-num">02</span><h2>Мир / Сеттинг</h2></header>
+            <div class="field">
+                <label for="world-setting">Тип мира <em>— из списка сеттингов брифа</em></label>
+                <select class="vs" id="world-setting" name="world[setting]">
+                    <option value="" data-placeholder{{ option_icon('globe') }}>Не выбран</option>
+                    {% for w in WORLDS %}
+                        <option value="{{ w.name }}"{{ option_icon(w.icon) }}{{ ' selected' if form.world.setting == w.name }}>{{ w.name }}</option>
+                    {% endfor %}
+                </select>
+                <small>Помогает отбору: видно, каких миров в спринте мало.</small>
+            </div>
+            <div class="grid grid-2">
+                <label class="field{{ has_error('world_place') }}">
+                    <span>Место</span>
+                    <input type="text" name="world[place]" value="{{ form.world.place }}" maxlength="160" placeholder="Где происходит ситуация?">
+                    {{ field_error(errors, 'world_place') }}
+                </label>
+                <label class="field">
+                    <span>Время / эпоха</span>
+                    <input type="text" name="world[era]" value="{{ form.world.era }}" maxlength="160" list="worlds-list" placeholder="Средневековье, постапокалипсис, далёкое будущее…">
+                    <datalist id="worlds-list">
+                        {% for w in WORLDS %}<option value="{{ w.name }}">{% endfor %}
+                    </datalist>
+                </label>
+            </div>
+            <label class="field{{ has_error('world_circumstances') }}">
+                <span>Обстоятельства <em>— что происходит в этом мире и почему эта ситуация возможна?</em></span>
+                <textarea name="world[circumstances]" rows="4" maxlength="2000" data-counter="sentences" data-min="2" data-max="5">{{ form.world.circumstances }}</textarea>
+                <small class="counter" data-counter-out>Рекомендуемый объём: 2–5 предложений.</small>
+                {{ field_error(errors, 'world_circumstances') }}
+            </label>
+        </section>
+
+        <!-- 3. Ситуация -->
+        <section class="panel form-section" id="s3" data-section{{ lvl('s3') }}>
+            <header class="block-head"><span class="block-num">03</span><h2>Ситуация</h2></header>
+            <div class="hint-box">
+                <p><b>Опишите событие с точки зрения игрока.</b> Игрок должен понимать:</p>
+                <ul class="hint-list">
+                    <li>что произошло;</li><li>кто оказался вовлечён;</li><li>в чём заключается проблема;</li><li>почему игрок должен принять решение.</li>
+                </ul>
+                <p class="hint-warn">{{ icon('alert') }}Не объясняйте игроку, какое решение является правильным.</p>
+            </div>
+            <label class="field{{ has_error('story') }}">
+                <span>Что произошло?</span>
+                <textarea name="story" rows="11" maxlength="6000" data-counter="words" data-min="100" data-max="250" data-range-idea="{{ IDEA_MIN_WORDS }}-80">{{ form.story }}</textarea>
+                <div class="counter-bar" aria-hidden="true"><i></i></div>
+                <small class="counter" data-counter-out>{{ story_words }} слов · рекомендуемый объём: 100–250 слов.</small>
+                {{ field_error(errors, 'story') }}
+            </label>
+        </section>
+
+        <!-- 4. Участники -->
+        <section class="panel form-section" id="s4" data-section{{ lvl('s4') }}>
+            <header class="block-head"><span class="block-num">04</span><h2>Участники</h2></header>
+            <p class="block-lead">Кто участвует в ситуации и какие между ними отношения. Добавьте или удалите участников при необходимости.</p>
+            {{ field_error(errors, 'participants') }}
+            {{ repeaters.participants }}
+        </section>
+
+        <!-- 5. Доказательства -->
+        <section class="panel form-section" id="s5" data-section{{ lvl('s5') }}>
+            <header class="block-head"><span class="block-num">05</span><h2>Доказательства и доступная информация</h2></header>
+            <p class="block-lead">Укажите, что игрок знает на момент принятия решения. <b>Важно разделять факты и предположения.</b></p>
+            {{ field_error(errors, 'facts') }}
+            <div class="grid grid-2 evidence-form">
+                <div>
+                    <h3 class="sub-h facts-h">{{ icon('check-circle') }}Факты</h3>
+                    {{ repeaters.facts }}
+                </div>
+                <div>
+                    <h3 class="sub-h unknown-h">{{ icon('help') }}Неизвестно / вызывает сомнение</h3>
+                    {{ repeaters.unknowns }}
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Свидетели -->
+        <section class="panel form-section{{ ' is-disabled' if is_private }}" id="s6" data-section{{ lvl('s6') }} data-witness-section>
+            <header class="block-head"><span class="block-num">06</span><h2>Свидетели</h2></header>
+            <p class="disabled-note">{{ icon('lock') }}В частной ситуации свидетелей нет — игрок располагает только доступной ему информацией. Чтобы добавить свидетелей, выберите другой тип ситуации.</p>
+            <div class="witness-fields">
+                <p class="block-lead">Заполняется для ситуаций со свидетелями (1–5) и публичных ситуаций. <b>Свидетели не обязательно должны говорить правду.</b></p>
+                {{ field_error(errors, 'witnesses') }}
+                {{ repeaters.witnesses }}
+            </div>
+        </section>
+
+        <!-- 7–8. Решения и последствия -->
+        <section class="panel form-section" id="s7" data-section{{ lvl('s7') }}>
+            <header class="block-head"><span class="block-num">07–08</span><h2>Решения и последствия</h2></header>
+            <p class="block-lead" data-lvl-only="1">Для идеи хватит 2–3 коротких вариантов решения. Остальные варианты, их обоснование и последствия добавите на следующих уровнях.</p>
+            <p class="block-lead" data-lvl-only="2">Предложите минимум 4–6 возможных решений и коротко объясните, почему игрок может выбрать каждое. Последствия раскроете на уровне 3.</p>
+            <p class="block-lead" data-lvl="3">Предложите минимум 4–6 возможных решений. Для основных решений раскройте последствия: что произойдёт сразу, в будущем, с персонажами и с миром. Не обязательно прописывать последствия абсолютно для каждого варианта.</p>
+            <div class="examples">
+                <span class="label-mono">Примеры вердиктов</span>
+                {% for ex in ['невиновен', 'виновен', 'частично ответственен', 'наказание', 'компенсация', 'изгнание', 'заключение', 'прощение', 'казнь', 'предупреждение', 'отсутствие наказания'] %}
+                    <span class="chip chip-sm">{{ ex }}</span>
+                {% endfor %}
+            </div>
+            {{ field_error(errors, 'decisions') }}
+            {{ repeaters.decisions }}
+            <p class="info-line">{{ icon('info') }}Вариант «Другое решение» добавляется в игру автоматически — игрок всегда может предложить своё.</p>
+        </section>
+
+        <!-- 9. Скрытая информация -->
+        <section class="panel form-section section-secret" id="s9" data-section{{ lvl('s9') }}>
+            <header class="block-head"><span class="block-num">09</span><h2>Скрытая информация</h2><span class="chip chip-warn">{{ icon('eye-off') }}Только для команды</span></header>
+            <p class="block-lead">Что на самом деле произошло? Этот раздел не показывается игроку напрямую. Укажите: кто говорит правду, кто лжёт, что скрывается, какие факты игрок не знает, что произойдёт дальше и какие детали могут быть раскрыты позже.</p>
+            <label class="field">
+                <span class="visually-hidden">Скрытая информация</span>
+                <textarea name="hidden" rows="5" maxlength="4000">{{ form.hidden }}</textarea>
+            </label>
+        </section>
+
+        <!-- 10. Почему ситуация неоднозначная -->
+        <section class="panel form-section" id="s10" data-section{{ lvl('s10') }}>
+            <header class="block-head"><span class="block-num">10</span><h2>Почему ситуация неоднозначная</h2></header>
+            <p class="block-lead">Кратко объясните, почему здесь нет очевидного правильного ответа. Игрок увидит это после вердикта — это топливо для споров.</p>
+            <label class="field{{ has_error('ambiguity') }}">
+                <span>Главный конфликт</span>
+                <input type="text" name="ambiguity[conflict]" value="{{ form.ambiguity.conflict }}" maxlength="600" placeholder="Жизнь одного ребёнка против безопасности всего поселения">
+                {{ field_error(errors, 'ambiguity') }}
+            </label>
+            <div class="grid grid-2" data-lvl="3">
+                <label class="field"><span>Аргумент в пользу одного решения</span><textarea name="ambiguity[for_one]" rows="3" maxlength="1000">{{ form.ambiguity.for_one }}</textarea></label>
+                <label class="field"><span>Аргумент в пользу другого решения</span><textarea name="ambiguity[for_other]" rows="3" maxlength="1000">{{ form.ambiguity.for_other }}</textarea></label>
+            </div>
+            <label class="field" data-lvl="3"><span>Что может разделить мнение игроков</span><textarea name="ambiguity[divide]" rows="2" maxlength="1000">{{ form.ambiguity.divide }}</textarea></label>
+        </section>
+
+        <!-- 11. Потенциал для продолжения -->
+        <section class="panel form-section" id="s11" data-section{{ lvl('s11') }}>
+            <header class="block-head"><span class="block-num">11</span><h2>Потенциал для продолжения</h2></header>
+            <fieldset class="field">
+                <legend>Можно ли использовать эту ситуацию для дальнейших событий?</legend>
+                <div class="segmented segmented-form">
+                    <label><input type="radio" name="continuation_possible" value="yes"{{ ' checked' if form.continuation.possible }} data-cont-input><span>Да</span></label>
+                    <label><input type="radio" name="continuation_possible" value="no"{{ ' checked' if not form.continuation.possible }} data-cont-input><span>Нет</span></label>
+                </div>
+            </fieldset>
+            <label class="field" data-cont-text{{ '' if form.continuation.possible else ' hidden' }}>
+                <span>Опишите возможное продолжение</span>
+                <textarea name="continuation_text" rows="3" maxlength="2000">{{ form.continuation.text }}</textarea>
+            </label>
+        </section>
+
+        <!-- 12. Дополнительные заметки -->
+        <section class="panel form-section" id="s12" data-section{{ lvl('s12') }}>
+            <header class="block-head"><span class="block-num">12</span><h2>Дополнительные заметки автора</h2></header>
+            <p class="block-lead">Альтернативные варианты, интересные детали, возможные сюжетные повороты, идеи для визуала и будущих ситуаций, связанные персонажи или события.</p>
+            <label class="field">
+                <span class="visually-hidden">Заметки автора</span>
+                <textarea name="notes" rows="4" maxlength="4000">{{ form.notes }}</textarea>
+            </label>
+        </section>
+
+        <!-- Быстрая проверка -->
+        <section class="panel form-section checklist-section" id="sc" data-section{{ lvl('sc') }}>
+            <header class="block-head"><span class="block-num">✓</span><h2>Быстрая проверка перед отправкой</h2></header>
+            <div class="checklist-wrap">
+                <div class="checklist">
+                    {% for item in CHECKLIST %}
+                        <label class="check">
+                            <input type="checkbox" name="checklist[]" value="{{ loop.index0 }}"{{ ' checked' if loop.index0 in form.checklist }}>
+                            <span class="check-box">{{ icon('check') }}</span>
+                            <span>{{ item }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <div class="check-ring" data-check-ring aria-hidden="true">
+                    <svg viewBox="0 0 120 120"><circle class="ring-track" cx="60" cy="60" r="52"/><circle class="ring-fill" cx="60" cy="60" r="52" pathLength="100"/></svg>
+                    <div><b data-check-count>0</b><span>из {{ CHECKLIST|length }}</span></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="submit-bar panel">
+            <p>{{ icon('info') }}<span>
+                {% if can_draft %}<span data-lvl-only="1">Сохраните идею черновиком и вернитесь к ней позже — или переходите к уровню 2, чтобы сделать из неё дело.</span>{% endif %}
+                <span{% if can_draft %} data-lvl="2"{% endif %}>{{ 'После отправки ситуация попадёт на отбор. Лучшие войдут в MVP и будут протестированы на реальных игроках.' if sends_to_review else 'Изменения сразу появятся в досье и в игре.' }}</span>
+                <small class="autosave-status" data-autosave-status aria-live="polite"></small>
+            </span></p>
+            <div class="submit-actions">
+                {% if can_draft %}
+                    <!-- The first button in the form: Enter in a field saves a draft instead of submitting for review. -->
+                    <button type="submit" name="intent" value="draft" class="btn btn-lg" data-intent-value="draft">{{ icon('file') }}{{ 'Вернуть в черновики' if editing and not is_draft else 'Сохранить черновик' }}</button>
+                    <button type="button" class="btn btn-primary btn-lg" data-lvl-only="1" data-level-next>{{ icon('arrow-right') }}Дальше: уровень 2</button>
+                {% endif %}
+                <button type="submit" name="intent" value="submit" class="btn btn-primary btn-lg" data-intent-value="submit"{% if can_draft %} data-lvl="2"{% endif %}>{{ icon('send' if sends_to_review else 'check') }}{{ 'Отправить на отбор' if sends_to_review else 'Сохранить изменения' }}</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
