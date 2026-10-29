@@ -8,7 +8,7 @@ this date; opinions are marked as such.*
 VERDICT is a complete, working product: a Russian-language judgment game with 48 cases and two story campaigns, a
 career system, treasure hunts, a social layer (profiles, friends, ratings, communities), a team admin panel with
 analytics, and a documented JSON API that a Unity client can use for everything the website does, including sign-in.
-The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 198
+The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 199
 automated tests plus real-browser scenarios. It is live at https://verdict.azero.uz on cPanel. The weak spots are not
 in the game logic but around it: **there was no version control until 29 October (fixed — the project is a git repository now), and there are
 still no backups and no monitoring**, the registration brake is only half built, and the visual side still runs on generated comics rather than
@@ -21,7 +21,7 @@ real illustrations.
 | Server (Flask, `verdict/`) | 7,264 lines Python, 74 routes (30 game API, 12 admin) | solid |
 | Front-end | 2,754 lines JS (11 plain scripts, no build step), 2,302 lines CSS (one file), 54 templates | solid, one big CSS file |
 | Content | 48 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
-| Tests | 198 pytest tests, 11 browser scenarios (164 checks), screenshots at desktop and phone width | strong |
+| Tests | 199 pytest tests, 11 browser scenarios (164 checks), screenshots at desktop and phone width | strong |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
 | Database | MySQL, schema v8, 17 tables, self-upgrading; manual `schema.sql` | fine |
 | Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
@@ -58,7 +58,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
    5 minutes on `/api/v1/`) and a look at the Passenger log after each deploy are enough for now.
 5. **Done 29 Oct — PHP leftovers removed** (the first commit keeps them; `build_dist.py` makes Python packages only).
 6. **Low — no CI.** Tests need a MySQL server, which is why they aren't automated. A GitHub Actions job with a MySQL
-   service would run the 198 tests on every push in about a minute.
+   service would run the 199 tests on every push in about a minute.
 
 ### Security
 
@@ -100,9 +100,9 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 
 ### Code quality
 
-19. **Medium — the XP formula lives in four places.** `career.xp_of`, `players._xp_sql`, `analytics.by_rank` and
-    `social._xp` all know "verdict ×10 + right guess ×5 + daily ×15 + gifts". They agree today; a change to one is a
-    bug in waiting. Keep one Python function and one SQL fragment in `career.py` and import them.
+19. **Done 29 Oct — one XP formula.** `career.xp_total` (Python) and `career.xp_sql` (the same as an SQL expression)
+    are the only places that know "verdict ×10 + right guess ×5 + daily ×15 + gifts"; the header, the team's players
+    list, ratings and the rank chart use them, and a test checks that all four agree for every player.
 20. **Low — ratings are recomputed from scratch on every view**, including the profile page, which builds the whole
     season board to find one player's place (`social.profile`). Fine up to a few thousand accounts; past that, add
     the `ratings` summary table sketched in ARCHITECTURE.md and refresh it after each verdict. Add an index on
@@ -136,7 +136,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 6. End-of-season trophies and a past-seasons page.
 7. In-site notifications (header bell): friend requests, community approvals, hunt prizes, case of the day.
 8. Registration brake for the API and a per-IP limit (the honeypot and the "set password" button are done).
-9. One XP formula; uptime monitor; CI with MySQL.
+9. ~~One XP formula~~ done; uptime monitor; CI with MySQL.
 
 **Later (grow the game)**
 10. Real illustrations for cases (start with the case-of-the-day candidates and campaign chapters).

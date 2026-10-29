@@ -9,7 +9,7 @@ import secrets
 from datetime import datetime, time, timedelta
 
 from . import career
-from .catalog import ACHIEVEMENTS, SOCIAL, XP
+from .catalog import ACHIEVEMENTS, SOCIAL
 from .db import execute, insert, now, query, query_one, scalar
 
 MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
@@ -171,7 +171,7 @@ def _stats(user_ids=None, start=None, end=None, rated_only=True):
 
 def _xp(r, season_row=False):
     daily = int(r['daily']) if season_row else int(r['daily_done'] or 0)
-    return int(r['verdicts']) * XP['verdict'] + int(r['right_guesses']) * XP['guess'] + daily * XP['daily'] + int(r['gift_xp'])
+    return career.xp_total(r['verdicts'], r['right_guesses'], daily, r['gift_xp'])
 
 
 def _streak(r):

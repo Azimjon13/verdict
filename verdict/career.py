@@ -161,10 +161,22 @@ def stats(voter):
     return out
 
 
+def xp_total(verdicts, right_guesses, daily, gift_xp):
+    """The XP formula — the only one: verdicts on cases in play, right guesses of the majority, cases of the day judged
+    on their day, plus XP from gifts (treasure hunts, campaign endings, the team). xp_sql is the same in SQL."""
+    return (int(verdicts or 0) * XP['verdict'] + int(right_guesses or 0) * XP['guess'] + int(daily or 0) * XP['daily']
+            + int(gift_xp or 0))
+
+
+def xp_sql(verdicts, right_guesses, daily, gift_xp):
+    """xp_total as an SQL expression over these columns (NULL counts as 0), for sorting and counting in the database."""
+    return 'COALESCE(%s, 0) * %d + COALESCE(%s, 0) * %d + COALESCE(%s, 0) * %d + COALESCE(%s, 0)' % (
+        verdicts, int(XP['verdict']), right_guesses, int(XP['guess']), daily, int(XP['daily']), gift_xp)
+
+
 def xp_of(st, p):
-    """Verdicts, right guesses and cases of the day, plus XP from gifts (treasure hunts, the team)."""
-    return (st['n'] * XP['verdict'] + st['right_guesses'] * XP['guess'] + int(p['daily_done']) * XP['daily']
-            + st.get('gift_xp', 0))
+    """A player's XP from stats() and the players row."""
+    return xp_total(st['n'], st['right_guesses'], p['daily_done'], st.get('gift_xp', 0))
 
 
 def rank_of(xp):

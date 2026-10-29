@@ -10,7 +10,7 @@ import secrets
 
 from flask import g, request
 
-from .catalog import ACHIEVEMENTS, XP
+from .catalog import ACHIEVEMENTS
 from .db import execute, now, query, query_one, scalar
 from .web import VOTER_ID
 
@@ -129,8 +129,8 @@ def merge(source, target):
 # ---------- The team's view ----------
 
 def _xp_sql():
-    return ('COALESCE(v.n, 0) * %d + COALESCE(v.right_guesses, 0) * %d + COALESCE(p.daily_done, 0) * %d + COALESCE(x.xp, 0)'
-            % (int(XP['verdict']), int(XP['guess']), int(XP['daily'])))
+    from .career import xp_sql
+    return xp_sql('v.n', 'v.right_guesses', 'p.daily_done', 'x.xp')
 
 
 _BASE = """

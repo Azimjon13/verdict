@@ -3,8 +3,8 @@ day (player_days), the players table, hunts and gifts. Days are UTC, like the ca
 import json
 from datetime import datetime, time, timedelta
 
-from .career import rank_of, today
-from .catalog import ACHIEVEMENTS, CATEGORIES, JUDGE_MIN_VERDICTS, RANKS, XP
+from .career import rank_of, today, xp_sql
+from .catalog import ACHIEVEMENTS, CATEGORIES, JUDGE_MIN_VERDICTS, RANKS
 from .db import query, query_one, scalar
 from .helpers import case_controversy
 from .repository import situations_list, vote_counts
@@ -122,12 +122,11 @@ def by_category():
 
 
 def by_rank():
-    rows = query("SELECT COALESCE(v.n, 0) * %s + COALESCE(v.g, 0) * %s + COALESCE(p.daily_done, 0) * %s + COALESCE(x.xp, 0) AS xp"
+    rows = query("SELECT " + xp_sql('v.n', 'v.g', 'p.daily_done', 'x.xp') + " AS xp"
                  " FROM (SELECT v.voter, COUNT(*) AS n, COALESCE(SUM(v.guess_correct), 0) AS g FROM votes v"
                  "       JOIN situations s ON s.id = v.situation_id AND s.status = 'approved' GROUP BY v.voter) v"
                  " LEFT JOIN players p ON p.voter = v.voter"
-                 " LEFT JOIN (SELECT voter, SUM(xp) AS xp FROM gift_grants WHERE revoked_at IS NULL GROUP BY voter) x ON x.voter = v.voter",
-                 (XP['verdict'], XP['guess'], XP['daily']))
+                 " LEFT JOIN (SELECT voter, SUM(xp) AS xp FROM gift_grants WHERE revoked_at IS NULL GROUP BY voter) x ON x.voter = v.voter")
     counts = {r['key']: 0 for r in RANKS}
     for r in rows:
         counts[rank_of(int(r['xp']))['key']] += 1

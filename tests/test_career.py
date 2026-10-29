@@ -249,3 +249,39 @@ def test_catalog_has_the_career(api):
     cat = api.get('/api/v1/catalog').get_json()
     assert [r['xp'] for r in cat['ranks']] == sorted(r['xp'] for r in cat['ranks'])
     assert len(cat['world_events']) == 20 and len(cat['achievements']) == 13 and cat['xp']['daily'] == 15
+
+
+def test_xp_is_the_same_everywhere(app, api, db, cases):
+    """The header (career), the team's players list, ratings cards and the rank chart count XP the same way — here for
+    an account with the case of the day, a right guess, a gift and a revoked gift, and for every other player so far."""
+    from verdict import analytics, career, players, social
+    from verdict.catalog import XP
+    out = api.post('/api/v1/auth/register', json={'login': 'xp' + secrets.token_hex(3), 'display_name': 'Счетовод',
+                                                  'password': 'password123'}).get_json()
+    me, voter = {'Authorization': 'Bearer ' + out['token']}, out['voter_id']
+    did = daily_id(api)
+    sid = min((s for s in cases if s != did),
+              key=lambda s: db.value('SELECT COUNT(*) FROM votes WHERE situation_id = %s', (s,)))
+    for _ in range(3):
+        verdict(api, player(), sid, 'A')  # a clear majority to guess
+    verdict(api, me, did, cases[did][0]['key'])
+    assert verdict(api, me, sid, 'B', guess='A', mode='quick')['guess']['correct']
+    ts = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
+    for xp, revoked in ((35, None), (500, ts)):
+        db.rows("INSERT INTO gift_grants (voter, source, kind, name, icon, xp, text, created_at, revoked_at)"
+                " VALUES (%s, 'admin', 'xp', 'Тест', 'zap', %s, '', %s, %s)", (voter, xp, ts, revoked))
+    voters = [r['voter'] for r in db.rows("SELECT DISTINCT v.voter FROM votes v JOIN situations s ON s.id = v.situation_id"
+                                          " WHERE s.status = 'approved'")]
+    with app.test_request_context('/'):
+        assert career.summary(voter)['xp'] == 2 * XP['verdict'] + XP['guess'] + XP['daily'] + 35
+        header = {v: career.summary(v)['xp'] for v in voters}
+        team = {r['voter']: int(r['xp']) for r in players.players_list(who='players', per_page=100000)[0]}
+        assert {v: team[v] for v in voters} == header
+        linked = {int(r['user_id']): r['voter'] for r in db.rows('SELECT user_id, voter FROM players WHERE user_id IS NOT NULL')}
+        cards = {a['user_id']: a['xp'] for a in social.accounts(list(linked))}
+        assert {u: cards[u] for u in linked if linked[u] in header} == {u: header[v] for u, v in linked.items() if v in header}
+        tally = {}
+        for xp in header.values():
+            key = career.rank_of(xp)['key']
+            tally[key] = tally.get(key, 0) + 1
+        assert {r['key']: r['value'] for r in analytics.by_rank() if r['value']} == tally
