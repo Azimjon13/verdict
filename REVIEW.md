@@ -50,7 +50,9 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 1. **Done 29 Oct — version control.** The project is a git repository (branch `main`, first commit holds the PHP
    site too), pushed to https://github.com/Azimjon13/verdict.
 2. **High — no database backups.** The live database holds every verdict, account and gift; the host's own backups
-   are unknown. Turn on cPanel's backup or a daily `mysqldump` cron job, and download a copy weekly.
+   are unknown. Turn on cPanel's backup or a daily `mysqldump` cron job, and download a copy weekly. The README's
+   «Daily database backup» has the exact commands (two weeks of copies outside the web folder); it needs the owner
+   to set it up on the host — still open.
 3. **Done 29 Oct — browser tests are in the repo.** `tests/e2e/run.py` builds and seeds its own database, serves
    the site in-process (no PHP proxy any more), runs 11 headless-Chrome scenarios and takes screenshots. The new
    phone-width scenario found the signed-in header 10 px too wide on 390 px phones; fixed.
@@ -125,7 +127,8 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 
 **This week (protect what exists)**
 1. ~~`git init`, first commit, remote~~ done
-2. Daily database backup on the host + a downloaded copy. (1 hour)
+2. Daily database backup on the host + a downloaded copy — commands in the README; only the owner can set it up.
+   (15 minutes)
 3. ~~Move the browser tests into `tests/e2e/`.~~ done
 4. ~~Security quick wins: per-login lockout on the web form, token expiry and revoke-on-password-change, `Secure`
    on the player cookie, hide moderation buttons for campaign chapters.~~ done, with the honeypot, the admin

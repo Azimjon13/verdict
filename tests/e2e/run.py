@@ -289,12 +289,12 @@ def find_chrome():
     return found or next(filter(None, map(shutil.which, ('google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome'))), None)
 
 
-def chrome(binary, url, profile, extra=()):
+def chrome(binary, url, profile, extra=(), log=None):
     args = [binary, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars',
             '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--user-data-dir=%s' % profile, *extra, url]
     if os.environ.get('CI') or (os.name != 'nt' and os.geteuid() == 0):  # CI runners and root can't use Chrome's sandbox
         args.insert(1, '--no-sandbox')
-    return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=os.name != 'nt')
+    return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log or subprocess.DEVNULL, start_new_session=os.name != 'nt')
 
 
 def stop(proc):
@@ -331,17 +331,21 @@ def run_scenarios(names, harness, base, binary):
         url += ('&' if '?' in url else '?') + '__script=' + name
         profile = tempfile.mkdtemp(prefix='chrome-e2e-%s-' % name)
         began = time.monotonic()
-        proc = chrome(binary, url, profile, ['--window-size=1280,900'])
-        try:
-            report = harness.wait_report(name, seconds)
-        finally:
-            stop(proc)
-            remove_profile(profile)
+        with tempfile.TemporaryFile() as log:  # Chrome's own messages, shown when the script never reported
+            proc = chrome(binary, url, profile, ['--window-size=1280,900'], log=log)
+            try:
+                report = harness.wait_report(name, seconds)
+            finally:
+                stop(proc)
+                remove_profile(profile)
+            log.seek(0)
+            chrome_said = [x for x in log.read().decode('utf-8', 'replace').splitlines() if x.strip()][-6:]
         # one entry per check; the detail in [...] may span lines
         lines = [re.sub(r'\s+', ' ', e).strip() for e in re.split(r'\n(?=(?:PASS|FAIL|ERROR) )', report or '') if e.strip()]
         bad = [line for line in lines if not line.startswith('PASS ')]
         if report is None:
             bad = lines = ['NO REPORT within %d s: the script did not finish (open %s with --serve to see why)' % (seconds, start)]
+            bad += ['chrome: ' + x for x in chrome_said]
         elif not lines:
             bad = lines = ['EMPTY REPORT']
         total += len(lines)
@@ -349,6 +353,9 @@ def run_scenarios(names, harness, base, binary):
         print('== %s  (%.1f s, %s)' % (name, time.monotonic() - began, 'FAILED' if bad else '%d ok' % len(lines)))
         for line in lines if (bad or VERBOSE) else []:
             print('   ' + line)
+        if bad and os.environ.get('GITHUB_ACTIONS'):  # an annotation on the run's page (readable without the log)
+            text = '\n'.join(bad[:8]).replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+            print('::error title=Browser test «%s» failed::%s' % (name, text))
     print('\n%d scenarios, %d checks, %s' % (len(names), total, 'all passed' if not failed else '%d FAILED' % failed))
     return failed == 0
 

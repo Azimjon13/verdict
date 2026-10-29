@@ -98,6 +98,32 @@ if the page is Passenger's own grey error instead, the failure is before the sit
 not installed) — see the *Passenger log file* set in the application's settings. Fix, then *Restart*. Set `VERDICT_SECRET_KEY` — without it the site
 keeps a generated key in the database, which works, but a key of your own is cleaner.
 
+### Daily database backup
+
+Everything players did lives in MySQL, so back it up every day. In cPanel → **Terminal** (or over SSH), once — with
+your `VERDICT_DB_USER` and `VERDICT_DB_PASSWORD` in place of the two placeholders:
+
+```
+mkdir -p ~/backups && chmod 700 ~/backups
+cat > ~/.my.cnf <<'EOF'
+[mysqldump]
+user=DB_USER
+password=DB_PASSWORD
+EOF
+chmod 600 ~/.my.cnf
+```
+
+Then cPanel → **Cron Jobs** → *Once per day*, this command with your `VERDICT_DB_NAME` in place of `DB_NAME` (the
+`\%` is how cron wants a `%`):
+
+```
+mysqldump --single-transaction --no-tablespaces DB_NAME | gzip > ~/backups/verdict-$(date +\%F).sql.gz; find ~/backups -name 'verdict-*.sql.gz' -mtime +14 -delete
+```
+
+That keeps two weeks of copies outside the web folder. Download one now and then (File Manager → `backups`) so a
+copy also exists off the server. To restore: phpMyAdmin → the database → *Import* the `.sql.gz` file. cPanel's own
+**Backup** page can also download a full database copy by hand.
+
 The site needs a host with Python 3.9+ («Setup Python App» on cPanel, or any WSGI server).
 
 ## Game data — `content/`
