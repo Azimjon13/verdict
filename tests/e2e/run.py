@@ -7,7 +7,8 @@
 
 The site runs in this process on a fresh database: the server and credentials come from the same VERDICT_TEST_DB_*
 variables as pytest, the database is VERDICT_E2E_DB_NAME (default verdict_e2e) and it is DROPPED and rebuilt. It is
-filled with a running hunt, a hunt being prepared, a player with a judge profile and a month of made-up activity.
+filled with a running hunt, a hunt being prepared, a player with a judge profile, a month of made-up activity,
+and six accounts with last month's season closed (trophies) and two friend requests to the team.
 
 Each scenario gets its own Chrome profile (so a fresh anonymous player) and opens its start page with ?__script=<name>.
 A small layer in front of the site then adds the scenario's script to every HTML page and offers helpers:
@@ -73,6 +74,7 @@ SCENARIOS = {
 SHOTS = [
     ('home', '/', False), ('quick', '/quick', False), ('case', '/case/3', False), ('play', '/play', False),
     ('judge', '/__as?vid={judge}&to=/judge', False), ('ratings', '/ratings', False), ('campaigns', '/campaigns', False),
+    ('seasons', '/seasons', False), ('season', '/seasons/{last_season}', False), ('notifications', '/notifications', True),
     ('admin', '/admin/', True), ('admin-players', '/admin/players', True), ('admin-hunt', '/admin/hunts/{hunt}', True),
 ]
 
@@ -84,7 +86,8 @@ def build_site():
     with conn.cursor() as cur:
         cur.execute('DROP DATABASE IF EXISTS `%s`' % DB['name'])
     conn.close()
-    app = create_app({'db': DB, 'admin_password': ADMIN[1], 'secret_key': 'e2e', 'min_signup_seconds': 0})
+    app = create_app({'db': DB, 'admin_password': ADMIN[1], 'secret_key': 'e2e', 'min_signup_seconds': 0,
+                      'max_signups_per_hour': 0, 'max_signups_per_ip': 0})
     app.test_client().get('/')  # builds the database
     return app, seed(app)
 
@@ -168,8 +171,26 @@ def seed(app):
                 at = datetime.combine(d, datetime.min.time()) + timedelta(hours=rnd.choice([6, 8, 12, 13, 16, 17, 18, 19]),
                                                                          minutes=rnd.randint(0, 59))
                 vote(voter, sid, rnd.choice(cases[sid]), min(at, now), rnd.choice(['quick', 'quick', 'full']))
+
+    # Players with accounts: last month's season (closed, with trophies), this month's rating, friend requests to the team.
+    last_month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+    for i, name in enumerate(['Анна Ветрова', 'Борис Лад', 'Вера Кейн', 'Глеб Орлов', 'Дина Юн', 'Егор Мэй']):
+        out = c.post('/api/v1/auth/register', json={'login': 'player%d' % (i + 1), 'display_name': name,
+                                                    'password': 'password123'}).get_json()
+        picks = rnd.sample(list(cases), 12)
+        for n, sid in enumerate(picks[:9 - i]):
+            vote(out['voter_id'], sid, rnd.choice(cases[sid]), datetime.combine(last_month, datetime.min.time())
+                 + timedelta(days=n + 2, hours=12))
+        for sid in picks[9 - i:9 - i + rnd.randint(1, 3)]:
+            vote(out['voter_id'], sid, rnd.choice(cases[sid]), now - timedelta(hours=rnd.randint(1, 30)))
+        if i < 2:
+            c.post('/api/v1/friends', json={'login': ADMIN[0]}, headers={'Authorization': 'Bearer ' + out['token']})
+    with app.test_request_context('/'):
+        from verdict import seasons
+        seasons.close(last_month)
     db.close()
-    return {'hunt': hunt, 'draft_hunt': draft, 'place_spot': place_spot, 'judge': judge}
+    return {'hunt': hunt, 'draft_hunt': draft, 'place_spot': place_spot, 'judge': judge,
+            'last_season': seasons.key_of(last_month)}
 
 
 def _sign_in(client, login, password):

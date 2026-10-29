@@ -28,6 +28,19 @@ def create_app(overrides=None):
     from . import routes
     routes.register(app)
 
+    @app.before_request
+    def close_seasons():
+        """The first visit after a month ends closes its season (trophies, the final board)."""
+        if request.endpoint == 'static':
+            return
+        from . import seasons
+        try:
+            seasons.close_due()
+        except DatabaseUnavailable:
+            pass
+        except Exception:  # a failed close must not take the page down; the next process or month tries again
+            app.logger.exception('closing the season failed')
+
     @app.after_request
     def headers(response):
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
@@ -71,7 +84,7 @@ def create_app(overrides=None):
 
 
 def _template_globals(app):
-    from . import auth, campaigns, career, comic, hunt, judge, repository, web
+    from . import auth, campaigns, career, comic, hunt, judge, notify, repository, web
     from .forms import field_error
 
     def asset(path):
@@ -109,6 +122,7 @@ def _template_globals(app):
         HUNT=catalog.HUNT, HUNT_PAGES=hunt.PAGES, HUNT_STATUSES=hunt.STATUSES, SOCIAL=catalog.SOCIAL,
         ACHIEVEMENTS=catalog.ACHIEVEMENTS, REPORT_REASONS=catalog.REPORT_REASONS,
         friend_votes_for=_friend_votes_for, campaign_of=campaigns.campaign_of_case,
+        notifications_unread=lambda: notify.unread(auth.current_user_id()),
         current_user=auth.current_user, is_admin=auth.is_admin, is_logged_in=auth.is_logged_in,
         owns_situation=auth.owns_situation, can_edit_situation=auth.can_edit_situation, can_see_hidden=auth.can_see_hidden,
         # game
@@ -177,7 +191,7 @@ def _hunt_tools():
 def _db_fail(app, e):
     """A clear page instead of a crash when MySQL is unreachable."""
     c = app.config['VERDICT']['db']
-    if request.path.startswith('/api/'):
+    if request.path.startswith('/api/') or request.path == '/health':
         return {'ok': False, 'error': 'База данных недоступна.'}, 503
     where = helpers.esc('%s@%s:%s / %s' % (c['user'], c['host'], c['port'], c['name']))
     html = ('<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'

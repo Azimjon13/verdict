@@ -61,6 +61,7 @@
         {% for key, href, label in nav %}
             <a href="{{ href }}"{% if active == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
+        <button class="nav-sound sound-toggle" type="button" data-sound-toggle aria-pressed="true">{{ icon('volume') }}{{ icon('volume-off') }}<span class="when-on">Звук включён</span><span class="when-off">Звук выключен</span></button>
     </nav>
 
     <div class="header-actions">
@@ -70,6 +71,8 @@
                 <span class="user-name">{{ me.display_name }}</span>
                 {% if me.role == 'admin' %}<span class="user-role" title="Команда">{{ icon('shield') }}</span>{% endif %}
             </a>
+            {% set n_unread = notifications_unread() %}
+            <a class="icon-btn bell{{ ' has-new' if n_unread }}{{ ' active' if request.endpoint == 'notifications' }}" href="{{ url_for('notifications') }}" title="Уведомления" aria-label="Уведомления{% if n_unread %}: новых {{ n_unread }}{% endif %}">{{ icon('bell') }}{% if n_unread %}<span class="bell-count" aria-hidden="true">{{ n_unread if n_unread < 100 else '99+' }}</span>{% endif %}</a>
             <form method="post" action="{{ url_for('logout') }}" class="inline-form" data-confirm="Выйти из аккаунта на этом устройстве?" data-confirm-title="Выход" data-confirm-ok="Выйти">
                 {{ csrf_field() }}
                 <button class="icon-btn" type="submit" title="Выйти" aria-label="Выйти">{{ icon('logout') }}</button>

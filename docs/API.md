@@ -25,6 +25,8 @@ From then on send `Authorization: Bearer <token>`; verdicts, career and everythi
 `X-Voter-Id` says. Ten wrong passwords for a login in 15 minutes → `429` (the website form shares this lock).
 `POST /auth/logout` forgets the device. A token not used for 90 days stops working (`401`), and so do all of an
 account's tokens after a password change or a reset by the team — the client then asks the player to sign in again.
+Sign-ups are limited (30 an hour in all, 5 an hour from one address, both set in the site's config): a refused one
+answers `429` with the reason in `error`.
 
 ## Endpoints
 
@@ -44,11 +46,13 @@ account's tokens after a password change or a reset by the team — the client t
 | `POST /api/v1/hunt/spots/<id>/claim` | yes | the player found a spot: the gift, progress, the main prize, career |
 | `GET /api/v1/gifts` | yes | the player's gifts (XP, trophies, titles, codes, messages) and current title |
 | `GET /api/v1/ratings?board=season\|all\|accuracy\|streak[&community=<slug>]` | — | a rating of players with an account |
+| `GET /api/v1/seasons`, `/seasons/<YYYY-MM>` | — | the current season with its trophies; closed seasons and their final boards |
 | `GET /api/v1/users/<login>` | — | a public profile, as much as its owner shows to everyone |
 | `GET /api/v1/communities` | — | every community: name, description, rules, access, emblem, members |
 | `GET /api/v1/communities/<slug>` | — | one community with its members and season rating |
 | `POST /api/v1/auth/register`, `/auth/login`, `/auth/logout` | — / Bearer | accounts, see above |
 | `GET /api/v1/me`, `POST /api/v1/me/profile` | Bearer | the account, its player id, career, communities; `{bio, visibility, in_ratings}` |
+| `GET /api/v1/notifications`, `POST /api/v1/notifications/read {ids?}` | Bearer | the account's notifications; mark some or all read |
 | `GET /api/v1/friends`, `POST /api/v1/friends {login}` | Bearer | friends, requests in and out; ask (or accept) |
 | `POST /api/v1/friends/<login>/accept\|decline\|cancel\|remove` | Bearer | answer or end a friendship |
 | `POST /api/v1/communities/<slug>/join {accept_rules, code?}`, `/leave` | Bearer | join (rules must be accepted) or leave |
@@ -281,6 +285,35 @@ Newest first; gifts the team took back are not listed.
 `board`: `season` (XP this calendar month, UTC, counting cases judged for the first time this month), `all` (all XP),
 `accuracy` (% of right majority guesses, from 10 guesses; `note` = «9 из 10»), `streak` (days in a row now). Ties share
 a `place`. `community=<slug>` limits the rating to its members. Only accounts that agreed to be rated; the first 100.
+
+### `GET /seasons`, `GET /seasons/<key>`
+
+```json
+{ "ok": true, "current": { "name": "Ноябрь 2026", "days_left": 12,
+    "trophies": [ { "from": 1, "to": 1, "kind": "title", "name": "Чемпион сезона «Ноябрь 2026»", "icon": "crown", "xp": 100 },
+                  { "from": 2, "to": 3, "kind": "badge", "name": "Призёр сезона «Ноябрь 2026»", "icon": "medal", "xp": 50 } ] },
+  "past": [ { "key": "2026-10", "name": "Октябрь 2026", "players": 57, "podium": [ { … a row as below … } ] } ] }
+```
+
+A season is a calendar month (UTC). It closes by itself on the first visit after the month ends: the first 50 places
+are kept, the top places get the trophies listed in `current.trophies` (catalog `seasons`) as gifts, and every placed
+account gets a notification. Trophy XP counts in the career, not in the next season. `GET /seasons/2026-10` returns
+`{key, name, players, closed_at, rows: [{place, login, display_name, title, value, xp, rank}]}` — `value` is the season
+XP, `xp` and `rank` are as they were when the season closed; `404` for a season that isn't closed.
+
+### `GET /notifications`
+
+```json
+{ "ok": true, "unread": 1,
+  "items": [ { "id": 41, "kind": "friend_request", "icon": "users", "text": "Анна Ветрова хочет добавить вас в друзья.",
+               "link": "/friends", "created_at": "2026-11-02T09:15:00Z", "read": false } ] }
+```
+
+Newest first, the last 50, kept for 90 days. `kind`: `friend_request`, `friend_accepted`, `community_request` (to the
+founder and moderators), `community_joined`, `community_role`, `case_approved`, `case_rejected` (to the author), `gift`
+(from the team), `season` (where the account finished, with its trophy), `report` (the team closed the player's report).
+`link` is a path on the website. Reading the list doesn't mark it read: `POST /notifications/read` with `{ids: [41]}`
+marks those, with `{}` all of them; it answers `{marked, unread}`. `GET /me` has `notifications_unread` for a badge.
 
 ### `GET /users/<login>`
 

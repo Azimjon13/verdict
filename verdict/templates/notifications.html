@@ -1,0 +1,47 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Ваш аккаунт</span>
+        <h1>Уведомления</h1>
+        <p class="lead">Заявки в друзья и сообщества, решения команды по вашим делам и жалобам, подарки и трофеи сезонов. Хранятся 90 дней.</p>
+    </div>
+</section>
+
+<section class="container section-top-0 notes-section">
+    {% if daily_case %}
+        <a class="panel note note-daily" href="{{ url_for('quick_case', id=daily_case.id) }}">
+            <span class="note-icon">{{ icon('calendar') }}</span>
+            <span class="note-body"><b>Дело дня ждёт: «{{ daily_case.title }}»</b><small>+{{ daily.bonus }} XP, если рассудить его сегодня</small></span>
+            {{ icon('arrow-right') }}
+        </a>
+    {% endif %}
+
+    {% if items %}
+        <ol class="notes">
+            {% for n in items %}
+                <li>
+                    {% set inner %}
+                        <span class="note-icon">{{ icon(n.icon) }}</span>
+                        <span class="note-body"><span>{{ n.text }}</span><small>{{ format_datetime(n.created_at) }}{% if not n.read_at %} · <b class="note-new">новое</b>{% endif %}</small></span>
+                        {% if n.link %}{{ icon('arrow-right') }}{% endif %}
+                    {% endset %}
+                    {% if n.link %}
+                        <a class="panel note note-{{ n.kind }}{{ ' is-new' if not n.read_at }}" href="{{ n.link }}">{{ inner }}</a>
+                    {% else %}
+                        <div class="panel note note-{{ n.kind }}{{ ' is-new' if not n.read_at }}">{{ inner }}</div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <div class="empty panel">
+            {{ icon('bell') }}
+            <h2>Пока тихо</h2>
+            <p>Здесь появятся заявки в друзья, ответы сообществ, решения команды по вашим делам и трофеи сезонов.</p>
+            <a class="btn btn-primary" href="{{ url_for('friends') }}">{{ icon('users') }}Найти друзей</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

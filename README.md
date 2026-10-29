@@ -38,6 +38,8 @@ Environment variables win over `config.json` in the project root (copy `config.e
 | First team password | `verdict-admin` | `VERDICT_ADMIN_PASSWORD` |
 | Secret key | random per start | `VERDICT_SECRET_KEY` |
 | Session lifetime | 14 days | `VERDICT_SESSION_LIFETIME` (seconds) |
+| New accounts an hour, in all / from one address | 30 / 5 (0 = no limit) | `VERDICT_MAX_SIGNUPS_PER_HOUR`, `VERDICT_MAX_SIGNUPS_PER_IP` |
+| Proxies to trust for the visitor's address | 0 | `VERDICT_TRUSTED_PROXIES` |
 
 If your MySQL user cannot create databases, create one and import `database/schema.sql`.
 
@@ -97,6 +99,12 @@ says why in one line («VERDICT could not start …») and `startup-error.txt` i
 if the page is Passenger's own grey error instead, the failure is before the site's code runs (Python version, packages
 not installed) — see the *Passenger log file* set in the application's settings. Fix, then *Restart*. Set `VERDICT_SECRET_KEY` — without it the site
 keeps a generated key in the database, which works, but a key of your own is cleaner.
+
+### Uptime monitor
+
+`/health` answers `{"ok": true, "database": "ok", "schema": 9, …}` with status 200 while the site and its database
+work, and 503 otherwise; it is never cached. Point a free monitor (UptimeRobot, Better Stack, cron-job.org) at
+`https://<your site>/health`, every 5 minutes, alerting by e-mail or Telegram when the status isn't 200.
 
 ### Daily database backup
 
@@ -162,6 +170,10 @@ live in the database; export them with `/api/export` (team only).
   login for everyone (the same lock as the game client's sign-in), so clearing cookies doesn't reset it.
 - The sign-up form has a hidden field people don't see and refuses a form sent sooner than `min_signup_seconds`
   (3 by default) after it was opened — two cheap brakes on bots.
+- Sign-ups on the site and in the game API are limited: `max_signups_per_hour` (30) in all and `max_signups_per_ip` (5)
+  an hour from one address, kept only as a keyed hash for a day. The per-address limit works only when the site sees
+  real visitor addresses — behind a proxy that hides them it switches itself off rather than stop everyone. Admin →
+  «Игра» shows the address the site sees; `VERDICT_TRUSTED_PROXIES=1` takes it from `X-Forwarded-For` instead.
 - **Sessions are stored in MySQL** (`sessions` table) for 14 days of inactivity. Each row records `user_id`, so
   changing the password or «Выйти на других устройствах» ends the user's other sessions. A new password also signs
   the account out of every game client.
@@ -259,6 +271,20 @@ invited to sign up (the progress made so far comes along).
   invite link only. An invite link lets its holder straight in and can be replaced. The founder appoints moderators;
   moderators accept requests and remove members (not other moderators). Each community has its own rating. The team
   sees all communities in admin → «Сообщества» and can remove one.
+
+## Seasons and notifications
+
+- **Seasons.** The season rating is a calendar month (UTC). The first visit after a month ends closes it: the final
+  board (first 50 places) is kept on `/seasons` and `/seasons/<YYYY-MM>`, the top places get a trophy as a gift (1st:
+  the title «Чемпион сезона «…»» +100 XP; 2nd–3rd and 4th–10th: badges +50 / +20 XP — set in `content/catalog.json`,
+  `seasons`), and every placed account is told where it finished. A trophy counts in the career, not in the next
+  season. Closing happens once even with several processes (the season row is claimed first), and only for months
+  since this version first ran.
+- **Notifications** for accounts — the bell in the header with the unread count, `/notifications` (seen = read) and
+  the game API. Sent when someone asks to be friends or accepts, asks to join a community (to its founder and
+  moderators), is accepted or made a moderator, when the team approves or rejects an author's case, gives a gift,
+  closes the player's report, and when a season closes. The page also reminds of the case of the day while it's
+  waiting. Kept for 90 days.
 
 ## Admin panel (`/admin`)
 
@@ -429,12 +455,13 @@ verdict/               the application
   social.py            public profiles, friends, ratings, communities, reports
   campaigns.py         story campaigns: chapters, bridges, the campaign's world, endings
   gameauth.py          sign-in from the game client (hashed tokens, slowed-down guessing)
+  seasons.py notify.py signups.py  closing seasons with trophies; notifications; sign-up limits
   analytics.py charts.py  the admin overview: numbers and chart shapes
   views/               pages, authoring, accounts, social, campaigns, admin (the team's panel), api (site JSON), api_v1 (game clients)
   templates/           Jinja templates (layout, pages, partials)
 content/               catalog.json, demo cases and story campaigns (shared with game clients)
 assets/                CSS, JavaScript, images (served at /assets)
-database/schema.sql    manual schema import (schema v8)
+database/schema.sql    manual schema import (schema v9; a test keeps it equal to the migrations)
 scripts/build_dist.py  builds dist/
 tests/                 pytest suite; tests/e2e/ — browser scenarios and their runner
 docs/API.md            game-client API

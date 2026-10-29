@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+{% from 'partials/person.html' import person, rank_chip %}
+{% block content %}
+{% set me_user = current_user() %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker"><a href="{{ url_for('seasons') }}">Сезоны</a></span>
+        <h1>Сезон <span class="grad-text">{{ s.name }}</span></h1>
+        <p class="lead">Закрыт {{ format_date(s.closed_at) }}. В рейтинге {{ s.players }} {{ plural(s.players, 'судья', 'судьи', 'судей') }}{% if s.players > s.board|length %}; здесь первые {{ s.board|length }}{% endif %}. Ранг и опыт — на момент закрытия.</p>
+        {% include 'partials/social_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    {% if my_row %}
+        <div class="panel rating-me">
+            <span class="rating-place">{{ my_row.place }}</span>
+            <span><span class="label-mono">Ваше место из {{ s.players }}</span><b>{{ my_row.value }} XP за сезон</b></span>
+            <a class="btn btn-sm" href="{{ url_for('profile', login=me_user.login) }}">{{ icon('user') }}Мои трофеи</a>
+        </div>
+    {% endif %}
+
+    {% if s.board %}
+        <ol class="rating-list">
+            {% for r in s.board %}
+                <li class="rating-row{{ ' is-me' if me_user and r.user_id == me_user.id }}{{ ' is-top top-' ~ r.place if r.place <= 3 }}">
+                    <span class="rating-place">{% if r.place <= 3 %}{{ icon('crown' if r.place == 1 else 'medal') }}{% endif %}<b>{{ r.place }}</b></span>
+                    {{ person(r.login, r.display_name, r.title) }}
+                    <span class="rating-rank">{{ rank_chip(r.rank, r.xp) }}</span>
+                    <span class="rating-value"><b>{{ r.value }}</b> XP</span>
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <div class="empty panel">
+            {{ icon('hourglass') }}
+            <h2>В этом сезоне в рейтинге никого не было</h2>
+            <p>Трофеи достались бы лучшим — в следующем месяце они разыгрываются снова.</p>
+            <a class="btn btn-primary" href="{{ url_for('ratings') }}">{{ icon('trending') }}Текущий сезон</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

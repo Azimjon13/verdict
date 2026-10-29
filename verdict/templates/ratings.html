@@ -9,7 +9,7 @@
     <div class="container">
         <span class="kicker">Сообщество</span>
         <h1>Рейтинг <span class="grad-text">судей</span></h1>
-        <p class="lead">Сезон — {{ season_name }}: до конца {{ days_left }} {{ plural(days_left, 'день', 'дня', 'дней') }}. В рейтинге — игроки с аккаунтом; скрыть себя можно в профиле.</p>
+        <p class="lead">Сезон — {{ season_name }}: до конца {{ days_left }} {{ plural(days_left, 'день', 'дня', 'дней') }}, потом лучшие получат <a href="{{ url_for('seasons') }}">трофеи</a>. В рейтинге — игроки с аккаунтом; скрыть себя можно в профиле.</p>
         {% include 'partials/social_nav.html' %}
     </div>
 </section>

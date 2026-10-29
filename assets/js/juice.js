@@ -299,11 +299,14 @@
   /* ---------- На каждой странице ---------- */
   function init() {
     // Кнопка звука в шапке
-    document.querySelectorAll('[data-sound-toggle]').forEach((btn) => {
-      const paint = () => { btn.classList.toggle('is-off', !sound.enabled); btn.setAttribute('aria-pressed', sound.enabled ? 'true' : 'false'); btn.title = sound.enabled ? 'Звук включён' : 'Звук выключен'; };
-      paint();
-      btn.addEventListener('click', () => { sound.set(!sound.enabled); paint(); });
+    const toggles = [...document.querySelectorAll('[data-sound-toggle]')];
+    const paint = () => toggles.forEach((btn) => {
+      btn.classList.toggle('is-off', !sound.enabled);
+      btn.setAttribute('aria-pressed', sound.enabled ? 'true' : 'false');
+      btn.title = sound.enabled ? 'Звук включён' : 'Звук выключен';
     });
+    paint();
+    toggles.forEach((btn) => btn.addEventListener('click', () => { sound.set(!sound.enabled); paint(); }));
 
     // Кампания: штамп и молоток перед отправкой вердикта
     document.querySelectorAll('[data-verdict-form]').forEach((form) => {

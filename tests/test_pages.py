@@ -37,7 +37,7 @@ def test_seeded_content(db):
     assert db.value("SELECT COUNT(*) FROM situations WHERE status = 'approved' AND " + DEMO) == 46
     assert db.value("SELECT COUNT(*) FROM situations WHERE user_id IS NULL AND author = 'Команда VERDICT'") == 0
     assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'seed_version'") == '3'
-    assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'schema_version'") == '8'
+    assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'schema_version'") == '9'
 
 
 @pytest.mark.parametrize('old, new', [

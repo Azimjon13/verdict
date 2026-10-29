@@ -1,0 +1,70 @@
+{% extends 'layout.html' %}
+{% from 'partials/person.html' import person %}
+{% block content %}
+
+<section class="page-hero page-hero-compact">
+    <div class="container">
+        <span class="kicker">Сообщество</span>
+        <h1>Сезоны <span class="grad-text">рейтинга</span></h1>
+        <p class="lead">Сезон — календарный месяц. Когда он заканчивается, лучшие судьи получают трофеи, а таблица остаётся здесь навсегда.</p>
+        {% include 'partials/social_nav.html' %}
+    </div>
+</section>
+
+<section class="container section-top-0 social-section">
+    <div class="panel season-now">
+        <div class="season-now-head">
+            <span class="season-now-icon">{{ icon('trophy') }}</span>
+            <div>
+                <span class="label-mono">Идёт сезон</span>
+                <h2>{{ season_name }}</h2>
+                <p>До конца {{ days_left }} {{ plural(days_left, 'день', 'дня', 'дней') }}. Опыт сезона — дела, рассуженные впервые в этом месяце, угаданное большинство, дела дня в свой день и подарки.</p>
+            </div>
+            <a class="btn btn-primary" href="{{ url_for('ratings') }}">{{ icon('trending') }}Таблица сезона</a>
+        </div>
+        <ul class="season-prizes">
+            {% for t in trophies %}
+                <li>
+                    <span class="season-prize-icon">{{ icon(t.icon) }}</span>
+                    <span><b>{% if t['from'] == t['to'] %}{{ t['from'] }} место{% else %}{{ t['from'] }}–{{ t['to'] }} места{% endif %}</b>
+                    <small>{{ GIFT_KINDS[t.kind].name if t.kind in GIFT_KINDS else t.kind }} «{{ t.name }}» · +{{ t.xp }} XP</small></span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <h2 class="section-subtitle">{{ icon('archive') }}Прошлые сезоны</h2>
+    {% if past %}
+        <div class="season-grid">
+            {% for s in past %}
+                <article class="panel season-card">
+                    <header>
+                        <h3><a href="{{ url_for('season', key=s.key) }}">{{ s.name }}</a></h3>
+                        <span class="label-mono">{{ s.players }} {{ plural(s.players, 'судья', 'судьи', 'судей') }}</span>
+                    </header>
+                    {% if s.board %}
+                        <ol class="season-podium">
+                            {% for r in s.board %}
+                                <li class="top-{{ r.place if r.place <= 3 else 'x' }}">
+                                    <span class="rating-place">{{ icon('crown' if r.place == 1 else 'medal') }}<b>{{ r.place }}</b></span>
+                                    {{ person(r.login, r.display_name, small=true) }}
+                                    <span class="rating-value"><b>{{ r.value }}</b> XP</span>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                        <a class="btn btn-sm btn-ghost" href="{{ url_for('season', key=s.key) }}">{{ icon('arrow-right') }}Вся таблица</a>
+                    {% else %}
+                        <p class="season-empty">В этом сезоне в рейтинге никого не было.</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty panel">
+            {{ icon('hourglass') }}
+            <h2>Первый сезон ещё идёт</h2>
+            <p>Таблица «{{ season_name }}» появится здесь, когда месяц закончится.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -2,6 +2,7 @@
 {% set me_nav = current_user() %}
 <nav class="admin-nav social-nav" aria-label="Сообщество игроков">
     <a href="{{ url_for('ratings') }}"{% if tab == 'ratings' %} class="active" aria-current="page"{% endif %}>{{ icon('trending') }}Рейтинг</a>
+    <a href="{{ url_for('seasons') }}"{% if tab == 'seasons' %} class="active" aria-current="page"{% endif %}>{{ icon('trophy') }}Сезоны</a>
     <a href="{{ url_for('friends') }}"{% if tab == 'friends' %} class="active" aria-current="page"{% endif %}>{{ icon('users') }}Друзья</a>
     <a href="{{ url_for('communities') }}"{% if tab == 'communities' %} class="active" aria-current="page"{% endif %}>{{ icon('landmark') }}Сообщества</a>
     <span class="admin-nav-sep" aria-hidden="true"></span>

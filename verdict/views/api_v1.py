@@ -8,7 +8,7 @@ import re
 
 from flask import Blueprint, g, request
 
-from .. import career, gameauth, hunt, players, social
+from .. import career, gameauth, hunt, notify, players, seasons, signups, social
 from ..catalog import JUDGE_ARCHETYPES, METRICS, SOCIAL, public as catalog_public
 from ..comic import cast_of, cast_public, panels_of
 from ..helpers import case_controversy, excerpt
@@ -188,12 +188,15 @@ def index():
             'POST /api/v1/hunt/spots/<id>/claim': 'the player found a spot: the gift (X-Voter-Id required)',
             'GET /api/v1/gifts': "the player's gifts (X-Voter-Id required)",
             'GET /api/v1/ratings?board=season|all|accuracy|streak[&community=<slug>]': 'ratings of players with an account',
+            'GET /api/v1/seasons': 'the current season (days left, trophies) and closed seasons with their podium',
+            'GET /api/v1/seasons/<YYYY-MM>': 'a closed season: its final board',
             'GET /api/v1/users/<login>': 'a public profile (as much as its owner shows to everyone)',
             'GET /api/v1/communities': 'communities: name, rules, access, members',
             'GET /api/v1/communities/<slug>': 'one community with its members and rating',
             'POST /api/v1/auth/register, /auth/login': '{login, password[, display_name, device]} → token, voter_id',
             'POST /api/v1/auth/logout': 'forgets this device (Authorization: Bearer <token>)',
             'GET /api/v1/me, POST /api/v1/me/profile': 'the signed-in account (Bearer)',
+            'GET /api/v1/notifications, POST /api/v1/notifications/read {ids?}': 'the account\'s notifications (Bearer)',
             'GET /api/v1/friends, POST /api/v1/friends {login}': 'friends and requests (Bearer)',
             'POST /api/v1/friends/<login>/accept|decline|cancel|remove': 'answer or end a friendship (Bearer)',
             'POST /api/v1/communities/<slug>/join|leave': '{accept_rules, code?} (Bearer)',
@@ -388,6 +391,30 @@ def ratings():
             'rows': rating_rows(rows)}
 
 
+def season_rows(rows):
+    return [{k: r[k] for k in ('place', 'login', 'display_name', 'title', 'value', 'xp')}
+            | {'rank': {k: v for k, v in career.rank_of(int(r['xp'])).items() if k in ('key', 'name', 'icon', 'level')}}
+            for r in rows]
+
+
+@bp.get('/seasons')
+def seasons_list():
+    return {'ok': True, 'current': {'name': seasons.display_name(), 'days_left': social.days_left(),
+                                    'trophies': [{k: t[k] for k in ('from', 'to', 'kind', 'name', 'icon', 'xp')}
+                                                 for t in seasons.trophies()]},
+            'past': [{'key': s['key'], 'name': s['name'], 'players': s['players'], 'podium': season_rows(s['board'])}
+                     for s in seasons.past()]}
+
+
+@bp.get('/seasons/<key>')
+def season_one(key):
+    s = seasons.get(key)
+    if not s:
+        return error('Сезон не найден (ключ — ГГГГ-ММ закрытого сезона).', 404)
+    return {'ok': True, 'key': s['key'], 'name': s['name'], 'players': s['players'],
+            'closed_at': s['closed_at'].strftime('%Y-%m-%dT%H:%M:%SZ'), 'rows': season_rows(s['board'])}
+
+
 @bp.get('/users/<login>')
 def user_profile(login):
     user = social.user_by_login(login)
@@ -514,10 +541,14 @@ def auth_register():
     errors = registration_validate(login, name, password, password)
     if errors:
         return {'ok': False, 'error': next(iter(errors.values())), 'errors': errors}, 422
+    brake = signups.refusal()
+    if brake:
+        return error(brake, 429)
     try:
         uid = user_create(login, name, password)
     except pymysql.err.IntegrityError:
         return error('Такой логин уже занят.', 422)
+    signups.record()
     user = user_find(uid)
     return session_out(user, gameauth.issue(uid, input_str(d.get('device', ''), 60)))
 
@@ -557,7 +588,28 @@ def me():
     out['career'] = career_out(out['voter_id'])
     out['communities'] = [{'slug': c['slug'], 'name': c['name'], 'role': c['role']} for c in social.user_communities(uid)]
     out['friend_requests'] = len(social.requests_in(uid))
+    out['notifications_unread'] = notify.unread(uid)
     return out
+
+
+@bp.get('/notifications')
+def notifications():
+    """Newest first; reading them here doesn't mark them read (POST /notifications/read does)."""
+    user = account()
+    if not user:
+        return need_account()
+    uid = int(user['id'])
+    return {'ok': True, 'unread': notify.unread(uid), 'items': [notify.public(r) for r in notify.latest(uid)]}
+
+
+@bp.post('/notifications/read')
+def notifications_read():
+    user = account()
+    if not user:
+        return need_account()
+    ids = body().get('ids')
+    changed = notify.mark_read(int(user['id']), ids if isinstance(ids, list) else None)
+    return {'ok': True, 'marked': changed, 'unread': notify.unread(int(user['id']))}
 
 
 @bp.post('/me/profile')

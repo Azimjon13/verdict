@@ -28,6 +28,12 @@ DEFAULTS = {
     'secret_key': '',
     # A sign-up form sent sooner than this after it was opened is a bot's (people need a few seconds to type).
     'min_signup_seconds': 3,
+    # New accounts an hour, in all and from one address (0 = no limit). The per-address limit works only when the site
+    # sees real visitor addresses; the admin «Игра» page shows what it sees.
+    'max_signups_per_hour': 30,
+    'max_signups_per_ip': 5,
+    # Behind a proxy that passes the visitor's address only in X-Forwarded-For: how many proxies to trust (usually 1).
+    'trusted_proxies': 0,
 }
 
 ENV = {
@@ -40,6 +46,9 @@ ENV = {
     ('admin_password',): 'VERDICT_ADMIN_PASSWORD',
     ('session_lifetime',): 'VERDICT_SESSION_LIFETIME',
     ('secret_key',): 'VERDICT_SECRET_KEY',
+    ('max_signups_per_hour',): 'VERDICT_MAX_SIGNUPS_PER_HOUR',
+    ('max_signups_per_ip',): 'VERDICT_MAX_SIGNUPS_PER_IP',
+    ('trusted_proxies',): 'VERDICT_TRUSTED_PROXIES',
 }
 
 
@@ -61,6 +70,8 @@ def load(overrides=None):
     cfg['db']['port'] = int(cfg['db']['port'])
     cfg['session_lifetime'] = int(cfg['session_lifetime'])
     cfg['min_signup_seconds'] = float(cfg['min_signup_seconds'])
+    for key in ('max_signups_per_hour', 'max_signups_per_ip', 'trusted_proxies'):
+        cfg[key] = int(cfg[key])
     return cfg
 
 

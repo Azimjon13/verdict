@@ -40,6 +40,7 @@ HUNT = _data['hunt']                      # visibility (faint | subtle | visible
 # Players together: who sees a profile, how a community is joined, roles, rating boards.
 SOCIAL = _data['social']
 REPORT_REASONS = _data['report_reasons']   # why a player reports a profile, a community or a case
+SEASONS = _data['seasons']                 # keep (places kept of a closed season), trophies by place
 
 
 def public():

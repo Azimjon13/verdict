@@ -11,7 +11,7 @@ from ..auth import (ROLES, admins_count, auth_attempt, auth_login, auth_logout, 
 from ..catalog import STATUSES
 from ..repository import input_str, situations_list, vote_counts
 from ..sessions import active_count, revoke_others
-from .. import gameauth
+from .. import gameauth, signups
 from ..players import on_login, on_logout, on_register
 from ..web import csrf_valid, flash, page, redirect, require_login, safe_back, voter_id
 
@@ -74,12 +74,16 @@ def register():
             errors = {'_csrf': 'Не удалось создать аккаунт. Обновите страницу и попробуйте ещё раз.'}
         else:
             errors = registration_validate(values['login'], values['display_name'], password, confirm)
+            brake = None if errors else signups.refusal()
+            if brake:
+                errors = {'_csrf': brake}
         if not errors:
             try:
                 new_id = user_create(values['login'], values['display_name'], password)
             except pymysql.err.IntegrityError:
                 errors['login'] = 'Такой логин уже занят.'
             else:
+                signups.record()
                 auth_login(user_find(new_id))
                 on_register(int(new_id), voter_id())
                 flash('success', 'Аккаунт создан. Добро пожаловать, %s! Ваши вердикты и прогресс теперь хранятся в аккаунте.'

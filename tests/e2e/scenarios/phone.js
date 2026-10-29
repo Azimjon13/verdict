@@ -8,7 +8,8 @@
   const ok = (label, cond, extra = '') => out.push((cond ? 'PASS ' : 'FAIL ') + label + (extra !== '' ? '  [' + extra + ']' : ''));
   const seed = window.__e2e.seed;
   const pages = ['/', '/quick', '/case/3', '/play', '/judge', '/ratings', '/campaigns', '/campaign/rubezh', '/communities',
-    '/friends', '/account', '/create', '/library', '/admin/', '/admin/players', '/admin/hunts/' + seed.hunt, '/admin/gifts', '/admin/game'];
+    '/friends', '/notifications', '/seasons', '/account', '/create', '/library', '/admin/', '/admin/players',
+    '/admin/hunts/' + seed.hunt, '/admin/gifts', '/admin/game'];
   const frame = document.getElementById('phone');
   const describe = (el) => el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '')
     + ' «' + (el.textContent || el.value || '').trim().replace(/\s+/g, ' ').slice(0, 30) + '»';

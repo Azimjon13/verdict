@@ -14,7 +14,7 @@ from flask import current_app, g
 from .catalog import CONTENT
 
 # Bump and add a step to migrate() when the table structure changes. database/schema.sql holds the same result.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 _ready = set()            # databases already migrated by this process
 _ready_lock = threading.Lock()
@@ -486,6 +486,45 @@ def migrate(conn, cfg):
             KEY idx_reports_target (target_type, target_id)
         ) """ + opts, (), conn)
         _set_meta(conn, 'schema_version', '8')
+
+    if schema < 9:
+        # Closed monthly seasons with their final board, notifications for accounts, a log of sign-ups (by hashed
+        # address) to slow down mass registration, a season mark on trophies (one per player and season), and an
+        # index for the season rating, which counts verdicts by when a case was judged first.
+        execute("""CREATE TABLE IF NOT EXISTS seasons (
+            season    CHAR(7)      NOT NULL,
+            name      VARCHAR(40)  NOT NULL,
+            closed_at DATETIME     NOT NULL,
+            players   INT UNSIGNED NOT NULL DEFAULT 0,
+            board     MEDIUMTEXT   NOT NULL,
+            PRIMARY KEY (season)
+        ) """ + opts, (), conn)
+        execute("""CREATE TABLE IF NOT EXISTS notifications (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id    INT UNSIGNED NOT NULL,
+            kind       VARCHAR(20)  NOT NULL,
+            text       VARCHAR(255) NOT NULL,
+            link       VARCHAR(255) NOT NULL DEFAULT '',
+            created_at DATETIME     NOT NULL,
+            read_at    DATETIME     NULL,
+            PRIMARY KEY (id),
+            KEY idx_notifications_user (user_id, read_at),
+            CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        execute("""CREATE TABLE IF NOT EXISTS signup_log (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            ip_hash    CHAR(16)     NOT NULL,
+            created_at DATETIME     NOT NULL,
+            PRIMARY KEY (id),
+            KEY idx_signup_log_ip (ip_hash, created_at),
+            KEY idx_signup_log_created (created_at)
+        ) """ + opts, (), conn)
+        if not _column_exists(conn, 'gift_grants', 'season'):
+            execute('ALTER TABLE gift_grants ADD COLUMN season CHAR(7) NULL AFTER prize_of,'
+                    ' ADD UNIQUE KEY uniq_grants_season (season, voter)', (), conn)
+        if not _index_exists(conn, 'votes', 'idx_votes_first'):
+            execute('ALTER TABLE votes ADD KEY idx_votes_first (first_at)', (), conn)
+        _set_meta(conn, 'schema_version', '9')
 
     admin_id = ensure_admin(conn, cfg)
     # Team demo situations created before accounts existed belong to the team.

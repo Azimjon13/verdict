@@ -49,6 +49,15 @@
                 </ol>
                 <p class="field-note">{{ icon('info') }}Опыт, ранги, достижения и события мира задаются в файле <code>content/catalog.json</code> — его же читает игровой клиент.</p>
             </section>
+            <section class="panel admin-card" aria-labelledby="signup-title">
+                <h2 class="vz-title" id="signup-title">{{ icon('shield') }}Регистрации</h2>
+                <ul class="plain-list">
+                    <li>{{ icon('clock') }}<span>Новых аккаунтов в час: <b>{{ seen.per_hour or 'без ограничения' }}</b></span></li>
+                    <li>{{ icon('globe') }}<span>С одного адреса в час: <b>{{ seen.per_ip or 'без ограничения' }}</b></span></li>
+                </ul>
+                <p class="field-note">{{ icon('info') }}Сайт видит ваш адрес как <code>{{ seen.address or '—' }}</code>{% if seen.forwarded %} (X-Forwarded-For: <code>{{ seen.forwarded }}</code>){% endif %}.
+                    {% if seen.public %}Это настоящий адрес — ограничение по адресу работает.{% else %}Это внутренний адрес сервера: ограничение по адресу отключено само{% if seen.forwarded %}; если ваш адрес — последний в X-Forwarded-For, задайте <code>VERDICT_TRUSTED_PROXIES=1</code>{% endif %}. Общий лимит в час действует.{% endif %}</p>
+            </section>
             <section class="panel admin-card" aria-labelledby="links-title">
                 <h2 class="vz-title" id="links-title">{{ icon('layers') }}Контент и команда</h2>
                 <div class="admin-links">

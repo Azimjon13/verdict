@@ -162,3 +162,19 @@ def export():
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.headers['Content-Disposition'] = 'attachment; filename="%s"' % filename
     return response
+
+
+def health():
+    """For an uptime monitor: 200 with "ok" while the site and its database answer, 503 otherwise. Never cached."""
+    from ..db import DatabaseUnavailable, scalar
+    from ..db import SCHEMA_VERSION
+    try:
+        schema = int(scalar("SELECT meta_value FROM meta WHERE meta_key = 'schema_version'") or 0)
+        status, body = 200, {'ok': True, 'database': 'ok', 'schema': schema}
+    except DatabaseUnavailable:
+        status, body = 503, {'ok': False, 'database': 'unavailable'}
+    body['expected_schema'] = SCHEMA_VERSION
+    body['time'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    response = make_response(body, status)
+    response.headers['Cache-Control'] = 'no-store'
+    return response

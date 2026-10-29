@@ -1,4 +1,4 @@
--- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 8.
+-- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 9.
 -- Сайт создаёт и обновляет эти таблицы сам при первом запуске. Этот файл нужен, если у
 -- пользователя MySQL нет права CREATE: создайте базу и импортируйте его вручную
 -- (phpMyAdmin / HeidiSQL / mysql -u root -p < database/schema.sql).
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS votes (
     UNIQUE KEY uniq_votes_situation_voter (situation_id, voter),
     KEY idx_votes_voter (voter),
     KEY idx_votes_created (created_at),
+    KEY idx_votes_first (first_at),
     CONSTRAINT fk_votes_situation FOREIGN KEY (situation_id) REFERENCES situations (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -184,6 +185,7 @@ CREATE TABLE IF NOT EXISTS gift_grants (
     spot_id      INT UNSIGNED NULL,
     challenge_id INT UNSIGNED NULL,
     prize_of     INT UNSIGNED NULL,                       -- id охоты для главного приза (не больше одного)
+    season       CHAR(7)      NULL,                       -- трофей сезона ГГГГ-ММ (не больше одного)
     kind         VARCHAR(16)  NOT NULL,
     name         VARCHAR(120) NOT NULL,
     icon         VARCHAR(30)  NOT NULL,
@@ -196,6 +198,7 @@ CREATE TABLE IF NOT EXISTS gift_grants (
     revoked_at   DATETIME     NULL,                       -- отозван командой
     PRIMARY KEY (id),
     UNIQUE KEY uniq_grants_prize (prize_of, voter),
+    UNIQUE KEY uniq_grants_season (season, voter),
     KEY idx_grants_voter (voter),
     KEY idx_grants_challenge (challenge_id),
     CONSTRAINT fk_grants_gift FOREIGN KEY (gift_id) REFERENCES gifts (id) ON DELETE SET NULL,
@@ -316,14 +319,48 @@ CREATE TABLE IF NOT EXISTS reports (
     KEY idx_reports_target (target_type, target_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Закрытые сезоны (месяц UTC): итоговая таблица (первые места) в JSON.
+CREATE TABLE IF NOT EXISTS seasons (
+    season    CHAR(7)      NOT NULL,                      -- ГГГГ-ММ
+    name      VARCHAR(40)  NOT NULL,                      -- «Октябрь 2026»
+    closed_at DATETIME     NOT NULL,
+    players   INT UNSIGNED NOT NULL DEFAULT 0,            -- сколько аккаунтов набрали опыт за сезон
+    board     MEDIUMTEXT   NOT NULL,
+    PRIMARY KEY (season)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Уведомления аккаунтов (колокольчик в шапке).
+CREATE TABLE IF NOT EXISTS notifications (
+    id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id    INT UNSIGNED NOT NULL,
+    kind       VARCHAR(20)  NOT NULL,
+    text       VARCHAR(255) NOT NULL,
+    link       VARCHAR(255) NOT NULL DEFAULT '',
+    created_at DATETIME     NOT NULL,
+    read_at    DATETIME     NULL,
+    PRIMARY KEY (id),
+    KEY idx_notifications_user (user_id, read_at),
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Регистрации по хэшу адреса — чтобы притормозить массовое создание аккаунтов.
+CREATE TABLE IF NOT EXISTS signup_log (
+    id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    ip_hash    CHAR(16)     NOT NULL,
+    created_at DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_signup_log_ip (ip_hash, created_at),
+    KEY idx_signup_log_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS meta (
     meta_key   VARCHAR(64)  NOT NULL,
     meta_value VARCHAR(255) NOT NULL,
     PRIMARY KEY (meta_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '8')
-    ON DUPLICATE KEY UPDATE meta_value = '8';
+INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '9')
+    ON DUPLICATE KEY UPDATE meta_value = '9';
 
 -- Первая учётная запись команды: логин admin, пароль verdict-admin.
 -- СМЕНИТЕ ПАРОЛЬ сразу после первого входа (страница «Профиль»).

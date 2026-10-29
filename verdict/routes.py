@@ -16,6 +16,9 @@ ROUTES = [
     ('/campaigns',               'campaigns',   campaigns.campaigns_page, ['GET']),
     ('/campaign/<key>',          'campaign',    campaigns.campaign_page, ['GET', 'POST']),
     ('/ratings',                 'ratings',     social.ratings,          ['GET']),
+    ('/seasons',                 'seasons',     social.seasons_page,     ['GET']),
+    ('/seasons/<key>',           'season',      social.season_page,      ['GET']),
+    ('/notifications',           'notifications', social.notifications_page, ['GET']),
     ('/u/<login>',               'profile',     social.profile,          ['GET', 'POST']),
     ('/friends',                 'friends',     social.friends,          ['GET', 'POST']),
     ('/communities',             'communities', social.communities,      ['GET', 'POST']),
@@ -36,6 +39,7 @@ ROUTES = [
     ('/api/world',               'api_world',   api.world_reset,         ['GET', 'POST']),
     ('/api/hunt',                'api_hunt',    api.hunt_claim,          ['POST']),
     ('/api/export',              'api_export',  api.export,              ['GET']),
+    ('/health',                  'health',      api.health,              ['GET', 'HEAD']),
 ]
 
 # PHP page → (endpoint, query parameter that becomes the <int:id> part, endpoint when that parameter is set)

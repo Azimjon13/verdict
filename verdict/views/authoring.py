@@ -1,6 +1,7 @@
 """Authors and the team: the creator form, the selection board, the full dossier, moderation actions."""
 from flask import request, session, url_for
 
+from .. import notify
 from ..auth import can_edit_situation, can_save_draft, current_user, current_user_id, is_admin, is_logged_in, owns_situation
 from ..catalog import CATEGORIES, LEVELS, SITUATION_TYPES, STATUSES
 from ..forms import parse_nested, render_decision, render_line, render_participant, render_repeater, render_witness
@@ -254,9 +255,15 @@ def action():
     elif act == 'approved':
         situation_set_status(sid, 'approved')
         flash('success', 'Ситуация «%s» добавлена в игру.' % s['title'])
+        if s['status'] != 'approved' and s.get('user_id') and s['user_id'] != current_user_id():
+            notify.send(s['user_id'], 'case_approved', 'Ваше дело «%s» в игре — игроки уже могут его судить.' % s['title'],
+                        url_for('case', id=sid))
     elif act == 'rejected':
         situation_set_status(sid, 'rejected')
         flash('success', 'Ситуация «%s» отклонена.' % s['title'])
+        if s['status'] != 'rejected' and s.get('user_id') and s['user_id'] != current_user_id():
+            notify.send(s['user_id'], 'case_rejected', 'Дело «%s» не прошло отбор. Его можно доработать и отправить снова.'
+                        % s['title'], url_for('view', id=sid))
     elif act == 'pending':
         situation_set_status(sid, 'pending')
         flash('success', 'Ситуация «%s» возвращена на отбор.' % s['title'])

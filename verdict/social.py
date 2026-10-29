@@ -8,7 +8,7 @@ import re
 import secrets
 from datetime import datetime, time, timedelta
 
-from . import career
+from . import career, notify
 from .catalog import ACHIEVEMENTS, SOCIAL
 from .db import execute, insert, now, query, query_one, scalar
 
@@ -63,8 +63,10 @@ def befriend(me, other):
         accept(me, other)
         return 'accepted'
     ts = now()
-    execute("INSERT IGNORE INTO friendships (user_id, friend_id, status, created_at, updated_at) VALUES (%s, %s, 'requested', %s, %s)",
-            (me, other, ts, ts))
+    if execute("INSERT IGNORE INTO friendships (user_id, friend_id, status, created_at, updated_at) VALUES (%s, %s, 'requested', %s, %s)",
+               (me, other, ts, ts)):
+        who = _who(me)
+        notify.send(other, 'friend_request', '%s хочет добавить вас в друзья.' % who['display_name'], '/friends')
     return 'requested'
 
 
@@ -75,7 +77,13 @@ def accept(me, other):
         return False
     execute("INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at) VALUES (%s, %s, 'accepted', %s, %s)"
             " ON DUPLICATE KEY UPDATE status = 'accepted', updated_at = VALUES(updated_at)", (me, other, ts, ts))
+    who = _who(me)
+    notify.send(other, 'friend_accepted', '%s принял(а) вашу заявку в друзья.' % who['display_name'], '/u/%s' % who['login'])
     return True
+
+
+def _who(user_id):
+    return query_one('SELECT id, login, display_name FROM users WHERE id = %s', (user_id,)) or {'login': '', 'display_name': 'Игрок'}
 
 
 def decline(me, other):
@@ -145,7 +153,8 @@ def _stats(user_ids=None, start=None, end=None, rated_only=True):
                  "            FROM meta WHERE meta_key >= %s AND meta_key < %s) d"
                  "   ON d.sid = v.situation_id AND DATE(COALESCE(v.first_at, v.created_at)) = d.day"
                  " WHERE COALESCE(v.first_at, v.created_at) >= %s AND COALESCE(v.first_at, v.created_at) < %s GROUP BY v.voter")
-        gifts = 'SELECT voter, SUM(xp) AS xp FROM gift_grants WHERE revoked_at IS NULL AND created_at >= %s AND created_at < %s GROUP BY voter'
+        gifts = ('SELECT voter, SUM(xp) AS xp FROM gift_grants WHERE revoked_at IS NULL AND season IS NULL'
+                 ' AND created_at >= %s AND created_at < %s GROUP BY voter')  # last season's trophies don't count
         params = ['daily:' + start.isoformat(), 'daily:' + end.isoformat(), a, b, a, b]
     else:
         votes = ("SELECT v.voter, COUNT(*) AS n, COALESCE(SUM(v.guess_correct = 1), 0) AS g,"
@@ -195,13 +204,14 @@ def accounts(user_ids):
     return sorted(out, key=lambda a: (-a['xp'], a['display_name'].lower()))
 
 
-def board(kind='season', user_ids=None):
+def board(kind='season', user_ids=None, day=None):
     """A rating: rows best first with place (ties share it), the career rank and the value of this board. Only
-    accounts that agreed to be rated and have something to show."""
+    accounts that agreed to be rated and have something to show. The season board is this month's, or the month of
+    `day`."""
     rows = _stats(user_ids)
     season_xp = {}
     if kind == 'season':
-        start, end = season()
+        start, end = season(day)
         season_xp = {int(r['user_id']): _xp(r, True) for r in _stats(user_ids, start, end)}
     out = []
     for r in rows:
@@ -317,6 +327,12 @@ def join(c, user_id, code=''):
     status = 'requested' if c['access'] == 'request' and not invited else 'active'
     execute("INSERT INTO community_members (community_id, user_id, role, status, joined_at) VALUES (%s, %s, 'member', %s, %s)",
             (c['id'], user_id, status, now()))
+    if status == 'requested':
+        who = _who(user_id)
+        for r in query("SELECT user_id FROM community_members WHERE community_id = %s AND status = 'active'"
+                       " AND role IN ('owner', 'moderator')", (c['id'],)):
+            notify.send(r['user_id'], 'community_request', '%s просится в «%s».' % (who['display_name'], c['name']),
+                        '/c/%s#members' % c['slug'])
     return 'joined' if status == 'active' else 'requested'
 
 
@@ -326,8 +342,11 @@ def leave(c, user_id):
 
 
 def approve(c, user_id):
-    return execute("UPDATE community_members SET status = 'active', joined_at = %s WHERE community_id = %s AND user_id = %s"
+    done = execute("UPDATE community_members SET status = 'active', joined_at = %s WHERE community_id = %s AND user_id = %s"
                    " AND status = 'requested'", (now(), c['id'], user_id))
+    if done:
+        notify.send(user_id, 'community_joined', 'Вас приняли в сообщество «%s».' % c['name'], '/c/%s' % c['slug'])
+    return done
 
 
 def remove_member(c, user_id, by_owner):
@@ -339,8 +358,12 @@ def remove_member(c, user_id, by_owner):
 
 
 def set_role(c, user_id, role):
-    return execute("UPDATE community_members SET role = %s WHERE community_id = %s AND user_id = %s AND role <> 'owner'"
+    done = execute("UPDATE community_members SET role = %s WHERE community_id = %s AND user_id = %s AND role <> 'owner'"
                    " AND status = 'active'", (role, c['id'], user_id))
+    if done:
+        notify.send(user_id, 'community_role', ('Теперь вы модератор сообщества «%s».' if role == 'moderator'
+                                                else 'Вы больше не модератор сообщества «%s».') % c['name'], '/c/%s' % c['slug'])
+    return done
 
 
 def members(community_id):
@@ -400,8 +423,14 @@ def reports_list(status='open'):
 
 
 def report_close(report_id, status, by_user_id):
-    return execute("UPDATE reports SET status = %s, resolved_at = %s, resolved_by = %s WHERE id = %s AND status = 'open'",
+    """Closes a report and tells whoever sent it (resolved: the team acted; dismissed: no breach found)."""
+    reporter = scalar("SELECT reporter_id FROM reports WHERE id = %s AND status = 'open'", (report_id,))
+    done = execute("UPDATE reports SET status = %s, resolved_at = %s, resolved_by = %s WHERE id = %s AND status = 'open'",
                    (status, now(), by_user_id, report_id))
+    if done:
+        notify.send(reporter, 'report', 'Спасибо за жалобу: команда приняла меры.' if status == 'resolved'
+                    else 'Команда рассмотрела вашу жалобу и не нашла нарушений.')
+    return done
 
 
 def open_reports_count():

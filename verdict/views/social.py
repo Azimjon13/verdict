@@ -1,7 +1,7 @@
 """Players together: ratings, public profiles, friends, communities."""
 from flask import request, url_for
 
-from .. import social
+from .. import career, notify, seasons, social
 from ..auth import current_user_id, is_admin
 from ..catalog import SOCIAL
 from ..repository import input_str
@@ -47,6 +47,48 @@ def ratings():
     return _page('ratings.html', 'Рейтинг', 'ratings', rows=rows[:100], total=len(rows), my_row=my_row, kind=kind, scope=scope,
                  community=community, my_communities=social.user_communities(uid), season_name=social.season_name(),
                  days_left=social.days_left())
+
+
+# ---------- Seasons ----------
+
+def _ranked(rows):
+    """Rows of a stored board, with the career rank they had when the season closed."""
+    return [{**r, 'rank': career.rank_of(int(r['xp']))} for r in rows]
+
+
+def seasons_page():
+    past = seasons.past()
+    for s in past:
+        s['board'] = _ranked(s['board'])
+    return _page('seasons.html', 'Сезоны', 'seasons', past=past, trophies=seasons.trophies(),
+                 season_name=seasons.display_name(), days_left=social.days_left())
+
+
+def season_page(key):
+    s = seasons.get(key)
+    if not s:
+        return _missing('Сезон не найден')
+    s['board'] = _ranked(s['board'])
+    uid = current_user_id()
+    my_row = next((r for r in s['board'] if r['user_id'] == uid), None) if uid else None
+    return _page('season.html', 'Сезон «%s»' % s['name'], 'seasons', s=s, my_row=my_row)
+
+
+# ---------- Notifications ----------
+
+def notifications_page():
+    gate = require_login(url_for('notifications'), 'Войдите, чтобы увидеть уведомления.')
+    if gate:
+        return gate
+    uid = current_user_id()
+    items = notify.latest(uid)
+    notify.mark_read(uid)  # seen now; the list still shows which ones were new
+    from ..repository import situation_find
+    from ..web import voter_id
+    d = career.daily(voter_id())
+    daily_case = situation_find(d['id']) if d['id'] and not d['judged'] else None
+    return page('notifications.html', title='Уведомления', active='', body_class='page-social', bg='calm', items=items,
+                daily_case=daily_case, daily=d)
 
 
 # ---------- Profiles and friends ----------

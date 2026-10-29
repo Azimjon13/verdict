@@ -106,3 +106,67 @@ def test_campaign_chapters_stay_out_of_moderation(new_browser, db):
     assert db.value('SELECT status FROM situations WHERE id = %s', (sid,)) == 'campaign'
     team.get('/view/%d' % sid)
     assert 'глава сюжетной кампании' in ' '.join(team.toasts())
+
+
+def sign_up_api(c, ip=None):
+    env = {'REMOTE_ADDR': ip} if ip else {}
+    return c.post('/api/v1/auth/register', json={'login': 'b' + secrets.token_hex(4), 'display_name': 'Бот',
+                                                 'password': 'password123'}, environ_base=env)
+
+
+def test_signup_limits(app, db, new_browser):
+    """Per address only for real (public) addresses; the hourly total for everyone; the web form and the API alike."""
+    cfg = app.config['VERDICT']
+    c = app.test_client()
+    db.rows('DELETE FROM signup_log')
+    cfg['max_signups_per_ip'] = 2
+    try:
+        assert [sign_up_api(c, '93.184.216.34').status_code for _ in range(3)] == [200, 200, 429]
+        assert 'С этого адреса' in sign_up_api(c, '93.184.216.34').get_json()['error']
+        assert sign_up_api(c, '93.184.216.35').status_code == 200  # another address
+        assert [sign_up_api(c).status_code for _ in range(3)] == [200, 200, 200]  # 127.0.0.1: can't tell visitors apart
+        assert db.value('SELECT COUNT(*) FROM signup_log') == 6  # addresses only as a hash
+        assert db.value("SELECT COUNT(*) FROM signup_log WHERE ip_hash LIKE '93.%%'") == 0
+        cfg['max_signups_per_hour'] = 6
+        assert sign_up_api(c, '198.51.100.7').status_code == 429
+        b = new_browser()
+        b.form('/register', {'login': 'w' + secrets.token_hex(4), 'display_name': 'Человек', 'password': 'password123',
+                             'password_confirm': 'password123', 'back': ''})
+        assert 'слишком много новых аккаунтов' in b.html
+    finally:
+        cfg['max_signups_per_ip'] = cfg['max_signups_per_hour'] = 0
+
+
+def test_trusted_proxy_address(app):
+    from verdict import signups
+    cfg = app.config['VERDICT']
+    with app.test_request_context('/', environ_base={'REMOTE_ADDR': '127.0.0.1'},
+                                  headers={'X-Forwarded-For': '10.0.0.1, 93.184.216.34'}):
+        assert signups.client_ip() == '127.0.0.1' and not signups.is_public('127.0.0.1')
+        cfg['trusted_proxies'] = 1
+        try:
+            assert signups.client_ip() == '93.184.216.34' and signups.is_public(signups.client_ip())
+        finally:
+            cfg['trusted_proxies'] = 0
+
+
+def test_admin_sees_what_address_the_site_sees(new_browser):
+    team = new_browser()
+    team.login()
+    team.get('/admin/game')
+    assert 'Сайт видит ваш адрес как' in team.html and 'ограничение по адресу отключено' in team.html
+
+
+def test_health(app, monkeypatch):
+    c = app.test_client()
+    r = c.get('/health')
+    body = r.get_json()
+    assert r.status_code == 200 and body['ok'] and body['database'] == 'ok' and body['schema'] == body['expected_schema']
+    assert r.headers['Cache-Control'] == 'no-store'
+    import verdict.db as dbmod
+
+    def down(*_a, **_k):
+        raise dbmod.DatabaseUnavailable('test')
+    monkeypatch.setattr(dbmod, 'scalar', down)
+    r = c.get('/health')
+    assert r.status_code == 503 and r.get_json()['ok'] is False

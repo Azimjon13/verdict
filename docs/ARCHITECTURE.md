@@ -79,8 +79,14 @@ Also built (schema 8): sign-in from the game client (`api_tokens`, only SHA-256 
 team (`reports`) with a ban that keeps a player out of ratings, hunts and social actions; story campaigns
 (`campaign_runs`, content in `content/campaigns/`).
 
-Still to build: shared snapshots with images (`shares` below), season results kept per month (`ratings` below) once
-boards need caching, notifications (a friend request, an approved join request).
+Also built (schema 9): closed seasons (`seasons`: the final board as JSON; `verdict/seasons.py` closes a month on
+the first visit after it, claiming the row first so several processes don't close it twice, and gives trophies as
+gift grants marked with the season — unique per player and season); notifications for accounts (`notifications`,
+`verdict/notify.py`, sent from the social actions, moderation, team gifts, report closing and season closing); a
+sign-up log by hashed address (`signup_log`, `verdict/signups.py`).
+
+Still to build: shared snapshots with images (`shares` below), and a ratings cache (`ratings` below) once live boards
+get slow — closed seasons already keep their final board.
 Everything hangs off **accounts** (`users.id`), never off player ids. The original plan, for reference:
 
 ```sql

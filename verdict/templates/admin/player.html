@@ -80,7 +80,7 @@
                         <li class="{{ 'is-revoked' if g.revoked_at }}">
                             {{ gift_card(g) }}
                             <div class="grant-meta">
-                                <small>{{ {'spot': 'из тайника', 'prize': 'главный приз охоты', 'admin': 'выдан командой'}.get(g.source, g.source) }} · {{ format_datetime(g.created_at) }}{% if g.note %} · {{ g.note }}{% endif %}{% if g.revoked_at %} · отозван {{ format_datetime(g.revoked_at) }}{% endif %}</small>
+                                <small>{{ {'spot': 'из тайника', 'prize': 'главный приз охоты', 'admin': 'выдан командой', 'season': 'трофей сезона', 'campaign': 'концовка кампании'}.get(g.source, g.source) }} · {{ format_datetime(g.created_at) }}{% if g.note %} · {{ g.note }}{% endif %}{% if g.revoked_at %} · отозван {{ format_datetime(g.revoked_at) }}{% endif %}</small>
                                 {% if not g.revoked_at %}
                                     <form method="post" class="inline-form" data-confirm="Отозвать подарок «{{ g.name }}»? Его опыт перестанет считаться, титул снимется." data-confirm-title="Отозвать подарок" data-confirm-ok="Отозвать" data-confirm-tone="danger">
                                         {{ csrf_field() }}

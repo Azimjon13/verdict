@@ -147,6 +147,8 @@ def player_page(voter):
                 flash('error', 'Выберите подарок.')
             else:
                 r = hunt.grant(voter, gift, 'admin', note=input_str(request.form.get('note', ''), 255))
+                from .. import notify
+                notify.send_to_player(voter, 'gift', 'Команда VERDICT прислала вам подарок «%s».' % gift['name'], '/judge#gifts')
                 flash('success', 'Подарок «%s» выдан.' % gift['name'] + (' Коды в пуле закончились — код не выдан.'
                                                                        if gift['kind'] == 'code' and not r['code'] else ''))
         elif act == 'revoke':
@@ -544,4 +546,6 @@ def game_page():
         d = career.today() + timedelta(days=i)
         sid = career.daily_case_id(d)
         days.append({'day': d, 'case': situation_find(sid) if sid else None})
-    return _render('game.html', 'Игра', 'game', days=days, cases=situations_list(status='approved', order='old'))
+    from .. import signups
+    return _render('game.html', 'Игра', 'game', days=days, cases=situations_list(status='approved', order='old'),
+                   seen=signups.seen())
