@@ -57,8 +57,8 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 4. **Medium — no monitoring.** Nobody is told when the site is down or erroring. A free uptime check (e.g. every
    5 minutes on `/api/v1/`) and a look at the Passenger log after each deploy are enough for now.
 5. **Done 29 Oct — PHP leftovers removed** (the first commit keeps them; `build_dist.py` makes Python packages only).
-6. **Low — no CI.** Tests need a MySQL server, which is why they aren't automated. A GitHub Actions job with a MySQL
-   service would run the 199 tests on every push in about a minute.
+6. **Done 29 Oct — CI.** A GitHub Actions job with a MySQL service runs the linter, pytest and the browser tests on
+   every push to `main`.
 
 ### Security
 
@@ -136,7 +136,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 6. End-of-season trophies and a past-seasons page.
 7. In-site notifications (header bell): friend requests, community approvals, hunt prizes, case of the day.
 8. Registration brake for the API and a per-IP limit (the honeypot and the "set password" button are done).
-9. ~~One XP formula~~ done; uptime monitor; CI with MySQL.
+9. ~~One XP formula~~ done; uptime monitor; ~~CI with MySQL~~ done.
 
 **Later (grow the game)**
 10. Real illustrations for cases (start with the case-of-the-day candidates and campaign chapters).

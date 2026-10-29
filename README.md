@@ -1,5 +1,7 @@
 # VERDICT — judgment simulator
 
+[![tests](https://github.com/Azimjon13/verdict/actions/workflows/tests.yml/badge.svg)](https://github.com/Azimjon13/verdict/actions/workflows/tests.yml)
+
 A decision & judgment game: fictional worlds, disputed acts, witnesses who may lie, and the consequences of your
 verdict. The website is in Russian, like the game content. Situations follow `Шаблон игровой ситуации.docx`;
 the creator brief is `Content Creator Brief.docx`.
@@ -372,7 +374,9 @@ same frames, speakers, portraits and scenes for all 48 cases.
 .venv\Scripts\python tests\e2e\run.py --serve          the seeded test site on http://127.0.0.1:8099
 ```
 
-They need Chrome (or Chromium, Edge; set `CHROME` for another path) and the same MySQL as pytest; the database
+GitHub runs the linter, pytest and the browser tests on every push to `main` (`.github/workflows/tests.yml`, MySQL 8
+as a service); the badge at the top shows the last result. The browser tests need Chrome (or Chromium, Edge; set
+`CHROME` for another path) and the same MySQL as pytest; the database
 `verdict_e2e` (`VERDICT_E2E_DB_NAME`) is dropped and rebuilt, then filled with a running hunt, a hunt in preparation,
 a player with a judge profile and a month of made-up activity. Each scenario in `tests/e2e/scenarios/` is a script
 the runner adds to the real pages in headless Chrome: it clicks, types and holds buttons like a player and reports

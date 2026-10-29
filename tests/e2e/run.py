@@ -292,7 +292,7 @@ def find_chrome():
 def chrome(binary, url, profile, extra=()):
     args = [binary, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars',
             '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--user-data-dir=%s' % profile, *extra, url]
-    if os.name != 'nt' and os.geteuid() == 0:
+    if os.environ.get('CI') or (os.name != 'nt' and os.geteuid() == 0):  # CI runners and root can't use Chrome's sandbox
         args.insert(1, '--no-sandbox')
     return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=os.name != 'nt')
 
