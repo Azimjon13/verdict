@@ -14,7 +14,7 @@ from flask import current_app, g
 from .catalog import CONTENT
 
 # Bump and add a step to migrate() when the table structure changes. database/schema.sql holds the same result.
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 _ready = set()            # databases already migrated by this process
 _ready_lock = threading.Lock()
@@ -554,6 +554,40 @@ def migrate(conn, cfg):
             CONSTRAINT fk_comment_likes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         ) """ + opts, (), conn)
         _set_meta(conn, 'schema_version', '10')
+
+    if schema < 11:
+        # The Telegram bot: which chat belongs to which account (and what it wants to get), one-time codes that link
+        # them, and one-time links for a new password sent to that chat.
+        execute("""CREATE TABLE IF NOT EXISTS telegram_links (
+            user_id    INT UNSIGNED NOT NULL,
+            chat_id    BIGINT       NOT NULL,
+            username   VARCHAR(64)  NOT NULL DEFAULT '',
+            notify     TINYINT(1)   NOT NULL DEFAULT 1,
+            daily      TINYINT(1)   NOT NULL DEFAULT 1,
+            last_daily DATE         NULL,
+            linked_at  DATETIME     NOT NULL,
+            PRIMARY KEY (user_id),
+            UNIQUE KEY uniq_telegram_chat (chat_id),
+            CONSTRAINT fk_telegram_links_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        execute("""CREATE TABLE IF NOT EXISTS telegram_codes (
+            code       CHAR(24)     NOT NULL,
+            user_id    INT UNSIGNED NOT NULL,
+            created_at DATETIME     NOT NULL,
+            PRIMARY KEY (code),
+            KEY idx_telegram_codes_user (user_id),
+            CONSTRAINT fk_telegram_codes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        execute("""CREATE TABLE IF NOT EXISTS password_resets (
+            token_hash CHAR(64)     NOT NULL,
+            user_id    INT UNSIGNED NOT NULL,
+            created_at DATETIME     NOT NULL,
+            used_at    DATETIME     NULL,
+            PRIMARY KEY (token_hash),
+            KEY idx_password_resets_user (user_id, created_at),
+            CONSTRAINT fk_password_resets_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) """ + opts, (), conn)
+        _set_meta(conn, 'schema_version', '11')
 
     admin_id = ensure_admin(conn, cfg)
     # Team demo situations created before accounts existed belong to the team.

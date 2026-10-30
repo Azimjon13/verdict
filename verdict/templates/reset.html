@@ -1,0 +1,28 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="section auth-section">
+    <div class="container">
+        <form method="post" class="panel auth-card hud" data-validate novalidate>
+            {{ csrf_field() }}
+            <div class="auth-icon">{{ icon('lock') }}</div>
+            <span class="kicker">Новый пароль</span>
+            <h1>{{ user.display_name }}</h1>
+            <p class="muted">Логин <b>{{ user.login }}</b>. После смены пароля вход на других устройствах и в игре завершится.</p>
+            {% if errors._csrf %}<div class="form-alert" role="alert">{{ icon('alert') }}<span>{{ errors._csrf }}</span></div>{% endif %}
+            <label class="field{{ ' has-error' if 'new_password' in errors }}">
+                <span>Новый пароль</span>
+                <input type="password" name="new_password" required minlength="{{ PASSWORD_MIN }}" maxlength="200" autocomplete="new-password" data-strength autofocus>
+                <span class="strength" aria-hidden="true"><i></i></span>
+                {{ field_error(errors, 'new_password') }}
+            </label>
+            <label class="field{{ ' has-error' if 'new_password_confirm' in errors }}">
+                <span>Повторите пароль</span>
+                <input type="password" name="new_password_confirm" required data-match="new_password" data-match-msg="Пароли не совпадают." autocomplete="new-password">
+                {{ field_error(errors, 'new_password_confirm') }}
+            </label>
+            <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('check') }}Сохранить пароль</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

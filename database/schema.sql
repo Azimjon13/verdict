@@ -1,4 +1,4 @@
--- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 10.
+-- VERDICT — структура базы данных (MySQL 5.7+ / 8.0, MariaDB 10.3+), версия схемы 11.
 -- Сайт создаёт и обновляет эти таблицы сам при первом запуске. Этот файл нужен, если у
 -- пользователя MySQL нет права CREATE: создайте базу и импортируйте его вручную
 -- (phpMyAdmin / HeidiSQL / mysql -u root -p < database/schema.sql).
@@ -381,14 +381,49 @@ CREATE TABLE IF NOT EXISTS comment_likes (
     CONSTRAINT fk_comment_likes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Telegram-бот: чат аккаунта и что в него присылать (уведомления, напоминание о деле дня).
+CREATE TABLE IF NOT EXISTS telegram_links (
+    user_id    INT UNSIGNED NOT NULL,
+    chat_id    BIGINT       NOT NULL,
+    username   VARCHAR(64)  NOT NULL DEFAULT '',
+    notify     TINYINT(1)   NOT NULL DEFAULT 1,
+    daily      TINYINT(1)   NOT NULL DEFAULT 1,
+    last_daily DATE         NULL,                         -- когда последний раз напомнили о деле дня
+    linked_at  DATETIME     NOT NULL,
+    PRIMARY KEY (user_id),
+    UNIQUE KEY uniq_telegram_chat (chat_id),
+    CONSTRAINT fk_telegram_links_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Одноразовые коды «Подключить Telegram» (живут час).
+CREATE TABLE IF NOT EXISTS telegram_codes (
+    code       CHAR(24)     NOT NULL,
+    user_id    INT UNSIGNED NOT NULL,
+    created_at DATETIME     NOT NULL,
+    PRIMARY KEY (code),
+    KEY idx_telegram_codes_user (user_id),
+    CONSTRAINT fk_telegram_codes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Одноразовые ссылки для нового пароля (хранится только SHA-256, живут 30 минут).
+CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash CHAR(64)     NOT NULL,
+    user_id    INT UNSIGNED NOT NULL,
+    created_at DATETIME     NOT NULL,
+    used_at    DATETIME     NULL,
+    PRIMARY KEY (token_hash),
+    KEY idx_password_resets_user (user_id, created_at),
+    CONSTRAINT fk_password_resets_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS meta (
     meta_key   VARCHAR(64)  NOT NULL,
     meta_value VARCHAR(255) NOT NULL,
     PRIMARY KEY (meta_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '10')
-    ON DUPLICATE KEY UPDATE meta_value = '10';
+INSERT INTO meta (meta_key, meta_value) VALUES ('schema_version', '11')
+    ON DUPLICATE KEY UPDATE meta_value = '11';
 
 -- Первая учётная запись команды: логин admin, пароль verdict-admin.
 -- СМЕНИТЕ ПАРОЛЬ сразу после первого входа (страница «Профиль»).

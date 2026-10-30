@@ -649,6 +649,8 @@ def me():
     out['communities'] = [{'slug': c['slug'], 'name': c['name'], 'role': c['role']} for c in social.user_communities(uid)]
     out['friend_requests'] = len(social.requests_in(uid))
     out['notifications_unread'] = notify.unread(uid)
+    from .. import telegram
+    out['telegram'] = {'linked': bool(telegram.link_of(uid)), 'bot': telegram.bot_name() or None}
     return out
 
 

@@ -47,7 +47,25 @@
                 <ol class="rank-plan">
                     {% for r in RANKS %}<li>{{ icon(r.icon) }}<span>{{ r.name }}</span><small>{{ r.xp }} XP</small></li>{% endfor %}
                 </ol>
-                <p class="field-note">{{ icon('info') }}Опыт, ранги, достижения и события мира задаются в файле <code>content/catalog.json</code> — его же читает игровой клиент.</p>
+                <p class="field-note">{{ icon('info') }}<span>Опыт, ранги, достижения и события мира задаются в файле <code>content/catalog.json</code> — его же читает игровой клиент.</span></p>
+            </section>
+            <section class="panel admin-card" aria-labelledby="tg-title">
+                <h2 class="vz-title" id="tg-title">{{ icon('send') }}Telegram-бот</h2>
+                {% if not tg.enabled %}
+                    <p class="field-note">{{ icon('info') }}<span>Бот не настроен. Создайте бота у <b>@BotFather</b> (команда /newbot), задайте его токен в переменной <code>VERDICT_TELEGRAM_TOKEN</code> («Setup Python App» → Environment variables), перезапустите приложение и вернитесь сюда.</span></p>
+                {% else %}
+                    <ul class="plain-list">
+                        <li>{{ icon('send') }}<span>Бот: <b>{{ '@' ~ tg.bot if tg.bot else 'не подключён' }}</b></span></li>
+                        <li>{{ icon('users') }}<span>Подключили аккаунты: <b>{{ tg.links }}</b></span></li>
+                        <li>{{ icon('calendar') }}<span>Дело дня напоминается после <b>{{ tg.daily_hour }}:00 UTC</b></span></li>
+                    </ul>
+                    <div class="admin-links">
+                        <form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="tg_connect"><button class="btn btn-sm{{ '' if tg.bot else ' btn-primary' }}" type="submit">{{ icon('link') }}{{ 'Переподключить' if tg.bot else 'Подключить бота' }}</button></form>
+                        {% if tg.bot %}<form method="post" class="inline-form">{{ csrf_field() }}<input type="hidden" name="action" value="tg_test"><button class="btn btn-sm" type="submit">{{ icon('send') }}Прислать мне проверку</button></form>{% endif %}
+                    </div>
+                {% endif %}
+                <p class="field-note">{{ icon('clock') }}<span>Раз в час cron хостинга должен открывать адрес ниже: он закрывает прошедшие сезоны и рассылает напоминание о деле дня. cPanel → Cron Jobs → «Once per hour», команда:</span></p>
+                <code class="admin-code">curl -fsS {{ cron_url }} &gt; /dev/null</code>
             </section>
             <section class="panel admin-card" aria-labelledby="signup-title">
                 <h2 class="vz-title" id="signup-title">{{ icon('shield') }}Регистрации</h2>
@@ -55,8 +73,8 @@
                     <li>{{ icon('clock') }}<span>Новых аккаунтов в час: <b>{{ seen.per_hour or 'без ограничения' }}</b></span></li>
                     <li>{{ icon('globe') }}<span>С одного адреса в час: <b>{{ seen.per_ip or 'без ограничения' }}</b></span></li>
                 </ul>
-                <p class="field-note">{{ icon('info') }}Сайт видит ваш адрес как <code>{{ seen.address or '—' }}</code>{% if seen.forwarded %} (X-Forwarded-For: <code>{{ seen.forwarded }}</code>){% endif %}.
-                    {% if seen.public %}Это настоящий адрес — ограничение по адресу работает.{% else %}Это внутренний адрес сервера: ограничение по адресу отключено само{% if seen.forwarded %}; если ваш адрес — последний в X-Forwarded-For, задайте <code>VERDICT_TRUSTED_PROXIES=1</code>{% endif %}. Общий лимит в час действует.{% endif %}</p>
+                <p class="field-note">{{ icon('info') }}<span>Сайт видит ваш адрес как <code>{{ seen.address or '—' }}</code>{% if seen.forwarded %} (X-Forwarded-For: <code>{{ seen.forwarded }}</code>){% endif %}.
+                    {% if seen.public %}Это настоящий адрес — ограничение по адресу работает.{% else %}Это внутренний адрес сервера: ограничение по адресу отключено само{% if seen.forwarded %}; если ваш адрес — последний в X-Forwarded-For, задайте <code>VERDICT_TRUSTED_PROXIES=1</code>{% endif %}. Общий лимит в час действует.{% endif %}</span></p>
             </section>
             <section class="panel admin-card" aria-labelledby="links-title">
                 <h2 class="vz-title" id="links-title">{{ icon('layers') }}Контент и команда</h2>

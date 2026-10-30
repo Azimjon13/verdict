@@ -92,12 +92,14 @@ class Browser:
     def get(self, url):
         r = self.client.get(url)
         self.html = r.get_data(as_text=True)
+        r.close()  # as a server does: runs what waits for the page to be answered (Telegram messages)
         return r
 
     def post(self, url, data):
         from werkzeug.datastructures import MultiDict
         r = self.client.post(url, data=MultiDict(flatten(data)))
         self.html = r.get_data(as_text=True)
+        r.close()
         return r
 
     def csrf(self, html=None):

@@ -552,6 +552,22 @@ def communities_page():
 @bp.route('/game', methods=['GET', 'POST'])
 @team_only
 def game_page():
+    if request.method == 'POST' and request.form.get('action') in ('tg_connect', 'tg_test'):
+        from .. import telegram
+        from ..auth import current_user_id
+        try:
+            if request.form['action'] == 'tg_connect':
+                flash('success', 'Бот @%s подключён: вебхук и меню команд заданы.' % telegram.connect())
+            else:
+                row = telegram.link_of(current_user_id())
+                if not row:
+                    flash('error', 'Сначала подключите Telegram к своему аккаунту в профиле.')
+                else:
+                    telegram.call('sendMessage', **telegram.message(row['chat_id'], 'Проверка связи: бот VERDICT на месте.'))
+                    flash('success', 'Сообщение отправлено в ваш Telegram.')
+        except telegram.TelegramError as e:
+            flash('error', 'Telegram ответил ошибкой: %s' % e)
+        return redirect(url_for('admin.game_page'))
     if request.method == 'POST':
         day = request.form.get('day', '')
         sid = _int(request.form.get('situation_id'))
@@ -572,6 +588,7 @@ def game_page():
         d = career.today() + timedelta(days=i)
         sid = career.daily_case_id(d)
         days.append({'day': d, 'case': situation_find(sid) if sid else None})
-    from .. import signups
+    from .. import signups, telegram
+    from .api import cron_key
     return _render('game.html', 'Игра', 'game', days=days, cases=situations_list(status='approved', order='old'),
-                   seen=signups.seen())
+                   seen=signups.seen(), tg=telegram.status(), cron_url=url_for('cron', key=cron_key(), _external=True))

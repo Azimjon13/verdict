@@ -178,3 +178,38 @@ def health():
     response = make_response(body, status)
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+def cron_key():
+    """The key in /cron/<key>: VERDICT_CRON_KEY, or one made once and kept in the database."""
+    import secrets
+    from flask import current_app
+    from ..db import execute, scalar
+    key = current_app.config['VERDICT'].get('cron_key')
+    if not key:
+        execute('INSERT IGNORE INTO meta (meta_key, meta_value) VALUES (%s, %s)', ('cron_key', secrets.token_hex(16)))
+        key = scalar("SELECT meta_value FROM meta WHERE meta_key = 'cron_key'")
+    return key
+
+
+def cron(key):
+    """Called by the host's cron every hour: closes finished seasons, reminds of the case of the day on Telegram,
+    clears expired codes. Answers what it did."""
+    import hmac
+    from .. import seasons, telegram
+    if not hmac.compare_digest(str(key), cron_key()):
+        return json_response({'ok': False, 'error': 'Не найдено.'}, 404)
+    out = {'ok': True, 'seasons_closed': seasons.close_due(), 'daily': telegram.daily_run()}
+    telegram.housekeeping()
+    response = make_response(out)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+def telegram_hook():
+    """Telegram's webhook. The reply to a command goes back in this answer."""
+    from .. import telegram
+    if not telegram.hook_allowed():
+        return json_response({'ok': False}, 403)
+    reply = telegram.handle(request.get_json(silent=True) or {})
+    return json_response(reply or {'ok': True})

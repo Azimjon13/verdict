@@ -1,0 +1,30 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<section class="section auth-section">
+    <div class="container">
+        <form method="post" class="panel auth-card hud" data-validate novalidate>
+            {{ csrf_field() }}
+            <div class="auth-icon">{{ icon('key') }}</div>
+            <span class="kicker">Вход в VERDICT</span>
+            <h1>Забыли пароль?</h1>
+            {% if sent %}
+                <div class="form-alert form-alert-ok" role="status">{{ icon('send') }}<span>Если к аккаунту «{{ login_name }}» подключён Telegram, бот VERDICT уже прислал туда ссылку для нового пароля. Она действует 30 минут.</span></div>
+                <p class="muted">Ничего не пришло? Проверьте логин или напишите команде — она задаст новый пароль вручную.</p>
+                <a class="btn btn-block" href="{{ url_for('login') }}">{{ icon('login') }}Ко входу</a>
+            {% elif tg_ready %}
+                <p class="muted">Ссылку для нового пароля пришлёт бот VERDICT в Telegram — если вы подключили его в профиле. Иначе напишите команде: она задаст новый пароль вручную.</p>
+                <label class="field">
+                    <span>Логин</span>
+                    <input type="text" name="login" value="{{ login_name }}" required maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus>
+                </label>
+                <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('send') }}Прислать ссылку в Telegram</button>
+            {% else %}
+                <p class="muted">Напишите команде VERDICT: она проверит, что аккаунт ваш, и задаст новый пароль. Сменить его потом можно в профиле.</p>
+                <a class="btn btn-block" href="{{ url_for('login') }}">{{ icon('login') }}Ко входу</a>
+            {% endif %}
+            <p class="auth-switch">Вспомнили? <a href="{{ url_for('login') }}">Войти</a></p>
+        </form>
+    </div>
+</section>
+{% endblock %}

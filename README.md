@@ -40,6 +40,9 @@ Environment variables win over `config.json` in the project root (copy `config.e
 | Session lifetime | 14 days | `VERDICT_SESSION_LIFETIME` (seconds) |
 | New accounts an hour, in all / from one address | 30 / 5 (0 = no limit) | `VERDICT_MAX_SIGNUPS_PER_HOUR`, `VERDICT_MAX_SIGNUPS_PER_IP` |
 | Proxies to trust for the visitor's address | 0 | `VERDICT_TRUSTED_PROXIES` |
+| Telegram bot token (from @BotFather) | *(none: no bot)* | `VERDICT_TELEGRAM_TOKEN` |
+| Key in the hourly cron address `/cron/<key>` | made and kept in the database | `VERDICT_CRON_KEY` |
+| Hour of the case-of-the-day reminder (UTC) | 14 (19:00 Tashkent) | `VERDICT_DAILY_HOUR_UTC` |
 
 If your MySQL user cannot create databases, create one and import `database/schema.sql`.
 
@@ -99,6 +102,33 @@ says why in one line («VERDICT could not start …») and `startup-error.txt` i
 if the page is Passenger's own grey error instead, the failure is before the site's code runs (Python version, packages
 not installed) — see the *Passenger log file* set in the application's settings. Fix, then *Restart*. Set `VERDICT_SECRET_KEY` — without it the site
 keeps a generated key in the database, which works, but a key of your own is cleaner.
+
+### Hourly cron
+
+Add one more cron job, *Once per hour*: admin → «Игра» shows the exact command with the site's key, like
+
+```
+curl -fsS https://verdict.azero.uz/cron/<key> > /dev/null
+```
+
+It closes finished seasons (a visit would do it too, but this doesn't wait for one), sends the Telegram reminder of
+the case of the day once the reminder hour has come, and clears expired one-time codes.
+
+### Telegram bot
+
+1. In Telegram, open **@BotFather**, send `/newbot`, choose a name («VERDICT — суд») and a username ending in `bot`.
+   It answers with a token like `123456:ABC…`.
+2. «Setup Python App» → add `VERDICT_TELEGRAM_TOKEN` = that token → *Restart*.
+3. Admin → «Игра» → «Подключить бота». The site asks Telegram for the bot's name, sets the webhook
+   (`https://<site>/telegram/hook`, checked by a secret header derived from the token) and the command menu.
+4. Profile → «Подключить Telegram» on your own account, «Запустить» in the bot, then admin → «Прислать мне проверку».
+
+Players then link their chat in the profile (a one-time code in a `t.me` link, valid for an hour) and get there:
+every notification (switchable), the case of the day after the reminder hour unless they judged it already
+(switchable), and — from «Забыли пароль?» on the login page — a one-time link for a new password, valid for 30
+minutes. Commands: `/today`, `/me` (rank, XP, streak, season place), `/stop`, `/help`. Messages go out after the
+page has been answered, so a slow Telegram never slows the site; a player who blocks the bot is unlinked on the next
+reminder. Without a token none of this shows, and «Забыли пароль?» tells the player to write to the team.
 
 ### Uptime monitor
 
@@ -292,8 +322,8 @@ invited to sign up (the progress made so far comes along).
   `seasons`), and every placed account is told where it finished. A trophy counts in the career, not in the next
   season. Closing happens once even with several processes (the season row is claimed first), and only for months
   since this version first ran.
-- **Notifications** for accounts — the bell in the header with the unread count, `/notifications` (seen = read) and
-  the game API. Sent when someone asks to be friends or accepts, asks to join a community (to its founder and
+- **Notifications** for accounts — the bell in the header with the unread count, `/notifications` (seen = read),
+  the game API, and the player's Telegram when they linked it (see «Telegram bot»). Sent when someone asks to be friends or accepts, asks to join a community (to its founder and
   moderators), is accepted or made a moderator, when the team approves or rejects an author's case, gives a gift,
   closes the player's report, and when a season closes. The page also reminds of the case of the day while it's
   waiting. Kept for 90 days.
@@ -483,13 +513,14 @@ verdict/               the application
   campaigns.py         story campaigns: chapters, bridges, the campaign's world, endings
   gameauth.py          sign-in from the game client (hashed tokens, slowed-down guessing)
   seasons.py notify.py signups.py  closing seasons with trophies; notifications; sign-up limits
+  telegram.py          the bot: linking chats, notifications, the case-of-the-day reminder, password reset
   talk.py              the discussion under a case
   analytics.py charts.py  the admin overview: numbers and chart shapes
   views/               pages, authoring, accounts, social, campaigns, admin (the team's panel), api (site JSON), api_v1 (game clients)
   templates/           Jinja templates (layout, pages, partials)
 content/               catalog.json, demo cases and story campaigns (shared with game clients)
 assets/                CSS, JavaScript, images (served at /assets)
-database/schema.sql    manual schema import (schema v10; a test keeps it equal to the migrations)
+database/schema.sql    manual schema import (schema v11; a test keeps it equal to the migrations)
 scripts/build_dist.py  builds dist/; scripts/make_icons.py draws the app icons
 tests/                 pytest suite; tests/e2e/ — browser scenarios and their runner
 docs/API.md            game-client API

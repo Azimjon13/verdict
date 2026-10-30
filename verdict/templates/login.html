@@ -27,7 +27,7 @@
                 </span>
             </label>
             <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('login') }}Войти</button>
-            <p class="auth-switch">Нет аккаунта? <a href="{{ url_for('register', back=back) if back else url_for('register') }}">Зарегистрироваться</a></p>
+            <p class="auth-switch">Нет аккаунта? <a href="{{ url_for('register', back=back) if back else url_for('register') }}">Зарегистрироваться</a> · <a href="{{ url_for('forgot') }}">Забыли пароль?</a></p>
         </form>
     </div>
 </section>

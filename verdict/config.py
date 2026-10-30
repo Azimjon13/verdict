@@ -34,6 +34,12 @@ DEFAULTS = {
     'max_signups_per_ip': 5,
     # Behind a proxy that passes the visitor's address only in X-Forwarded-For: how many proxies to trust (usually 1).
     'trusted_proxies': 0,
+    # The Telegram bot (from @BotFather). Empty: no bot — no Telegram in profiles, no password reset.
+    'telegram_token': '',
+    # The key in the address the host's cron calls every hour (/cron/<key>). Empty: one is made and kept in the database.
+    'cron_key': '',
+    # When the bot reminds of the case of the day (hour, UTC; 14 = 19:00 in Tashkent, 17:00 in Moscow).
+    'daily_hour_utc': 14,
 }
 
 ENV = {
@@ -49,6 +55,9 @@ ENV = {
     ('max_signups_per_hour',): 'VERDICT_MAX_SIGNUPS_PER_HOUR',
     ('max_signups_per_ip',): 'VERDICT_MAX_SIGNUPS_PER_IP',
     ('trusted_proxies',): 'VERDICT_TRUSTED_PROXIES',
+    ('telegram_token',): 'VERDICT_TELEGRAM_TOKEN',
+    ('cron_key',): 'VERDICT_CRON_KEY',
+    ('daily_hour_utc',): 'VERDICT_DAILY_HOUR_UTC',
 }
 
 
@@ -70,7 +79,7 @@ def load(overrides=None):
     cfg['db']['port'] = int(cfg['db']['port'])
     cfg['session_lifetime'] = int(cfg['session_lifetime'])
     cfg['min_signup_seconds'] = float(cfg['min_signup_seconds'])
-    for key in ('max_signups_per_hour', 'max_signups_per_ip', 'trusted_proxies'):
+    for key in ('max_signups_per_hour', 'max_signups_per_ip', 'trusted_proxies', 'daily_hour_utc'):
         cfg[key] = int(cfg[key])
     return cfg
 

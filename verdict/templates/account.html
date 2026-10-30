@@ -61,6 +61,31 @@
     </section>
 
     <aside class="account-side">
+        {% if tg_ready or tg_link %}
+            <div class="panel side-card tg-card" id="telegram">
+                <span class="label-mono">{{ icon('send') }}Telegram</span>
+                {% if tg_link %}
+                    <p class="side-note">Подключён{% if tg_link.username %} <b>@{{ tg_link.username }}</b>{% endif %}. Бот <a href="https://t.me/{{ tg_bot }}" target="_blank" rel="noopener">@{{ tg_bot }}</a> присылает:</p>
+                    <form method="post" class="tg-settings">
+                        {{ csrf_field() }}<input type="hidden" name="action" value="tg_settings">
+                        <label class="check"><input type="checkbox" name="notify" value="1"{{ ' checked' if tg_link.notify }}><span class="check-box">{{ icon('check') }}</span><span>уведомления — друзья, сообщества, трофеи</span></label>
+                        <label class="check"><input type="checkbox" name="daily" value="1"{{ ' checked' if tg_link.daily }}><span class="check-box">{{ icon('check') }}</span><span>напоминание о деле дня</span></label>
+                        <button class="btn btn-sm btn-block" type="submit">{{ icon('check') }}Сохранить</button>
+                    </form>
+                    <form method="post" data-confirm="Отключить Telegram от аккаунта? Уведомления туда больше не придут, ссылку для нового пароля бот прислать не сможет." data-confirm-title="Отключить Telegram" data-confirm-ok="Отключить" data-confirm-tone="warn">
+                        {{ csrf_field() }}<input type="hidden" name="action" value="tg_unlink">
+                        <button class="btn btn-sm btn-block btn-ghost" type="submit">{{ icon('x') }}Отключить</button>
+                    </form>
+                {% else %}
+                    <p class="side-note">Уведомления, напоминание о деле дня и ссылка для нового пароля, если вы его забудете, — в Telegram.</p>
+                    <form method="post" target="_blank">
+                        {{ csrf_field() }}<input type="hidden" name="action" value="tg_link">
+                        <button class="btn btn-primary btn-sm btn-block" type="submit">{{ icon('send') }}Подключить Telegram</button>
+                    </form>
+                    <p class="muted small">Откроется бот @{{ tg_bot }} — нажмите в нём «Запустить». Ссылка действует час.</p>
+                {% endif %}
+            </div>
+        {% endif %}
         <form method="post" class="panel side-card" id="public">
             {{ csrf_field() }}
             <input type="hidden" name="action" value="profile">

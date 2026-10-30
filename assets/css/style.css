@@ -2504,3 +2504,11 @@ a.note:hover { color: #fff; border-color: rgba(var(--cyan-rgb), .5); }
 [data-fx="lite"].js .reveal { opacity: 1; transform: none; }
 [data-fx="lite"] .site-header, [data-fx="lite"] .panel { background-color: rgba(6, 9, 24, .96); }
 [data-fx="lite"] .modal-backdrop { background: rgba(2, 2, 10, .92); }
+
+/* ---------- Telegram ---------- */
+.tg-card .label-mono .icon { width: 13px; height: 13px; vertical-align: -2px; margin-right: 6px; }
+.tg-settings { display: grid; gap: 8px; }
+.form-alert-ok { border-color: rgba(var(--cyan-rgb), .45); background: rgba(var(--cyan-rgb), .08); color: var(--text); }
+.form-alert-ok .icon { color: var(--cyan); }
+.admin-code { display: block; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .35);
+  font: 500 12px/1.5 var(--font-mono); color: #cfe9ff; overflow-wrap: anywhere; user-select: all; }

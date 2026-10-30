@@ -59,7 +59,8 @@ def create_app(overrides=None):
                 track_request(request.endpoint)
             except DatabaseUnavailable:
                 pass
-        return remember_voter(response)
+        from .telegram import flush
+        return flush(remember_voter(response))
 
     @app.errorhandler(404)
     def not_found(_e):

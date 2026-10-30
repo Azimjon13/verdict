@@ -331,7 +331,8 @@ founder and moderators), `community_joined`, `community_role`, `case_approved`, 
 (from the team), `season` (where the account finished, with its trophy), `report` (the team closed the player's report),
 `comment_liked` (at 1, 5, 10, 25… backers), `comment_hidden` (the team hid the player's comment).
 `link` is a path on the website. Reading the list doesn't mark it read: `POST /notifications/read` with `{ids: [41]}`
-marks those, with `{}` all of them; it answers `{marked, unread}`. `GET /me` has `notifications_unread` for a badge.
+marks those, with `{}` all of them; it answers `{marked, unread}`. `GET /me` has `notifications_unread` for a badge
+and `telegram: {linked, bot}` — whether the account linked the site's Telegram bot (notifications arrive there too).
 
 ### `GET /users/<login>`
 

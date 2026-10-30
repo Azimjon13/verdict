@@ -8,7 +8,7 @@ this date; opinions are marked as such.*
 VERDICT is a complete, working product: a Russian-language judgment game with 48 cases and two story campaigns, a
 career system, treasure hunts, a social layer (profiles, friends, ratings, communities), a team admin panel with
 analytics, and a documented JSON API that a Unity client can use for everything the website does, including sign-in.
-The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 222
+The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 227
 automated tests plus real-browser scenarios. It is live at https://verdict.azero.uz on cPanel. The weak spots are not
 in the game logic but around it: **there was no version control until 29 October (fixed — the project is a git repository now), and there are
 still no backups and no uptime monitor** (both need the owner on the host — the commands and `/health` are ready), and the visual side still runs on generated comics rather than
@@ -21,9 +21,9 @@ real illustrations.
 | Server (Flask, `verdict/`) | 7,264 lines Python, 74 routes (30 game API, 12 admin) | solid |
 | Front-end | 2,754 lines JS (11 plain scripts, no build step), 2,302 lines CSS (one file), 54 templates | solid, one big CSS file |
 | Content | 48 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
-| Tests | 222 pytest tests, 14 browser scenarios (201 checks), screenshots at desktop and phone width | strong |
+| Tests | 227 pytest tests, 14 browser scenarios (201 checks), screenshots at desktop and phone width | strong |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
-| Database | MySQL, schema v10, 22 tables, self-upgrading; manual `schema.sql` | fine |
+| Database | MySQL, schema v11, 25 tables, self-upgrading; manual `schema.sql` | fine |
 | Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
 
 ## Strengths (keep these)
@@ -73,9 +73,9 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
    itself off when the site only sees the proxy's address, and admin → «Игра» shows which case the live site is in.
 9. **Done 29 Oct — game tokens expire and end with a new password.** A token unused for 90 days is deleted on its
    next use; «Сменить пароль» and the team's reset delete all of the account's game tokens.
-10. **Short term done 29 Oct — password reset by the team.** Admin → player → «Новый пароль» sets a random password,
-    shows it once to the team member and ends all of the player's sessions on the site and in the game. Still open:
-    a self-service reset by email (needs SMTP from the host).
+10. **Done 29–30 Oct — password reset.** The team can set a new one (admin → player → «Новый пароль»), and players
+    who linked Telegram reset it themselves: «Забыли пароль?» sends a one-time link (30 minutes) to their chat.
+    Players without Telegram still need the team; e-mail would cover them (needs SMTP from the host).
 11. **Done 29 Oct — the player cookie is `Secure` on HTTPS**, like the session cookie.
 12. **Done 29 Oct — default admin password warning.** The admin dashboard shows a warning while the `admin` account
     still opens with `verdict-admin`.
@@ -92,7 +92,8 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
     account is told its place. Trophy XP doesn't count in the next season.
 16. **Done 29 Oct — notifications.** A bell with a count in the header, `/notifications` and the API: friends,
     community requests and roles, the team's decision on an author's case, team gifts, closed reports, season
-    results, and a reminder of the case of the day. Still open: delivery outside the site (Telegram, e-mail).
+    results, and a reminder of the case of the day. Since 30 Oct also to Telegram (bot, daily reminder via the
+    hourly cron); needs the owner to create the bot (README «Telegram bot»).
 17. **Done 29 Oct — a place to talk.** Every case has a discussion, open after one's own verdict: comments carry
     their author's verdict, «Поддерживаю», filters by friends and community, reports, team hiding (admin →
     «Обсуждения»). Moderation capacity is still the limit as players grow — watch the reports.
@@ -137,7 +138,7 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 
 **Next 2–4 weeks (make players come back)**
 6. ~~End-of-season trophies and a past-seasons page.~~ done
-7. ~~In-site notifications (header bell)~~ done; Telegram/e-mail delivery later.
+7. ~~In-site notifications (header bell)~~ done; ~~Telegram delivery~~ done (create the bot); e-mail later.
 8. ~~Registration brake for the API and a per-IP limit~~ done.
 9. ~~One XP formula~~ done; uptime monitor (`/health` is ready; sign up for a monitor); ~~CI with MySQL~~ done.
 

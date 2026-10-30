@@ -88,6 +88,11 @@ sign-up log by hashed address (`signup_log`, `verdict/signups.py`).
 Also built (schema 10): the discussion under a case (`comments` with the author's verdict at the time, `likes`
 counted on the row; `comment_likes` one per account; `verdict/talk.py`), readable only after one's own verdict.
 
+Also built (schema 11): the Telegram bot (`verdict/telegram.py`): `telegram_links` (chat per account, what it wants),
+one-time `telegram_codes` for linking, `password_resets` (SHA-256 of one-time links). Commands are answered in the
+webhook response itself; notifications go out after the page is answered (`response.call_on_close`); reminders
+from `/cron/<key>`, which the host's cron calls hourly.
+
 Still to build: shared snapshots with images (`shares` below), and a ratings cache (`ratings` below) once live boards
 get slow — closed seasons already keep their final board.
 Everything hangs off **accounts** (`users.id`), never off player ids. The original plan, for reference:

@@ -11,7 +11,7 @@ from ..auth import (ROLES, admins_count, auth_attempt, auth_login, auth_logout, 
 from ..catalog import STATUSES
 from ..repository import input_str, situations_list, vote_counts
 from ..sessions import active_count, revoke_others
-from .. import gameauth, signups
+from .. import gameauth, signups, telegram
 from ..players import on_login, on_logout, on_register
 from ..web import csrf_valid, flash, page, redirect, require_login, safe_back, voter_id
 
@@ -151,6 +151,16 @@ def account():
             closed = revoke_others(uid, session.sid)
             flash('success', 'Завершено других сеансов: %d.' % closed if closed else 'Других активных сеансов нет.')
             return redirect(url_for('account'))
+        elif act == 'tg_link' and telegram.ready():
+            return redirect(telegram.deep_link(telegram.new_code(uid)))
+        elif act == 'tg_settings':
+            telegram.settings(uid, bool(request.form.get('notify')), bool(request.form.get('daily')))
+            flash('success', 'Настройки Telegram сохранены.')
+            return redirect(url_for('account') + '#telegram')
+        elif act == 'tg_unlink':
+            telegram.unlink(uid)
+            flash('success', 'Telegram отключён от аккаунта.')
+            return redirect(url_for('account') + '#telegram')
 
     mine = situations_list(user_id=uid)
     by_status = {k: 0 for k in STATUSES}
@@ -159,7 +169,48 @@ def account():
     return page('account.html', title='Профиль', active='account', body_class='page-account', bg='calm',
                 me=me, errors=errors, mine=mine, by_status=by_status, counts=vote_counts(),
                 sessions=active_count(uid, lifetime), role_name=ROLES.get(me['role'], me['role']),
+                tg_ready=telegram.ready(), tg_link=telegram.link_of(uid), tg_bot=telegram.bot_name(),
                 name_value=request.form.get('display_name', me['display_name']) if request.method == 'POST' else me['display_name'])
+
+
+def forgot():
+    """«Забыли пароль?» — a one-time link to the account's Telegram. The answer is the same whatever the login."""
+    if is_logged_in():
+        return redirect(url_for('account'))
+    sent = False
+    login_name = ''
+    if request.method == 'POST':
+        login_name = input_str(request.form.get('login', ''), 40)
+        if not csrf_valid():
+            flash('error', 'Сессия устарела. Попробуйте ещё раз.')
+        elif login_name:
+            telegram.send_reset(login_name)
+            sent = True
+    return page('forgot.html', title='Забыли пароль', active='', body_class='page-auth', bg='high', sent=sent,
+                login_name=login_name, tg_ready=telegram.ready())
+
+
+def reset(token):
+    """The link from Telegram: a new password, then every session and game sign-in of the account ends."""
+    user = telegram.reset_user(token)
+    if not user:
+        flash('error', 'Ссылка устарела или уже использована. Попросите новую.')
+        return redirect(url_for('forgot'))
+    errors = {}
+    if request.method == 'POST':
+        new = request.form.get('new_password', '')
+        if not csrf_valid():
+            errors = {'_csrf': 'Сессия устарела. Попробуйте ещё раз.'}
+        else:
+            errors = {'new_' + k: v for k, v in password_validate(new, request.form.get('new_password_confirm', '')).items()}
+        if not errors:
+            user_set_password(user['id'], new)
+            telegram.reset_used(token, user['id'])
+            gameauth.revoke_user(user['id'])
+            revoke_others(user['id'], '')
+            flash('success', 'Пароль изменён. Войдите с новым паролем — на других устройствах вход завершён.')
+            return redirect(url_for('login'))
+    return page('reset.html', title='Новый пароль', active='', body_class='page-auth', bg='high', user=user, errors=errors)
 
 
 def users():

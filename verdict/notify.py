@@ -30,6 +30,8 @@ def send(user_id, kind, text, link='', conn=None):
         return
     execute('INSERT INTO notifications (user_id, kind, text, link, created_at) VALUES (%s, %s, %s, %s, %s)',
             (int(user_id), kind if kind in KINDS else 'gift', text[:255], (link or '')[:255], now()), conn)
+    from . import telegram
+    telegram.notify(int(user_id), text, link)  # and to the account's Telegram, after the page is answered
 
 
 def send_to_player(voter, kind, text, link='', conn=None):

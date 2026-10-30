@@ -32,6 +32,8 @@ ROUTES = [
     ('/action',                  'action',      authoring.action,        ['GET', 'POST']),
     ('/login',                   'login',       accounts.login,          ['GET', 'POST']),
     ('/register',                'register',    accounts.register,       ['GET', 'POST']),
+    ('/forgot',                  'forgot',      accounts.forgot,         ['GET', 'POST']),
+    ('/reset/<token>',           'reset',       accounts.reset,          ['GET', 'POST']),
     ('/logout',                  'logout',      accounts.logout,         ['GET', 'POST']),
     ('/account',                 'account',     accounts.account,        ['GET', 'POST']),
     ('/users',                   'users',       accounts.users,          ['GET', 'POST']),
@@ -41,6 +43,8 @@ ROUTES = [
     ('/api/hunt',                'api_hunt',    api.hunt_claim,          ['POST']),
     ('/api/export',              'api_export',  api.export,              ['GET']),
     ('/health',                  'health',      api.health,              ['GET', 'HEAD']),
+    ('/cron/<key>',              'cron',        api.cron,                ['GET', 'POST']),
+    ('/telegram/hook',           'telegram_hook', api.telegram_hook,     ['POST']),
     ('/sw.js',                   'service_worker', pages.service_worker, ['GET']),
     ('/offline',                 'offline',     pages.offline,           ['GET']),
 ]
