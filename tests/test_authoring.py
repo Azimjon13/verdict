@@ -36,7 +36,7 @@ def test_demo_cases_are_at_least_level_2(app):
     with app.app_context():
         from verdict.repository import situations_list
         levels = [situation_level(s) for s in situations_list()]
-    assert len(levels) == 52 and min(levels) >= 2  # 48 cases + 4 chapters of campaigns
+    assert len(levels) == 64 and min(levels) >= 2  # 60 cases + 4 chapters of campaigns
 
 
 def test_levels_through_the_form(browser, db):

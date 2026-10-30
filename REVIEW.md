@@ -5,10 +5,10 @@ this date; opinions are marked as such.*
 
 ## In one paragraph
 
-VERDICT is a complete, working product: a Russian-language judgment game with 48 cases and two story campaigns, a
+VERDICT is a complete, working product: a Russian-language judgment game with 60 cases and two story campaigns, a
 career system, treasure hunts, a social layer (profiles, friends, ratings, communities), a team admin panel with
 analytics, and a documented JSON API that a Unity client can use for everything the website does, including sign-in.
-The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 227
+The code is small for what it does (7.3k lines of Python), clean (linter-clean, no TODO debt), and covered by 288
 automated tests plus real-browser scenarios. It is live at https://verdict.azero.uz on cPanel. The weak spots are not
 in the game logic but around it: **there was no version control until 29 October (fixed — the project is a git repository now), and there are
 still no backups and no uptime monitor** (both need the owner on the host — the commands and `/health` are ready), and the visual side still runs on generated comics rather than
@@ -20,8 +20,8 @@ real illustrations.
 |---|---|---|
 | Server (Flask, `verdict/`) | 7,264 lines Python, 74 routes (30 game API, 12 admin) | solid |
 | Front-end | 2,754 lines JS (11 plain scripts, no build step), 2,302 lines CSS (one file), 54 templates | solid, one big CSS file |
-| Content | 48 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
-| Tests | 227 pytest tests, 14 browser scenarios (201 checks), screenshots at desktop and phone width | strong |
+| Content | 60 cases, 2 campaigns × 3 chapters, catalog with ranks, events, achievements, gifts | good for an MVP; art is generated |
+| Tests | 288 pytest tests, 14 browser scenarios (201 checks), screenshots at desktop and phone width | strong |
 | Docs | README (deploy, every feature), docs/API.md (with a C# sample), docs/ARCHITECTURE.md | thorough |
 | Database | MySQL, schema v11, 25 tables, self-upgrading; manual `schema.sql` | fine |
 | Legacy | the old PHP site — removed on 29 October, kept in the first git commit | done |
@@ -97,7 +97,8 @@ Severity: **High** — fix before promoting the game; **Medium** — fix in the 
 17. **Done 29 Oct — a place to talk.** Every case has a discussion, open after one's own verdict: comments carry
     their author's verdict, «Поддерживаю», filters by friends and community, reports, team hiding (admin →
     «Обсуждения»). Moderation capacity is still the limit as players grow — watch the reports.
-18. **Content:** 48 cases is enough for 2–3 weeks of daily play; the two campaigns are short (3 chapters). The
+18. **Content:** 60 cases since 30 Oct (12 new classics, all full dossiers, a test checks every case file) — about a
+    month of daily play before the case of the day repeats; the two campaigns are short (3 chapters). The
     comics are procedurally drawn SVG — functional, but the game's look would change most from real illustrations
     (even one key image per case). New campaigns are pure content work now (one JSON file each).
 

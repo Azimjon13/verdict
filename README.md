@@ -24,7 +24,7 @@ set VERDICT_DB_PORT=3306                                 (only what differs from
 .venv\Scripts\python run.py                              → http://127.0.0.1:8000
 ```
 
-On the first request the site creates the database and tables, the first team account and 48 demo cases.
+On the first request the site creates the database and tables, the first team account and 60 demo cases.
 
 ## Configuration
 
@@ -170,7 +170,10 @@ The site needs a host with Python 3.9+ («Setup Python App» on cPanel, or any W
   The site reads its dictionaries from here, and a game client can read the same file (or `GET /api/v1/catalog`).
 - `content/cases/NNN.json` — the demo cases, one per file, with `batch` and `status`. Each batch is inserted into
   the database once (`meta.seeded_vN`), so deleted cases don't come back and a new batch reaches existing databases.
-  Batch 1–2: the 28 original demo cases; batch 3: the 20 cases from classic legal and ethics problems.
+  Batch 1–2: the 28 original demo cases; batch 3: the 20 cases from classic legal and ethics problems; batch 4:
+  12 more classics (Omelas, Jim and the Indians, Plato's returned sword and Euthyphro, the ring of Gyges, the
+  experience machine, the ship of Theseus, the Heinz dilemma, Hadley v Baxendale, Sherwood v Walker, Armory v
+  Delamirie, Pierson v Post).
 
 To add demo content, put new files with the next batch number into `content/cases/`. Cases written on the site
 live in the database; export them with `/api/export` (team only).
@@ -470,7 +473,8 @@ verdict, scopes, ties, opt-out), communities (rules, access modes, roles, invite
 reports and bans, security (per-login lock, sign-up brake, token expiry, team password reset), seasons, notifications,
 discussions, the installable app and the game API; a test keeps `database/schema.sql` equal to the migrations.
 `tests/fixtures/comic_expected.json` was produced by the PHP comic engine; the Python engine must give exactly the
-same frames, speakers, portraits and scenes for all 48 cases.
+same frames, speakers, portraits and scenes for the first 48 cases; `tests/test_content.py` checks that every case
+in `content/cases/` is a complete dossier (the editor's own checks at level 3, decisions, effects, world type).
 
 ### Browser tests
 

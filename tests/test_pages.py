@@ -32,11 +32,11 @@ DEMO = "author IN ('Команда VERDICT', 'Демо-автор')"
 
 
 def test_seeded_content(db):
-    assert db.value("SELECT COUNT(*) FROM situations WHERE " + DEMO) == 52  # 48 cases + 4 chapters of campaigns
+    assert db.value("SELECT COUNT(*) FROM situations WHERE " + DEMO) == 64  # 60 cases + 4 chapters of campaigns
     assert db.value("SELECT COUNT(*) FROM situations WHERE status = 'campaign' AND " + DEMO) == 4
-    assert db.value("SELECT COUNT(*) FROM situations WHERE status = 'approved' AND " + DEMO) == 46
+    assert db.value("SELECT COUNT(*) FROM situations WHERE status = 'approved' AND " + DEMO) == 58
     assert db.value("SELECT COUNT(*) FROM situations WHERE user_id IS NULL AND author = 'Команда VERDICT'") == 0
-    assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'seed_version'") == '3'
+    assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'seed_version'") == '4'
     assert db.value("SELECT meta_value FROM meta WHERE meta_key = 'schema_version'") == '11'
 
 
