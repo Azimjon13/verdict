@@ -1,5 +1,6 @@
-"""Draws the app icons (assets/img/icon-*.png, apple-touch-icon.png) from the logo, in headless Chrome: a canvas at
-each exact size, saved through a small local server. Run it again after changing the logo.
+"""Draws the app icons from the logo, in headless Chrome: a canvas at each exact size, saved through a small local
+server — the website's (assets/img/icon-*.png, apple-touch-icon.png) and the mobile app's (Android launcher icons,
+the app's web icons). Run it again after changing the logo.
 
     python scripts/make_icons.py
 """
@@ -14,10 +15,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tests' / 'e2e'))
-OUT = ROOT / 'assets' / 'img'
-# name: (size in px, logo share of the side — maskable icons keep the logo inside the safe circle)
-ICONS = {'icon-192.png': (192, .68), 'icon-512.png': (512, .68), 'icon-maskable-512.png': (512, .5),
-         'apple-touch-icon.png': (180, .62)}
+# path from the project root: (size in px, logo share of the side — maskable icons keep the logo in the safe circle)
+ICONS = {'assets/img/icon-192.png': (192, .68), 'assets/img/icon-512.png': (512, .68),
+         'assets/img/icon-maskable-512.png': (512, .5), 'assets/img/apple-touch-icon.png': (180, .62)}
+ICONS.update({'mobile/android/app/src/main/res/mipmap-%s/ic_launcher.png' % d: (px, .66)
+              for d, px in (('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192))})
+ICONS.update({'mobile/web/icons/Icon-192.png': (192, .68), 'mobile/web/icons/Icon-512.png': (512, .68),
+              'mobile/web/icons/Icon-maskable-192.png': (192, .5), 'mobile/web/icons/Icon-maskable-512.png': (512, .5),
+              'mobile/web/favicon.png': (32, .8)})
 
 PAGE = """<!doctype html><meta charset="utf-8"><body style="margin:0;background:#000">
 <script>
@@ -68,9 +73,9 @@ def main():
             data = self.rfile.read(int(self.headers.get('Content-Length') or 0))
             if self.path.startswith('/save?name='):
                 name = self.path.split('=', 1)[1]
-                if name in ICONS:
-                    (OUT / name).write_bytes(base64.b64decode(data.split(b',', 1)[1]))
-                    print('%-24s %d bytes' % (name, (OUT / name).stat().st_size))
+                if name in ICONS and (ROOT / name).parent.is_dir():
+                    (ROOT / name).write_bytes(base64.b64decode(data.split(b',', 1)[1]))
+                    print('%-64s %d bytes' % (name, (ROOT / name).stat().st_size))
             elif self.path == '/done':
                 done.set()
             self.send_response(204)

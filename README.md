@@ -439,6 +439,14 @@ Small effects that make a verdict feel like one, all synthesised in the browser 
   or animations — for older phones. It's on by default on a weak device (≤ 2 GB memory or ≤ 2 cores) until the
   player chooses; the choice is kept in `localStorage` (`verdict:fx`) and applied before the page paints.
 
+## Mobile app (`mobile/`)
+
+A Flutter app for Android (iOS builds on a Mac) on top of the game API: Быстрый суд with the case as swipeable frames
+and the majority guess, the case of the day, the archive, the judge profile and the player's world, ratings, sign-in
+(the phone's progress joins the account), notifications and the discussion. Players share one career between the
+app and the site. Build the APK with `flutter build apk --release` in `mobile/` — see `mobile/README.md`; GitHub runs
+its analyzer and widget tests on every push.
+
 ## Installable app
 
 The site is a PWA: `assets/manifest.webmanifest` (name, icons, shortcuts to Быстрый суд, the judge profile and the
@@ -527,6 +535,7 @@ assets/                CSS, JavaScript, images (served at /assets)
 database/schema.sql    manual schema import (schema v11; a test keeps it equal to the migrations)
 scripts/build_dist.py  builds dist/; scripts/make_icons.py draws the app icons
 tests/                 pytest suite; tests/e2e/ — browser scenarios and their runner
+mobile/                the Flutter app (Android, iOS) on /api/v1
 docs/API.md            game-client API
 docs/ARCHITECTURE.md   how the game is put together, and where friends, communities and ratings will go
 ```

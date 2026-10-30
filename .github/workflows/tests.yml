@@ -39,3 +39,22 @@ jobs:
         run: python -m pytest tests -q
       - name: Browser tests (headless Chrome)
         run: python tests/e2e/run.py
+
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Tests
+        run: flutter test
