@@ -189,7 +189,8 @@ def index():
             'POST /api/v1/world/reset': 'start the world anew; verdicts and career stay (X-Voter-Id required)',
             'GET /api/v1/hunt': 'running treasure hunts, progress and the spots of the game client (X-Voter-Id required)',
             'POST /api/v1/hunt/spots/<id>/claim': 'the player found a spot: the gift (X-Voter-Id required)',
-            'GET /api/v1/gifts': "the player's gifts (X-Voter-Id required)",
+            'GET /api/v1/gifts': "the player's gifts and titles (X-Voter-Id required)",
+            'POST /api/v1/title {title}': 'wear one of the titles from GET /gifts, or "" for none (X-Voter-Id required)',
             'GET /api/v1/ratings?board=season|all|accuracy|streak[&community=<slug>]': 'ratings of players with an account',
             'GET /api/v1/seasons': 'the current season (days left, trophies) and closed seasons with their podium',
             'GET /api/v1/seasons/<YYYY-MM>': 'a closed season: its final board',
@@ -360,7 +361,20 @@ def gifts():
     vid = voter()
     if not vid:
         return need_voter()
-    return {'ok': True, 'gifts': [hunt.public_grant(r) for r in hunt.inventory(vid)], 'title': career.player(vid).get('title')}
+    return {'ok': True, 'gifts': [hunt.public_grant(r) for r in hunt.inventory(vid)], 'title': career.player(vid).get('title'),
+            'titles': hunt.titles(vid)}
+
+
+@bp.post('/title')
+def title():
+    """The player picks which of their titles to wear: {title} — one from GET /gifts → titles, or "" for none."""
+    vid = voter()
+    if not vid:
+        return need_voter()
+    name = input_str(body().get('title', ''), 120)
+    if not hunt.set_title(vid, name):
+        return error('Такого титула у вас нет.', 422)
+    return {'ok': True, 'title': name or None}
 
 
 def rating_rows(rows, limit=100):

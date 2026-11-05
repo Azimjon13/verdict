@@ -19,10 +19,15 @@ class Panel extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xE60B0F27), Color(0xE6070A1C)]),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xE60B0F27), Color(0xE6070A1C)],
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: accent?.withValues(alpha: .55) ?? V.line),
-        boxShadow: accent == null ? null : [BoxShadow(color: accent!.withValues(alpha: .18), blurRadius: 22, spreadRadius: -6)],
+        boxShadow: accent == null
+            ? null
+            : [BoxShadow(color: accent!.withValues(alpha: .18), blurRadius: 22, spreadRadius: -6)],
       ),
       child: child,
     );
@@ -41,11 +46,15 @@ class Kicker extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Container(width: 18, height: 2, color: color),
-        const SizedBox(width: 8),
-        Flexible(child: Text(text.toUpperCase(), style: V.mono(11, color: color))),
-      ]);
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(width: 18, height: 2, color: color),
+      const SizedBox(width: 8),
+      Flexible(
+        child: Text(text.toUpperCase(), style: V.mono(11, color: color)),
+      ),
+    ],
+  );
 }
 
 class OptionLetter extends StatelessWidget {
@@ -57,18 +66,20 @@ class OptionLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: active ? V.grad : null,
-          color: active ? null : const Color(0xFF101634),
-          border: Border.all(color: active ? Colors.transparent : V.cyan.withValues(alpha: .45)),
-        ),
-        child: Text(letter == 'other' ? '+' : letter,
-            style: V.display(size * .42, color: active ? V.bg : V.cyan, weight: FontWeight.w800)),
-      );
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: active ? V.grad : null,
+      color: active ? null : const Color(0xFF101634),
+      border: Border.all(color: active ? Colors.transparent : V.cyan.withValues(alpha: .45)),
+    ),
+    child: Text(
+      letter == 'other' ? '+' : letter,
+      style: V.display(size * .42, color: active ? V.bg : V.cyan, weight: FontWeight.w800),
+    ),
+  );
 }
 
 class Bar extends StatelessWidget {
@@ -82,18 +93,24 @@ class Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(height),
-        child: Stack(children: [
-          Container(height: height, color: Colors.white.withValues(alpha: .07)),
-          FractionallySizedBox(
-            widthFactor: value.clamp(0, 1).toDouble(),
-            child: Container(
-                height: height,
-                decoration: BoxDecoration(
-                    gradient: gradient && color == null ? V.grad : null, color: color, borderRadius: BorderRadius.circular(height))),
+    borderRadius: BorderRadius.circular(height),
+    child: Stack(
+      children: [
+        Container(height: height, color: Colors.white.withValues(alpha: .07)),
+        FractionallySizedBox(
+          widthFactor: value.clamp(0, 1).toDouble(),
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: gradient && color == null ? V.grad : null,
+              color: color,
+              borderRadius: BorderRadius.circular(height),
+            ),
           ),
-        ]),
-      );
+        ),
+      ],
+    ),
+  );
 }
 
 class Pill extends StatelessWidget {
@@ -109,20 +126,26 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: filled ? .2 : .08),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: .45)),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: filled ? .2 : .08),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: color.withValues(alpha: .45)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[Icon(icon, size: 14, color: color), const SizedBox(width: 5)],
+        Flexible(
+          child: Text(
+            text,
+            style: V.body(12, weight: FontWeight.w700, color: color),
+            overflow: wrap ? TextOverflow.visible : TextOverflow.ellipsis,
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 14, color: color), const SizedBox(width: 5)],
-          Flexible(
-              child: Text(text,
-                  style: V.body(12, weight: FontWeight.w700, color: color),
-                  overflow: wrap ? TextOverflow.visible : TextOverflow.ellipsis)),
-        ]),
-      );
+      ],
+    ),
+  );
 }
 
 class Avatar extends StatelessWidget {
@@ -138,7 +161,9 @@ class Avatar extends StatelessWidget {
     final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     final first = parts.first.characters.first;
-    final second = parts.length > 1 ? parts[1].characters.first : (parts.first.characters.length > 1 ? parts.first.characters.elementAt(1) : '');
+    final second = parts.length > 1
+        ? parts[1].characters.first
+        : (parts.first.characters.length > 1 ? parts.first.characters.elementAt(1) : '');
     return (first + second).toUpperCase();
   }
 
@@ -151,9 +176,14 @@ class Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * .3),
-        gradient: LinearGradient(colors: [c, HSLColor.fromColor(c).withHue((HSLColor.fromColor(c).hue + 40) % 360).toColor()]),
+        gradient: LinearGradient(
+          colors: [c, HSLColor.fromColor(c).withHue((HSLColor.fromColor(c).hue + 40) % 360).toColor()],
+        ),
       ),
-      child: Text(initials(name), style: V.body(size * .36, weight: FontWeight.w800, color: Colors.white)),
+      child: Text(
+        initials(name),
+        style: V.body(size * .36, weight: FontWeight.w800, color: Colors.white),
+      ),
     );
   }
 }
@@ -183,14 +213,23 @@ class GradientButton extends StatelessWidget {
               boxShadow: [BoxShadow(color: V.cyan.withValues(alpha: .35), blurRadius: 18, spreadRadius: -6)],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-              if (busy)
-                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: V.bg))
-              else if (icon != null)
-                Icon(icon, color: V.bg, size: 20),
-              const SizedBox(width: 8),
-              Flexible(child: Text(label, style: V.body(16, weight: FontWeight.w800, color: V.bg))),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (busy)
+                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: V.bg))
+                else if (icon != null)
+                  Icon(icon, color: V.bg, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: V.body(16, weight: FontWeight.w800, color: V.bg),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -207,25 +246,29 @@ class GhostButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon ?? Icons.arrow_forward, size: 18),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: V.text,
-          side: const BorderSide(color: V.line),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: V.body(14, weight: FontWeight.w700),
-        ),
-      );
+    onPressed: onPressed,
+    icon: Icon(icon ?? Icons.arrow_forward, size: 18),
+    label: Text(label),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: V.text,
+      side: const BorderSide(color: V.line),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      textStyle: V.body(14, weight: FontWeight.w700),
+    ),
+  );
 }
 
 class Loading extends StatelessWidget {
   const Loading({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: V.cyan)));
+  Widget build(BuildContext context) => const Center(
+    child: Padding(
+      padding: EdgeInsets.all(40),
+      child: CircularProgressIndicator(color: V.cyan),
+    ),
+  );
 }
 
 class ErrorView extends StatelessWidget {
@@ -240,15 +283,22 @@ class ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(offline ? Icons.wifi_off : Icons.error_outline, size: 46, color: V.cyan),
-          const SizedBox(height: 14),
-          Text(offline ? 'Нет связи' : 'Что-то пошло не так', style: V.display(20)),
-          const SizedBox(height: 8),
-          Text('$error', textAlign: TextAlign.center, style: V.body(14, color: V.muted)),
-          const SizedBox(height: 18),
-          GhostButton('Попробовать снова', icon: Icons.refresh, onPressed: onRetry),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(offline ? Icons.wifi_off : Icons.error_outline, size: 46, color: V.cyan),
+            const SizedBox(height: 14),
+            Text(offline ? 'Нет связи' : 'Что-то пошло не так', style: V.display(20)),
+            const SizedBox(height: 8),
+            Text(
+              '$error',
+              textAlign: TextAlign.center,
+              style: V.body(14, color: V.muted),
+            ),
+            const SizedBox(height: 18),
+            GhostButton('Попробовать снова', icon: Icons.refresh, onPressed: onRetry),
+          ],
+        ),
       ),
     );
   }
@@ -276,13 +326,17 @@ class _LoaderState<T> extends State<Loader<T>> {
 
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.hasError) return ErrorView(snap.error!, onRetry: _reload);
-          if (!snap.hasData) return const Loading();
-          return RefreshIndicator(color: V.cyan, onRefresh: _reload, child: widget.builder(context, snap.data as T, _reload));
-        },
+    future: _future,
+    builder: (context, snap) {
+      if (snap.hasError) return ErrorView(snap.error!, onRetry: _reload);
+      if (!snap.hasData) return const Loading();
+      return RefreshIndicator(
+        color: V.cyan,
+        onRefresh: _reload,
+        child: widget.builder(context, snap.data as T, _reload),
       );
+    },
+  );
 }
 
 class SectionTitle extends StatelessWidget {
@@ -294,13 +348,17 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 22, bottom: 10),
-        child: Row(children: [
-          if (icon != null) ...[Icon(icon, size: 19, color: V.cyan), const SizedBox(width: 8)],
-          Expanded(child: Text(text, style: V.display(16, weight: FontWeight.w700))),
-          ?trailing,
-        ]),
-      );
+    padding: const EdgeInsets.only(top: 22, bottom: 10),
+    child: Row(
+      children: [
+        if (icon != null) ...[Icon(icon, size: 19, color: V.cyan), const SizedBox(width: 8)],
+        Expanded(
+          child: Text(text, style: V.display(16, weight: FontWeight.w700)),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 Widget iconOf(String? name, {double size = 20, Color color = V.cyan}) => Icon(vIcon(name), size: size, color: color);

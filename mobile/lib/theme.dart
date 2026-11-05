@@ -21,21 +21,23 @@ class V {
 
   /// Unbounded is a variable font: the weight goes to its «wght» axis.
   static TextStyle display(double size, {FontWeight weight = FontWeight.w800, Color color = text}) => TextStyle(
-      fontFamily: 'Unbounded',
-      fontSize: size,
-      fontWeight: weight,
-      fontVariations: [FontVariation('wght', weight.value.toDouble())],
-      color: color,
-      height: 1.15);
+    fontFamily: 'Unbounded',
+    fontSize: size,
+    fontWeight: weight,
+    fontVariations: [FontVariation('wght', weight.value.toDouble())],
+    color: color,
+    height: 1.15,
+  );
 
   static TextStyle body(double size, {FontWeight weight = FontWeight.w500, Color color = text, double height = 1.45}) =>
       TextStyle(
-          fontFamily: 'Manrope',
-          fontSize: size,
-          fontWeight: weight,
-          fontVariations: [FontVariation('wght', weight.value.toDouble())],
-          color: color,
-          height: height);
+        fontFamily: 'Manrope',
+        fontSize: size,
+        fontWeight: weight,
+        fontVariations: [FontVariation('wght', weight.value.toDouble())],
+        color: color,
+        height: height,
+      );
 
   static TextStyle mono(double size, {Color color = cyan}) =>
       TextStyle(fontFamily: 'monospace', fontSize: size, letterSpacing: 1.6, color: color, fontWeight: FontWeight.w600);
@@ -45,40 +47,64 @@ class V {
     return base.copyWith(
       scaffoldBackgroundColor: bg,
       colorScheme: const ColorScheme.dark(
-          primary: cyan, secondary: magenta, surface: panel, onSurface: text, error: red, onPrimary: bg),
+        primary: cyan,
+        secondary: magenta,
+        surface: panel,
+        onSurface: text,
+        error: red,
+        onPrimary: bg,
+      ),
       textTheme: base.textTheme.apply(bodyColor: text, displayColor: text, fontFamily: 'Manrope'),
       appBarTheme: AppBarTheme(
-          backgroundColor: bg, surfaceTintColor: Colors.transparent, elevation: 0, titleTextStyle: display(17)),
+        backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: display(17),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: const Color(0xFF060818),
         indicatorColor: cyan.withValues(alpha: .16),
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith(
-            (s) => body(11.5, weight: FontWeight.w700, color: s.contains(WidgetState.selected) ? text : muted)),
+          (s) => body(11.5, weight: FontWeight.w700, color: s.contains(WidgetState.selected) ? text : muted),
+        ),
         iconTheme: WidgetStateProperty.resolveWith(
-            (s) => IconThemeData(color: s.contains(WidgetState.selected) ? cyan : muted, size: 24)),
+          (s) => IconThemeData(color: s.contains(WidgetState.selected) ? cyan : muted, size: 24),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFF070A1C),
         labelStyle: body(14, color: muted),
         hintStyle: body(14, color: dim),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: line)),
-        enabledBorder:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: line)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: line),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: line),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: cyan, width: 1.4)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: cyan, width: 1.4),
+        ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? cyan : Colors.transparent),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? cyan : Colors.transparent,
+          ),
           foregroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? bg : text),
           side: const WidgetStatePropertyAll(BorderSide(color: line)),
           textStyle: WidgetStatePropertyAll(body(14, weight: FontWeight.w700)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-          backgroundColor: panel2, contentTextStyle: body(14), behavior: SnackBarBehavior.floating),
+        backgroundColor: panel2,
+        contentTextStyle: body(14),
+        behavior: SnackBarBehavior.floating,
+      ),
       dividerColor: line,
     );
   }

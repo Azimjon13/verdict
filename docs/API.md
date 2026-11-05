@@ -44,7 +44,8 @@ answers `429` with the reason in `error`.
 | `POST /api/v1/world/reset` | yes | starts the world anew (meters back to 50); verdicts and career stay |
 | `GET /api/v1/hunt` | yes | treasure hunts that are on: progress, hints, and the spots hidden in the game's scenes |
 | `POST /api/v1/hunt/spots/<id>/claim` | yes | the player found a spot: the gift, progress, the main prize, career |
-| `GET /api/v1/gifts` | yes | the player's gifts (XP, trophies, titles, codes, messages) and current title |
+| `GET /api/v1/gifts` | yes | the player's gifts (XP, trophies, titles, codes, messages), current title and `titles` they may wear |
+| `POST /api/v1/title {title}` | yes | wear one of `titles` (or `""` for none); `422` for a title the player doesn't have |
 | `GET /api/v1/ratings?board=season\|all\|accuracy\|streak[&community=<slug>]` | — | a rating of players with an account |
 | `GET /api/v1/cases/<id>/comments?sort=top\|new[&scope=friends\|community:<slug>]` | yes | the discussion, once the player judged the case |
 | `POST /api/v1/cases/<id>/comments {text}` | Bearer | write a comment (after a verdict) |

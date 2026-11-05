@@ -25,7 +25,7 @@ class ApiException implements Exception {
 
 class Api {
   Api({required this.baseUrl, required this.voterId, this.token, http.Client? client})
-      : client = client ?? http.Client();
+    : client = client ?? http.Client();
 
   String baseUrl;
   String voterId;
@@ -39,16 +39,21 @@ class Api {
   }
 
   Map<String, String> get _headers => {
-        'X-Voter-Id': voterId,
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
+    'X-Voter-Id': voterId,
+    'Accept': 'application/json',
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
 
   Future<Json> get(String path, {Map<String, String>? query}) =>
       _send(() => client.get(_uri(path, query), headers: _headers));
 
-  Future<Json> post(String path, [Json? body]) => _send(() => client.post(_uri(path),
-      headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode(body ?? const {})));
+  Future<Json> post(String path, [Json? body]) => _send(
+    () => client.post(
+      _uri(path),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body ?? const {}),
+    ),
+  );
 
   Future<Json> _send(Future<http.Response> Function() request) async {
     http.Response r;
@@ -67,8 +72,12 @@ class Api {
       throw ApiException(r.statusCode, 'Сервер ответил не так, как ожидалось (${r.statusCode}).');
     }
     if (r.statusCode >= 400 || body['ok'] == false) {
-      throw ApiException(r.statusCode, (body['error'] as String?) ?? 'Ошибка сервера (${r.statusCode}).',
-          code: body['code'] as String?, body: body);
+      throw ApiException(
+        r.statusCode,
+        (body['error'] as String?) ?? 'Ошибка сервера (${r.statusCode}).',
+        code: body['code'] as String?,
+        body: body,
+      );
     }
     return body;
   }

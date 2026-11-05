@@ -82,3 +82,17 @@ def test_verdict_flow(app, db):
 def test_form_encoded_verdict(app):
     r = app.test_client().post('/api/v1/cases/2/verdict', data={'option': 'B'}, headers=player())
     assert r.status_code == 200 and r.get_json()['result']['choice'] == 'B'
+
+
+def test_wearing_a_title(app, db):
+    c = app.test_client()
+    me = {'X-Voter-Id': 'ab' * 16}
+    db.rows("INSERT INTO gift_grants (voter, source, kind, name, icon, xp, text, created_at)"
+            " VALUES (%s, 'admin', 'title', 'Хранитель тишины', 'crown', 0, '', NOW())", ('ab' * 16,))
+    got = c.get('/api/v1/gifts', headers=me).get_json()
+    assert got['titles'] == ['Хранитель тишины']
+    assert c.post('/api/v1/title', json={'title': 'Хранитель тишины'}, headers=me).get_json() == {'ok': True, 'title': 'Хранитель тишины'}
+    assert c.get('/api/v1/gifts', headers=me).get_json()['title'] == 'Хранитель тишины'
+    assert c.post('/api/v1/title', json={'title': 'Король мира'}, headers=me).status_code == 422
+    assert c.post('/api/v1/title', json={'title': ''}, headers=me).get_json()['title'] is None
+    assert c.post('/api/v1/title', json={'title': ''}).status_code == 400

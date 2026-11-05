@@ -15,6 +15,7 @@ String fixture(String name) => File('test/fixtures/$name.json').readAsStringSync
 
 class FakeServer {
   final requests = <http.Request>[];
+  int _chosen = 0;
 
   late final client = MockClient((req) async {
     requests.add(req);
@@ -22,6 +23,21 @@ class FakeServer {
     var status = 200;
     String body;
     switch (path) {
+      case '/campaigns':
+        body = fixture('campaigns');
+      case '/campaigns/rubezh':
+        body = fixture('campaign');
+      case '/campaigns/rubezh/start':
+        body = fixture('campaign_start');
+      case '/campaigns/rubezh/choose':
+        body = fixture(['campaign_choose1', 'campaign_choose2', 'campaign_end'][_chosen++ % 3]);
+      case '/gifts':
+        body = fixture('gifts');
+      case '/seasons':
+        body = fixture('seasons');
+      case '/users/player1':
+      case '/users/player2':
+        body = fixture('user');
       case '/catalog':
         body = fixture('catalog');
       case '/profile':
@@ -160,6 +176,52 @@ void main() {
     await settle(tester);
     expect(find.text('Профиль судьи'), findsOneWidget);
     await scrollTo(tester, 'Ваш мир');
+  });
+
+  testWidgets('a campaign: start, a chapter, its consequences, what came of it', (tester) async {
+    final server = await start(tester);
+    await scrollTo(tester, 'Последний Рубеж');
+    await tapText(tester, 'Последний Рубеж');
+    expect(find.text('Начать кампанию'), findsOneWidget);
+    await tapText(tester, 'Начать кампанию');
+    expect(server.paths, contains('/campaigns/rubezh/start'));
+    expect(find.text('Три ампулы'), findsWidgets);
+    await tapText(tester, 'К вердикту');
+    final option = (jsonDecode(fixture('campaign_start'))['campaign']['chapter']['case']['decisions'] as List).first['text'] as String;
+    await tapText(tester, option);
+    expect(find.text('ВЕРДИКТ'), findsOneWidget);  // the stamp on the chosen option
+    await tapText(tester, 'Вынести вердикт');
+    final chose = server.requests.lastWhere((r) => r.url.path.endsWith('/choose'));
+    expect(jsonDecode(chose.body), {'option': 'A'});
+    expect(find.text('Последствия решения'), findsOneWidget);
+    await scrollTo(tester, 'Глава 2');
+    await tapText(tester, 'Глава 2');
+    expect(find.text('ЧТО БЫЛО ДАЛЬШЕ'), findsOneWidget);  // a kicker: upper case
+    await tapText(tester, 'К новому делу');
+    expect(find.text('К вердикту'), findsOneWidget);
+  });
+
+  testWidgets("ratings: a judge's profile, past seasons", (tester) async {
+    final server = await start(tester);
+    await tester.tap(find.text('Рейтинг').last);
+    await settle(tester);
+    final first = (jsonDecode(fixture('ratings'))['rows'] as List).first;
+    await tapText(tester, first['display_name'] as String);
+    expect(server.paths, contains('/users/${first['login']}'));
+    expect(find.text('Войдите, чтобы добавить судью в друзья.'), findsOneWidget);
+    await tester.pageBack();
+    await settle(tester);
+    await tester.dragUntilVisible(find.text('Прошлые сезоны'), find.byType(ListView).first, const Offset(-200, 0));
+    await tapText(tester, 'Прошлые сезоны');
+    expect(find.textContaining('Идёт сезон'), findsOneWidget);
+  });
+
+  testWidgets('the judge screen lists gifts and the title being worn', (tester) async {
+    await start(tester);
+    await tester.tap(find.text('Судья').last);
+    await settle(tester);
+    await scrollTo(tester, 'Подарки и трофеи');
+    expect(find.textContaining('Вы носите: Чемпион сезона'), findsOneWidget);
   });
 
   test('dates as the website writes them', () {

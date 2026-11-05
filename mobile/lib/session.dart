@@ -16,12 +16,12 @@ String newVoterId() {
 
 class Session extends ChangeNotifier {
   Session(this._prefs, {http.Client? client})
-      : api = Api(
-          baseUrl: _prefs.getString('server') ?? defaultServer,
-          voterId: _prefs.getString('voter') ?? newVoterId(),
-          token: _prefs.getString('token'),
-          client: client,
-        ) {
+    : api = Api(
+        baseUrl: _prefs.getString('server') ?? defaultServer,
+        voterId: _prefs.getString('voter') ?? newVoterId(),
+        token: _prefs.getString('token'),
+        client: client,
+      ) {
     _prefs.setString('voter', api.voterId);
     final login = _prefs.getString('login');
     if (api.token != null && login != null) {
@@ -67,8 +67,14 @@ class Session extends ChangeNotifier {
   Future<void> signIn(String login, String password) async =>
       _signedIn(await api.post('/auth/login', {'login': login, 'password': password, 'device': 'Приложение'}));
 
-  Future<void> register(String login, String name, String password) async => _signedIn(await api.post(
-      '/auth/register', {'login': login, 'display_name': name, 'password': password, 'device': 'Приложение'}));
+  Future<void> register(String login, String name, String password) async => _signedIn(
+    await api.post('/auth/register', {
+      'login': login,
+      'display_name': name,
+      'password': password,
+      'device': 'Приложение',
+    }),
+  );
 
   /// Signing out gives the phone a fresh anonymous player, as the website does for a browser.
   Future<void> signOut() async {

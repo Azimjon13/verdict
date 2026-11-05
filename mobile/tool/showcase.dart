@@ -1,9 +1,13 @@
 // For screenshots and design review: opens one real screen with real data from a server, chosen by ?screen=.
 //   flutter build web -t tool/showcase.dart --dart-define=VERDICT_API=http://127.0.0.1:8099
 //   …/index.html?screen=home | archive | judge | ratings | account | case | verdict | result | talk | talk-open
+//                       | campaign | chapter2 | step | ending | profile | seasons | friends
 import 'package:flutter/material.dart';
 import 'package:verdict_mobile/main.dart';
+import 'package:verdict_mobile/screens/campaigns.dart';
 import 'package:verdict_mobile/screens/case_screen.dart';
+import 'package:verdict_mobile/screens/profile.dart';
+import 'package:verdict_mobile/screens/ratings.dart';
 import 'package:verdict_mobile/screens/result_screen.dart';
 import 'package:verdict_mobile/screens/talk.dart';
 import 'package:verdict_mobile/session.dart';
@@ -32,6 +36,23 @@ class _Show extends StatelessWidget {
     if (tabs.containsKey(screen)) return Shell(initialTab: tabs[screen]!);
     if (screen == 'case') return const QuickRun();
     if (screen == 'verdict') return const QuickRun(atVerdict: true);
+    if (screen == 'campaign') return const CampaignScreen(campaignKey: 'rubezh');
+    if (screen == 'profile') return const ProfileScreen(login: 'player1');
+    if (screen == 'seasons') return const Scaffold(body: SafeArea(child: SeasonsView()));
+    if (screen == 'friends') {
+      await s.signIn('player1', 'password123');
+      return const Shell(initialTab: 4);
+    }
+    if (const ['chapter2', 'step', 'ending'].contains(screen)) {
+      await s.api.post('/campaigns/rubezh/start');
+      var out = await s.api.post('/campaigns/rubezh/choose', {'option': 'A'});
+      if (screen == 'chapter2') return ChapterScreen(campaign: out['campaign'] as Map<String, dynamic>);
+      if (screen == 'ending') {
+        await s.api.post('/campaigns/rubezh/choose', {'option': 'B'});
+        out = await s.api.post('/campaigns/rubezh/choose', {'option': 'A'});
+      }
+      return StepScreen(step: out);
+    }
     if (screen == 'talk-open') {  // the seeded discussion under case 3, after one's own verdict
       await s.api.post('/cases/3/verdict', {'option': 'A'});
       return const TalkScreen(caseId: 3, title: 'Перевал Кызыл-Тау');

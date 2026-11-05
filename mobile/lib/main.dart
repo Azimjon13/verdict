@@ -19,8 +19,9 @@ Future<void> main() async {
       yield LicenseEntryWithLineBreaks([font], await rootBundle.loadString('assets/fonts/OFL-$font.txt'));
     });
   }
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, systemNavigationBarColor: Color(0xFF060818)));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: Color(0xFF060818)),
+  );
   runApp(VerdictApp(session: await Session.load()));
 }
 
@@ -31,15 +32,15 @@ class VerdictApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SessionScope(
-        session: session,
-        child: MaterialApp(
-          title: 'VERDICT',
-          debugShowCheckedModeBanner: false,
-          theme: V.theme(),
-          locale: const Locale('ru'),
-          home: const Boot(),
-        ),
-      );
+    session: session,
+    child: MaterialApp(
+      title: 'VERDICT',
+      debugShowCheckedModeBanner: false,
+      theme: V.theme(),
+      locale: const Locale('ru'),
+      home: const Boot(),
+    ),
+  );
 }
 
 /// Gives every screen the session (and rebuilds them when it changes: sign-in, unread count, catalog).
@@ -87,13 +88,24 @@ class _BootState extends State<Boot> {
       body: _error != null
           ? ErrorView(_error!, onRetry: _start)
           : Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('VERDICT', style: V.display(30, weight: FontWeight.w900)),
-                const SizedBox(height: 10),
-                Text('Нет правильного ответа.\nЕсть только твой вердикт.', textAlign: TextAlign.center, style: V.body(14, color: V.muted)),
-                const SizedBox(height: 26),
-                const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.5, color: V.cyan)),
-              ]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('VERDICT', style: V.display(30, weight: FontWeight.w900)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Нет правильного ответа.\nЕсть только твой вердикт.',
+                    textAlign: TextAlign.center,
+                    style: V.body(14, color: V.muted),
+                  ),
+                  const SizedBox(height: 26),
+                  const SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: V.cyan),
+                  ),
+                ],
+              ),
             ),
     );
   }
@@ -142,20 +154,47 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       AccountScreen(key: _keys[4]),
     ];
     return Scaffold(
-      body: SafeArea(bottom: false, child: IndexedStack(index: _tab, children: pages)),
+      body: SafeArea(
+        bottom: false,
+        child: IndexedStack(index: _tab, children: pages),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: go,
         destinations: [
-          const NavigationDestination(icon: Icon(Icons.gavel_outlined), selectedIcon: Icon(Icons.gavel), label: 'Играть'),
-          const NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: 'Архив'),
-          const NavigationDestination(icon: Icon(Icons.balance_outlined), selectedIcon: Icon(Icons.balance), label: 'Судья'),
-          const NavigationDestination(icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: 'Рейтинг'),
+          const NavigationDestination(
+            icon: Icon(Icons.gavel_outlined),
+            selectedIcon: Icon(Icons.gavel),
+            label: 'Играть',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2),
+            label: 'Архив',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.balance_outlined),
+            selectedIcon: Icon(Icons.balance),
+            label: 'Судья',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined),
+            selectedIcon: Icon(Icons.emoji_events),
+            label: 'Рейтинг',
+          ),
           NavigationDestination(
-            icon: Badge(isLabelVisible: s.unread > 0, label: Text('${s.unread}'), backgroundColor: V.magenta,
-                child: Icon(s.signedIn ? Icons.person_outline : Icons.login)),
-            selectedIcon: Badge(isLabelVisible: s.unread > 0, label: Text('${s.unread}'), backgroundColor: V.magenta,
-                child: Icon(s.signedIn ? Icons.person : Icons.login)),
+            icon: Badge(
+              isLabelVisible: s.unread > 0,
+              label: Text('${s.unread}'),
+              backgroundColor: V.magenta,
+              child: Icon(s.signedIn ? Icons.person_outline : Icons.login),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: s.unread > 0,
+              label: Text('${s.unread}'),
+              backgroundColor: V.magenta,
+              child: Icon(s.signedIn ? Icons.person : Icons.login),
+            ),
             label: s.signedIn ? 'Аккаунт' : 'Войти',
           ),
         ],

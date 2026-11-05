@@ -6,6 +6,7 @@ import '../api.dart';
 import '../icons.dart';
 import '../main.dart';
 import '../theme.dart';
+import '../fx.dart';
 import '../widgets.dart';
 import 'result_screen.dart';
 
@@ -48,8 +49,12 @@ class _QuickRunState extends State<QuickRun> {
               ],
             );
           }
-          return CaseView(caseData: data['case'] as Json, quick: true, remaining: (data['remaining'] as num?)?.toInt(),
-              atVerdict: widget.atVerdict);
+          return CaseView(
+            caseData: data['case'] as Json,
+            quick: true,
+            remaining: (data['remaining'] as num?)?.toInt(),
+            atVerdict: widget.atVerdict,
+          );
         },
       ),
     );
@@ -77,12 +82,22 @@ class CaseScreen extends StatelessWidget {
 }
 
 class CaseView extends StatefulWidget {
-  const CaseView({super.key, required this.caseData, required this.quick, this.remaining, this.atVerdict = false});
+  const CaseView({
+    super.key,
+    required this.caseData,
+    required this.quick,
+    this.remaining,
+    this.atVerdict = false,
+    this.onChoose,
+  });
 
   final Json caseData;
   final bool quick;
   final int? remaining;
   final bool atVerdict;
+
+  /// Instead of an ordinary verdict (a campaign chapter): what to do with the chosen option.
+  final Future<void> Function(String option)? onChoose;
 
   @override
   State<CaseView> createState() => _CaseViewState();
@@ -192,7 +207,13 @@ class _CaseViewState extends State<CaseView> {
       'cast' => _people(p),
       'evidence' => _evidence(p),
       'witnesses' => _witnesses(p),
-      _ => VerdictPanel(caseData: c, quick: widget.quick, opened: _opened, remaining: widget.remaining),
+      _ => VerdictPanel(
+        caseData: c,
+        quick: widget.quick,
+        opened: _opened,
+        remaining: widget.remaining,
+        onChoose: widget.onChoose,
+      ),
     };
     return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: body);
   }
@@ -406,12 +427,20 @@ class _CaseViewState extends State<CaseView> {
 
 /// The last frame: pick a verdict; in Быстрый суд then guess how most players decided.
 class VerdictPanel extends StatefulWidget {
-  const VerdictPanel({super.key, required this.caseData, required this.quick, required this.opened, this.remaining});
+  const VerdictPanel({
+    super.key,
+    required this.caseData,
+    required this.quick,
+    required this.opened,
+    this.remaining,
+    this.onChoose,
+  });
 
   final Json caseData;
   final bool quick;
   final DateTime opened;
   final int? remaining;
+  final Future<void> Function(String option)? onChoose;
 
   @override
   State<VerdictPanel> createState() => _VerdictPanelState();
@@ -455,6 +484,10 @@ class _VerdictPanelState extends State<VerdictPanel> {
     });
     final api = SessionScope.read(context).api;
     try {
+      if (widget.onChoose != null) {
+        await widget.onChoose!(_choice!);
+        return;
+      }
       final out = await api.post('/cases/${c['id']}/verdict', {
         'option': _choice,
         'mode': widget.quick ? 'quick' : 'full',
@@ -489,6 +522,7 @@ class _VerdictPanelState extends State<VerdictPanel> {
           Expanded(
             child: Text(d['text'] as String, style: V.body(15, weight: FontWeight.w700)),
           ),
+          if (selected && !_guessing) ...[const SizedBox(width: 8), const VerdictStamp()],
         ],
       ),
     ),
