@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../hunt.dart';
 import '../icons.dart';
+import '../links.dart';
 import '../main.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -19,7 +21,9 @@ class _JudgeScreenState extends State<JudgeScreen> {
   Key _loader = UniqueKey();
 
   Future<(Json, Json, Json)> _load() async {
-    final api = SessionScope.read(context).api;
+    final s = SessionScope.read(context);
+    final api = s.api;
+    s.refreshHunt();
     final r = await Future.wait([api.get('/profile'), api.get('/world'), api.get('/gifts')]);
     return (r[0], r[1]['world'] as Json, r[2]);
   }
@@ -217,6 +221,7 @@ class _JudgeScreenState extends State<JudgeScreen> {
                   ),
                 ),
               ),
+            const HuntPanel(),
             if (giftList.isNotEmpty) ...[
               SectionTitle(
                 'Подарки и трофеи',
@@ -255,6 +260,13 @@ class _JudgeScreenState extends State<JudgeScreen> {
                                 const SizedBox(height: 6),
                                 SelectableText('${g['code']}', style: V.mono(15, color: V.cyan)),
                               ],
+                              if ((g['link'] as String? ?? '').isNotEmpty)
+                                TextButton.icon(
+                                  onPressed: () => openLink(context, g['link'] as String),
+                                  icon: const Icon(Icons.open_in_new, size: 16),
+                                  label: const Text('Открыть'),
+                                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                                ),
                             ],
                           ),
                         ),

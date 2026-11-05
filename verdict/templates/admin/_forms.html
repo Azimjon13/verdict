@@ -65,13 +65,15 @@
         <span>Где</span>
         <select class="vs" name="page" data-size="sm" data-spot-page>
             {% for key, label in HUNT_PAGES.items() %}<option value="{{ key }}"{{ ' selected' if v.page == key }}>{{ label }}</option>{% endfor %}
-            <option value="unity"{{ ' selected' if unity }} data-desc="Сцена игрового клиента">Игра (Unity)</option>
+            <option value="unity"{{ ' selected' if unity }} data-desc="Экран мобильного приложения или сцена Unity">Приложение или Unity</option>
         </select>
         {{ field_error(errors, 'page') }}
     </label>
     <label class="field" data-spot-scene{{ ' hidden' if not unity }}>
-        <span>Сцена игры</span>
-        <input type="text" name="scene" value="{{ v.page[6:] if unity else '' }}" maxlength="40" placeholder="courtroom">
+        <span>Экран или сцена</span>
+        <input type="text" name="scene" value="{{ v.page[6:] if unity else '' }}" maxlength="40" placeholder="home" list="hunt-scenes">
+        <datalist id="hunt-scenes">{% for key, label in HUNT_SCENES.items() %}<option value="{{ key }}">Приложение · {{ label }}</option>{% endfor %}</datalist>
+        <small>Экраны приложения: {% for key, label in HUNT_SCENES.items() %}<code>{{ key }}</code> — {{ label }}{{ ', ' if not loop.last }}{% endfor %}. Место на экране — x, y в % от него.</small>
     </label>
     <label class="field{{ ' has-error' if errors.path }}" data-spot-path{{ ' hidden' if unity }}>
         <span>Только по адресу <em>— необязательно</em></span>

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../api.dart';
 import '../icons.dart';
 import '../main.dart';
+import '../hunt.dart';
 import '../theme.dart';
 import '../fx.dart';
 import '../widgets.dart';
@@ -27,35 +28,38 @@ class _QuickRunState extends State<QuickRun> {
   @override
   Widget build(BuildContext context) {
     final api = SessionScope.read(context).api;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Быстрый суд')),
-      body: Loader<Json>(
-        load: () => api.get('/quick/next', query: widget.except == null ? null : {'except': '${widget.except}'}),
-        builder: (context, data, reload) {
-          if (data['done'] == true || data['case'] == null) {
-            return ListView(
-              padding: const EdgeInsets.all(28),
-              children: [
-                const SizedBox(height: 40),
-                const Icon(Icons.emoji_events, size: 56, color: V.amber),
-                const SizedBox(height: 16),
-                Text('Все дела рассужены', textAlign: TextAlign.center, style: V.display(22)),
-                const SizedBox(height: 10),
-                Text(
-                  'Вы вынесли вердикт по каждому делу в игре. Новые появляются, когда команда одобряет дела авторов.',
-                  textAlign: TextAlign.center,
-                  style: V.body(14, color: V.muted),
-                ),
-              ],
+    return HuntLayer(
+      scene: 'case',
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Быстрый суд')),
+        body: Loader<Json>(
+          load: () => api.get('/quick/next', query: widget.except == null ? null : {'except': '${widget.except}'}),
+          builder: (context, data, reload) {
+            if (data['done'] == true || data['case'] == null) {
+              return ListView(
+                padding: const EdgeInsets.all(28),
+                children: [
+                  const SizedBox(height: 40),
+                  const Icon(Icons.emoji_events, size: 56, color: V.amber),
+                  const SizedBox(height: 16),
+                  Text('Все дела рассужены', textAlign: TextAlign.center, style: V.display(22)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Вы вынесли вердикт по каждому делу в игре. Новые появляются, когда команда одобряет дела авторов.',
+                    textAlign: TextAlign.center,
+                    style: V.body(14, color: V.muted),
+                  ),
+                ],
+              );
+            }
+            return CaseView(
+              caseData: data['case'] as Json,
+              quick: true,
+              remaining: (data['remaining'] as num?)?.toInt(),
+              atVerdict: widget.atVerdict,
             );
-          }
-          return CaseView(
-            caseData: data['case'] as Json,
-            quick: true,
-            remaining: (data['remaining'] as num?)?.toInt(),
-            atVerdict: widget.atVerdict,
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -71,11 +75,14 @@ class CaseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = SessionScope.read(context).api;
-    return Scaffold(
-      appBar: AppBar(title: Text(quick ? 'Быстрый суд' : 'Дело')),
-      body: Loader<Json>(
-        load: () => api.get('/cases/$caseId'),
-        builder: (context, data, reload) => CaseView(caseData: data['case'] as Json, quick: quick),
+    return HuntLayer(
+      scene: 'case',
+      child: Scaffold(
+        appBar: AppBar(title: Text(quick ? 'Быстрый суд' : 'Дело')),
+        body: Loader<Json>(
+          load: () => api.get('/cases/$caseId'),
+          builder: (context, data, reload) => CaseView(caseData: data['case'] as Json, quick: quick),
+        ),
       ),
     );
   }

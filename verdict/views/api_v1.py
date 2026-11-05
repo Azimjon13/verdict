@@ -196,10 +196,12 @@ def index():
             'GET /api/v1/seasons/<YYYY-MM>': 'a closed season: its final board',
             'GET /api/v1/users/<login>': 'a public profile (as much as its owner shows to everyone)',
             'GET /api/v1/communities': 'communities: name, rules, access, members',
-            'GET /api/v1/communities/<slug>': 'one community with its members and rating',
+            'GET /api/v1/communities/<slug>': 'one community with its members, rating and my membership (Bearer optional)',
             'POST /api/v1/auth/register, /auth/login': '{login, password[, display_name, device]} → token, voter_id',
             'POST /api/v1/auth/logout': 'forgets this device (Authorization: Bearer <token>)',
             'GET /api/v1/me, POST /api/v1/me/profile': 'the signed-in account (Bearer)',
+            'POST /api/v1/me/telegram/link|unlink': 'a one-time t.me link to tie Telegram to the account; or untie it (Bearer)',
+            'POST /api/v1/reports {target, login|slug|id, reason, text?}': 'report a player, community, case or comment (Bearer)',
             'GET /api/v1/notifications, POST /api/v1/notifications/read {ids?}': 'the account\'s notifications (Bearer)',
             'GET /api/v1/friends, POST /api/v1/friends {login}': 'friends and requests (Bearer)',
             'POST /api/v1/friends/<login>/accept|decline|cancel|remove': 'answer or end a friendship (Bearer)',
@@ -326,7 +328,7 @@ def hunts_out(vid):
     for h in hunt.progress(vid):
         item = {k: h[k] for k in ('id', 'title', 'intro', 'total', 'found', 'seconds_left', 'prize', 'prize_taken')}
         item['ends_at'] = h['ends_at'].isoformat(sep=' ') if h['ends_at'] else None
-        item['spots'] = [{k: x[k] for k in ('id', 'found', 'hint', 'page', 'gift', 'empty')} for x in h['spots']]
+        item['spots'] = [{k: x[k] for k in ('id', 'found', 'hint', 'page', 'scene', 'gift', 'empty')} for x in h['spots']]
         out.append(item)
     return out
 
@@ -521,7 +523,10 @@ def community(slug):
         return error('Сообщество не найдено.', 404)
     people = [{'login': p['login'], 'display_name': p['display_name'], 'role': p['role']}
               for p in social.members(c['id']) if p['status'] == 'active']
+    user = account()
+    m = social.membership(c['id'], int(user['id'])) if user else None
     return {'ok': True, 'community': community_out(c) | {'people': people},
+            'me': {'status': m['status'], 'role': m['role']} if m else None,
             'rating': rating_rows(social.board('season', social.member_ids(c['id'])))}
 
 
@@ -664,8 +669,61 @@ def me():
     out['friend_requests'] = len(social.requests_in(uid))
     out['notifications_unread'] = notify.unread(uid)
     from .. import telegram
-    out['telegram'] = {'linked': bool(telegram.link_of(uid)), 'bot': telegram.bot_name() or None}
+    out['telegram'] = {'linked': bool(telegram.link_of(uid)), 'bot': telegram.bot_name() or None, 'ready': telegram.ready()}
     return out
+
+
+@bp.post('/me/telegram/<action>')
+def me_telegram(action):
+    """link → a one-time t.me link that ties the account to the player's Telegram chat; unlink → forget the chat."""
+    from .. import telegram
+    user = account()
+    if not user:
+        return need_account()
+    uid = int(user['id'])
+    if action == 'unlink':
+        telegram.unlink(uid)
+        return {'ok': True}
+    if action != 'link':
+        return error('Не найдено.', 404)
+    if not telegram.ready():
+        return error('Telegram-бот ещё не подключён на этом сервере.', 503)
+    return {'ok': True, 'link': telegram.deep_link(telegram.new_code(uid))}
+
+
+REPORT_TARGETS = {'user': 'user', 'community': 'community', 'case': 'situation', 'comment': 'comment'}
+
+
+@bp.post('/reports')
+def report():
+    """A report to the team: {target: user|community|case|comment, login | slug | id, reason, text?} (Bearer)."""
+    from ..catalog import REPORT_REASONS
+    user = account()
+    if not user:
+        return need_account()
+    d = body()
+    kind = REPORT_TARGETS.get(str(d.get('target', '')))
+    reason = str(d.get('reason', ''))
+    if not kind or reason not in REPORT_REASONS:
+        return error('Укажите, на что жалоба (target) и причину (reason) из GET /catalog → report_reasons.', 422)
+    target = None
+    if kind == 'user':
+        u = social.user_by_login(input_str(d.get('login', ''), 40).lstrip('@'))
+        target = int(u['id']) if u else None
+    elif kind == 'community':
+        c = social.community_by_slug(input_str(d.get('slug', ''), 80))
+        target = int(c['id']) if c else None
+    else:
+        try:
+            target = int(d.get('id'))
+        except (TypeError, ValueError):
+            target = None
+        found = (situation_find(target) if kind == 'situation' else talk.find(target)) if target else None
+        target = target if found else None
+    if not target:
+        return error('Не найдено.', 404)
+    fresh = social.report(kind, target, reason, input_str(d.get('text', ''), 500), int(user['id']), voter())
+    return {'ok': True, 'new': bool(fresh)}
 
 
 @bp.get('/notifications')

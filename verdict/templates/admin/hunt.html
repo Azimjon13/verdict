@@ -45,7 +45,7 @@
                             <a class="spot-row-main" href="{{ url_for('admin.spot_page', spot_id=s.id) }}">
                                 <b>{{ s.label or 'Тайник ' ~ s.id }}</b>
                                 <small>
-                                    {{ ('Игра · ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %}
+                                    {{ (('Приложение · ' ~ HUNT_SCENES[s.page[6:]]) if s.page[6:] in HUNT_SCENES else 'Игра · ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %}
                                     · {{ s.gift_name or 'без подарка' }}
                                     · найден {{ s.finds }}{% if s.max_finds %} из {{ s.max_finds }}{% endif %}
                                 </small>

@@ -192,3 +192,22 @@ def test_new_password_through_telegram(tg, app, people, new_browser, db):
     assert 'Неверный логин или пароль' in old.html
     assert new_browser().form('/login', {'login': a_login, 'password': 'brand-new-pass-1', 'back': ''}).status_code == 302
     assert guest.get('/reset/' + 'x' * 32).status_code == 302
+
+
+def test_linking_from_the_game_client(tg, app, new_browser, db):
+    c = app.test_client()
+    login = 'g' + secrets.token_hex(4)
+    out = c.post('/api/v1/auth/register', json={'login': login, 'display_name': 'Из игры', 'password': 'password123'}).get_json()
+    auth = {'Authorization': 'Bearer ' + out['token']}
+    db.rows("DELETE FROM meta WHERE meta_key = 'telegram_bot'")  # as if the team hadn't connected the bot yet
+    assert c.post('/api/v1/me/telegram/link', headers=auth).status_code == 503
+    assert c.get('/api/v1/me', headers=auth).get_json()['telegram']['ready'] is False
+    connect(new_browser)
+    link = c.post('/api/v1/me/telegram/link', headers=auth).get_json()['link']
+    code = re.match(r'https://t\.me/verdict_test_bot\?start=([0-9a-f]{24})$', link).group(1)
+    assert 'Готово' in say(app, 5150, '/start ' + code)['text']
+    assert c.get('/api/v1/me', headers=auth).get_json()['telegram'] == {'linked': True, 'bot': 'verdict_test_bot', 'ready': True}
+    assert c.post('/api/v1/me/telegram/unlink', headers=auth).get_json()['ok']
+    assert c.get('/api/v1/me', headers=auth).get_json()['telegram']['linked'] is False
+    assert c.post('/api/v1/me/telegram/link').status_code == 401
+    assert c.post('/api/v1/me/telegram/nope', headers=auth).status_code == 404

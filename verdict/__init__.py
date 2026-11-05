@@ -122,7 +122,7 @@ def _template_globals(app):
         player_world=lambda: career.world(web.voter_id()), career_summary=lambda: career.summary(web.voter_id()),
         daily_info=lambda: career.daily(web.voter_id()), RANKS=catalog.RANKS, XP=catalog.XP,
         hunt_for_page=_hunt_for_page, hunt_tools=_hunt_tools, hunt_json=hunt.dumps, GIFT_KINDS=catalog.GIFT_KINDS,
-        HUNT=catalog.HUNT, HUNT_PAGES=hunt.PAGES, HUNT_STATUSES=hunt.STATUSES, SOCIAL=catalog.SOCIAL,
+        HUNT=catalog.HUNT, HUNT_PAGES=hunt.PAGES, HUNT_SCENES=hunt.APP_SCENES, HUNT_STATUSES=hunt.STATUSES, SOCIAL=catalog.SOCIAL,
         ACHIEVEMENTS=catalog.ACHIEVEMENTS, REPORT_REASONS=catalog.REPORT_REASONS,
         friend_votes_for=_friend_votes_for, campaign_of=campaigns.campaign_of_case,
         notifications_unread=lambda: notify.unread(auth.current_user_id()),

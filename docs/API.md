@@ -53,9 +53,11 @@ answers `429` with the reason in `error`.
 | `GET /api/v1/seasons`, `/seasons/<YYYY-MM>` | — | the current season with its trophies; closed seasons and their final boards |
 | `GET /api/v1/users/<login>` | — | a public profile, as much as its owner shows to everyone |
 | `GET /api/v1/communities` | — | every community: name, description, rules, access, emblem, members |
-| `GET /api/v1/communities/<slug>` | — | one community with its members and season rating |
+| `GET /api/v1/communities/<slug>` | — / Bearer | one community with its members, season rating and (with a token) `me`: my membership |
 | `POST /api/v1/auth/register`, `/auth/login`, `/auth/logout` | — / Bearer | accounts, see above |
 | `GET /api/v1/me`, `POST /api/v1/me/profile` | Bearer | the account, its player id, career, communities; `{bio, visibility, in_ratings}` |
+| `POST /api/v1/me/telegram/link`, `/unlink` | Bearer | a one-time `t.me` link that ties the player's Telegram to the account (`503` while the team hasn't connected the bot); untie it |
+| `POST /api/v1/reports {target, login\|slug\|id, reason, text?}` | Bearer | report a player, a community, a case or a comment to the team |
 | `GET /api/v1/notifications`, `POST /api/v1/notifications/read {ids?}` | Bearer | the account's notifications; mark some or all read |
 | `GET /api/v1/friends`, `POST /api/v1/friends {login}` | Bearer | friends, requests in and out; ask (or accept) |
 | `POST /api/v1/friends/<login>/accept\|decline\|cancel\|remove` | Bearer | answer or end a friendship |
@@ -234,20 +236,23 @@ A reset puts the meters back to 50 and forgets announced events; verdicts, XP, r
 ### `GET /hunt`
 
 The team hides spots on the website and in the game; the website draws its own, the game draws the ones whose page
-is `unity:<scene>` (set in the admin panel, «Где» → «Игра (Unity)»).
+is `unity:<scene>` (set in the admin panel, «Где» → «Приложение или Unity»). The mobile app's screens are the scenes
+`home`, `archive`, `judge`, `ratings`, `account`, `case`, `result` and `campaign`; a Unity client names its own.
 
 ```json
 { "ok": true,
   "hunts": [ { "id": 3, "title": "Неделя тайников", "intro": "…", "total": 4, "found": 1, "seconds_left": 271000,
                "ends_at": "2026-10-31 11:22:00", "prize": { "name": "Искатель тайников", "icon": "crown", "kind": "title" },
                "prize_taken": false,
-               "spots": [ { "id": 7, "found": true, "hint": "…", "page": "Главная", "gift": "+50 XP за зоркость", "empty": false }, … ] } ],
+               "spots": [ { "id": 7, "found": true, "hint": "…", "page": "Главная", "scene": null, "gift": "+50 XP за зоркость",
+                            "empty": false }, … ] } ],
   "spots": [ { "id": 9, "hunt": 3, "scene": "courtroom", "x": 81.5, "y": 12.0, "size": 32, "icon": "key",
                "visibility": "faint", "opacity": 0.14, "hint": "За молотком судьи" } ] }
 ```
 
-- `hunts[].spots` — every spot of the hunt with the player's progress and the hint (for a «hunt» panel); `empty` —
-  others took all its gifts.
+- `hunts[].spots` — every spot of the hunt with the player's progress and the hint (for a «hunt» panel); `page` —
+  where it is, in words («Главная», «Приложение · Архив», «Игра · courtroom»); `scene` — the game scene, `null` for a
+  spot on the website; `empty` — others took all its gifts.
 - `spots` — what the game should draw: spots of running hunts in the game's scenes that this player hasn't found.
   `x`, `y` are % of the scene's screen; `opacity` is how visible the team wants the spot (`visibility`:
   `faint` 0.14, `subtle` 0.34, `visible` 0.9); `icon` is an icon name from the catalog, `size` in px at 1× scale.
@@ -354,12 +359,28 @@ and `friends` come back. Codes and messages from gifts are never part of a profi
 { "ok": true, "community": { "slug": "klub-strogikh-sudey", "name": "…", "description": "…", "rules": "…",
   "access": "request", "icon": "gavel", "hue": 260, "members": 12, "owner": { "login": "anna", "display_name": "…" },
   "created_at": "2026-10-28 09:12:00", "people": [ { "login": "anna", "display_name": "…", "role": "owner" } ] },
-  "rating": [ … as in GET /ratings … ] }
+  "rating": [ … as in GET /ratings … ], "me": { "status": "active", "role": "member" } }
 ```
+
+`me` (with a token): `null` when the player isn't in the community, else `status` `active` | `requested` (waiting for
+the founder or a moderator) and `role` `owner` | `moderator` | `member`. `POST /communities/<slug>/join` answers
+`result`: `joined`, `requested`, `already`, `pending`, or `need_code` (`403`; an invite-only community wants
+`code` from its invite link).
 
 `access`: `open` | `request` | `invite`; the invite code is never sent. `catalog.social` lists access modes, roles,
 boards, emblems and colours. With a token, `POST /cases/<id>/verdict` also returns `friends` — how the player's friends
 judged that case — and `GET /ratings?scope=friends` gives the friends' rating.
+
+### `POST /reports`
+
+```json
+{ "target": "comment", "id": 41, "reason": "abuse", "text": "необязательно, до 500 знаков" }
+```
+
+`target`: `user` (with `login`), `community` (with `slug`), `case` or `comment` (with `id`). `reason` is a key of
+`catalog.report_reasons`. Answers `{ok, new}`; `new` is `false` when this account already has an open report on the
+same thing. `404` for an unknown target, `422` for a wrong `target` or `reason`. The team sees reports in the admin
+panel («Жалобы»).
 
 ### `GET /campaigns/<key>`
 

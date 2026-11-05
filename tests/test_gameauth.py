@@ -88,6 +88,51 @@ def test_friends_and_communities_from_the_game(app, db):
     assert c.get('/api/v1/users/%s' % b_login).get_json()['user']['visible'] is False
 
 
+
+def test_membership_and_reports_from_the_game(app, db):
+    c = api(app)
+    a_login, a = sign_up(c, 'Аня')
+    b_login, b = sign_up(c, 'Боря')
+    a_id = c.get('/api/v1/me', headers=bearer(a['token'])).get_json()['user']['id']
+    slug = 'req-' + secrets.token_hex(3)
+    db.rows("INSERT INTO communities (slug, name, description, rules, access, invite_code, icon, hue, owner_id, created_at, updated_at)"
+            " VALUES (%s, 'Клуб по заявке', '', '', 'request', 'code123', 'users', 190, %s, NOW(), NOW())", (slug, a_id))
+    db.rows("INSERT INTO community_members (community_id, user_id, role, status, joined_at)"
+            " SELECT id, %s, 'owner', 'active', NOW() FROM communities WHERE slug = %s", (a_id, slug))
+
+    def page(who):
+        return c.get('/api/v1/communities/%s' % slug, headers=bearer(who['token']) if who else {}).get_json()
+
+    assert page(None)['me'] is None and page(b)['me'] is None
+    assert page(a)['me'] == {'status': 'active', 'role': 'owner'}
+    assert c.post('/api/v1/communities/%s/join' % slug, json={}, headers=bearer(b['token'])).get_json()['result'] == 'requested'
+    assert page(b)['me'] == {'status': 'requested', 'role': 'member'}
+
+    # reports: a player, a community, a case, a comment — once each; a guest can't
+    sid = db.value("SELECT id FROM situations WHERE status = 'approved' ORDER BY id LIMIT 1 OFFSET 7")
+    c.post('/api/v1/cases/%d/verdict' % sid, json={'option': 'A'}, headers=bearer(a['token']))
+    r = c.post('/api/v1/cases/%d/comments' % sid, json={'text': 'Спорный комментарий'}, headers=bearer(a['token'])).get_json()
+    cid = r['comment']['id']
+
+    def send(d, who=b):
+        return c.post('/api/v1/reports', json=d, headers=bearer(who['token']) if who else {})
+
+    assert send({'target': 'user', 'login': '@' + a_login, 'reason': 'abuse', 'text': 'Грубит'}).get_json() == {'ok': True, 'new': True}
+    assert send({'target': 'user', 'login': a_login, 'reason': 'abuse'}).get_json() == {'ok': True, 'new': False}
+    assert send({'target': 'community', 'slug': slug, 'reason': 'spam'}).get_json()['new']
+    assert send({'target': 'case', 'id': sid, 'reason': 'spam'}).get_json()['new']
+    assert send({'target': 'comment', 'id': cid, 'reason': 'abuse'}).get_json()['new']
+    rows = db.rows('SELECT target_type, target_id FROM reports WHERE reporter_id = (SELECT id FROM users WHERE login = %s)'
+                   ' ORDER BY id', (b_login,))
+    club = db.value('SELECT id FROM communities WHERE slug = %s', (slug,))
+    assert [(x['target_type'], x['target_id']) for x in rows] == [('user', a_id), ('community', club), ('situation', sid),
+                                                                  ('comment', cid)]
+    assert send({'target': 'user', 'login': 'nobody-' + secrets.token_hex(3), 'reason': 'abuse'}).status_code == 404
+    assert send({'target': 'comment', 'id': 'x', 'reason': 'abuse'}).status_code == 404
+    assert send({'target': 'user', 'login': a_login, 'reason': 'nonsense'}).status_code == 422
+    assert send({'target': 'planet', 'reason': 'abuse'}).status_code == 422
+    assert send({'target': 'user', 'login': a_login, 'reason': 'abuse'}, None).status_code == 401
+
 def test_reports_reach_the_team(new_browser, db):
     reporter = new_browser()
     reporter.register('Внимательный')

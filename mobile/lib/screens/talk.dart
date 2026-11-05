@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../main.dart';
+import '../report.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'profile.dart';
 
 class TalkScreen extends StatefulWidget {
   const TalkScreen({super.key, required this.caseId, required this.title});
@@ -198,6 +200,27 @@ class _TalkScreenState extends State<TalkScreen> {
     );
   }
 
+  Future<void> _delete(Json c) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        backgroundColor: V.panel2,
+        title: const Text('Удалить комментарий?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Оставить')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await SessionScope.read(context).api.post('/comments/${c['id']}/delete');
+      await _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Widget _comment(Json c, bool signedIn) {
     final author = c['author'] as Json;
     final mine = _data?['my_verdict'];
@@ -210,10 +233,16 @@ class _TalkScreenState extends State<TalkScreen> {
           children: [
             Row(
               children: [
-                Avatar(author['display_name'] as String, size: 32),
+                GestureDetector(
+                  onTap: () => openProfile(context, author['login'] as String),
+                  child: Avatar(author['display_name'] as String, size: 32),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(author['display_name'] as String, style: V.body(14, weight: FontWeight.w800)),
+                  child: GestureDetector(
+                    onTap: () => openProfile(context, author['login'] as String),
+                    child: Text(author['display_name'] as String, style: V.body(14, weight: FontWeight.w800)),
+                  ),
                 ),
                 OptionLetter((c['option'] as String?) ?? '?', size: 26),
                 if (mine != null && c['option'] == mine && c['mine'] != true) ...[
@@ -241,6 +270,20 @@ class _TalkScreenState extends State<TalkScreen> {
                     style: V.body(13, weight: FontWeight.w700, color: V.muted),
                   ),
                 ),
+                if (signedIn)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 18, color: V.muted),
+                    tooltip: 'Ещё',
+                    onSelected: (v) => v == 'delete'
+                        ? _delete(c)
+                        : report(context, target: 'comment', id: c['id'] as int, what: 'Комментарий: «${c['text']}»'),
+                    itemBuilder: (_) => [
+                      if (c['mine'] == true)
+                        const PopupMenuItem(value: 'delete', child: Text('Удалить'))
+                      else
+                        const PopupMenuItem(value: 'report', child: Text('Пожаловаться')),
+                    ],
+                  ),
               ],
             ),
           ],

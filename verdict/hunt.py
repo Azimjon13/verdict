@@ -19,7 +19,17 @@ from .db import db, execute, insert, now, query, query_one, scalar
 from .helpers import icon_html
 
 STATUSES = {'draft': 'Черновик', 'active': 'Идёт', 'ended': 'Завершена'}
-UNITY = 'unity:'  # spots of the game client: page = unity:<scene>
+UNITY = 'unity:'  # spots of a game client (the mobile app, Unity): page = unity:<scene>
+
+# The mobile app's screens a spot can sit on (scene -> name); a Unity client may name its own scenes.
+APP_SCENES = {
+    'home': 'Играть', 'archive': 'Архив', 'judge': 'Судья', 'ratings': 'Рейтинг', 'account': 'Аккаунт',
+    'case': 'Дело', 'result': 'Итог дела', 'campaign': 'Кампания',
+}
+
+
+def scene_name(scene):
+    return 'Приложение · ' + APP_SCENES[scene] if scene in APP_SCENES else 'Игра · ' + scene
 
 # Pages a spot can sit on: endpoint -> name (for the team). '*' — every page of the site.
 PAGES = {
@@ -178,7 +188,8 @@ def progress(voter):
             'ends_at': c['ends_at'], 'seconds_left': int((c['ends_at'] - utcnow()).total_seconds()) if c['ends_at'] else None,
             'total': len(mine), 'found': sum(1 for s in mine if int(s['id']) in found),
             'spots': [{'id': int(s['id']), 'found': int(s['id']) in found, 'hint': s['hint'],
-                       'page': PAGES.get(s['page'], 'Игра') if not s['page'].startswith(UNITY) else 'Игра',
+                       'page': PAGES.get(s['page'], 'Игра') if not s['page'].startswith(UNITY) else scene_name(s['page'][len(UNITY):]),
+                       'scene': s['page'][len(UNITY):] if s['page'].startswith(UNITY) else None,
                        'gift': s['gift_name'] if int(s['id']) in found else None,
                        'empty': int(s['id']) not in found and _empty(s, counts)} for s in mine],
             'web': len(web),

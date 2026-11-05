@@ -6,6 +6,7 @@ import '../icons.dart';
 import '../main.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'communities.dart';
 import 'profile.dart';
 
 class RatingsScreen extends StatefulWidget {
@@ -37,7 +38,18 @@ class _RatingsScreenState extends State<RatingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Рейтинг судей', style: V.display(24, weight: FontWeight.w900)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Рейтинг судей', style: V.display(24, weight: FontWeight.w900)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => openCommunities(context),
+                    icon: const Icon(Icons.groups, size: 18),
+                    label: const Text('Сообщества'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 height: 38,
@@ -108,78 +120,90 @@ class _RatingsScreenState extends State<RatingsScreen> {
                           style: V.body(14, color: V.muted),
                         ),
                       ),
-                    for (final r in rows)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Panel(
-                          accent: r['login'] == me ? V.cyan : (r['place'] == 1 ? V.amber : null),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          onTap: () => openProfile(context, r['login'] as String),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 34,
-                                child: (r['place'] as int) <= 3
-                                    ? Icon(
-                                        r['place'] == 1 ? Icons.workspace_premium : Icons.military_tech,
-                                        color: r['place'] == 1 ? V.amber : V.muted,
-                                      )
-                                    : Text(
-                                        '${r['place']}',
-                                        textAlign: TextAlign.center,
-                                        style: V.display(14, color: V.muted),
-                                      ),
-                              ),
-                              const SizedBox(width: 6),
-                              Avatar(r['display_name'] as String, size: 34),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      r['display_name'] as String,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: V.body(14.5, weight: FontWeight.w800),
-                                    ),
-                                    Row(
-                                      children: [
-                                        Icon(vIcon((r['rank'] as Json)['icon'] as String?), size: 13, color: V.muted),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            (r['title'] as String?) ?? (r['rank'] as Json)['name'] as String,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: V.body(12, color: V.muted),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text('${r['value']}', style: V.display(16, color: V.cyan)),
-                                  Text(
-                                    (r['note'] as String?)?.isNotEmpty == true
-                                        ? r['note'] as String
-                                        : b['unit'] as String? ?? '',
-                                    style: V.body(11, color: V.dim),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    for (final r in rows) RatingRow(row: r, unit: b['unit'] as String? ?? '', me: me),
                   ],
                 );
               },
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One line of a rating: place, judge, rank or title, the value. Tapping opens the judge's profile.
+class RatingRow extends StatelessWidget {
+  const RatingRow({super.key, required this.row, this.unit = 'XP', this.me});
+
+  final Json row;
+  final String unit;
+  final Object? me;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = row;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Panel(
+        accent: r['login'] == me ? V.cyan : (r['place'] == 1 ? V.amber : null),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        onTap: () => openProfile(context, r['login'] as String),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 34,
+              child: (r['place'] as int) <= 3
+                  ? Icon(
+                      r['place'] == 1 ? Icons.workspace_premium : Icons.military_tech,
+                      color: r['place'] == 1 ? V.amber : V.muted,
+                    )
+                  : Text(
+                      '${r['place']}',
+                      textAlign: TextAlign.center,
+                      style: V.display(14, color: V.muted),
+                    ),
+            ),
+            const SizedBox(width: 6),
+            Avatar(r['display_name'] as String, size: 34),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    r['display_name'] as String,
+                    overflow: TextOverflow.ellipsis,
+                    style: V.body(14.5, weight: FontWeight.w800),
+                  ),
+                  Row(
+                    children: [
+                      Icon(vIcon((r['rank'] as Json)['icon'] as String?), size: 13, color: V.muted),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          (r['title'] as String?) ?? (r['rank'] as Json)['name'] as String,
+                          overflow: TextOverflow.ellipsis,
+                          style: V.body(12, color: V.muted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${r['value']}', style: V.display(16, color: V.cyan)),
+                Text(
+                  (r['note'] as String?)?.isNotEmpty == true ? r['note'] as String : unit,
+                  style: V.body(11, color: V.dim),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

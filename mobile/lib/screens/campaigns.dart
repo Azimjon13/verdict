@@ -7,6 +7,7 @@ import '../api.dart';
 import '../fx.dart';
 import '../icons.dart';
 import '../main.dart';
+import '../hunt.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'case_screen.dart';
@@ -125,71 +126,76 @@ class _CampaignScreenState extends State<CampaignScreen> {
   @override
   Widget build(BuildContext context) {
     final api = SessionScope.read(context).api;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Кампания')),
-      body: Loader<Json>(
-        key: _loader,
-        load: () async => (await api.get('/campaigns/${widget.campaignKey}'))['campaign'] as Json,
-        builder: (context, c, reload) {
-          final p = c['progress'] as Json;
-          final chapters = (c['chapters'] as List).cast<String>();
-          final choices = ((p['choices'] as List?) ?? const []).cast<Json>();
-          final ending = p['ending'] as Json?;
-          final current = p['chapter_index'] as int? ?? 0;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-            children: [
-              Kicker('${chapters.length} ${plural(chapters.length, 'глава', 'главы', 'глав')}'),
-              const SizedBox(height: 8),
-              Text(c['title'] as String, style: V.display(26, weight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Text(c['intro'] as String? ?? '', style: V.body(15, height: 1.55)),
-              const SectionTitle('Главы', icon: Icons.format_list_numbered),
-              for (var i = 0; i < chapters.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Panel(
-                    accent: p['started'] == true && p['finished'] != true && i == current ? V.cyan : null,
-                    child: Row(
-                      children: [
-                        Icon(
-                          i < choices.length
-                              ? Icons.check_circle
-                              : (i == current && p['finished'] != true ? Icons.play_circle : Icons.lock_outline),
-                          color: i < choices.length ? V.green : (i == current && p['finished'] != true ? V.cyan : V.dim),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text('${i + 1}. ${chapters[i]}', style: V.body(15, weight: FontWeight.w700)),
-                        ),
-                        if (i < choices.length) OptionLetter(choices[i]['option'] as String, size: 26),
-                      ],
+    return HuntLayer(
+      scene: 'campaign',
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Кампания')),
+        body: Loader<Json>(
+          key: _loader,
+          load: () async => (await api.get('/campaigns/${widget.campaignKey}'))['campaign'] as Json,
+          builder: (context, c, reload) {
+            final p = c['progress'] as Json;
+            final chapters = (c['chapters'] as List).cast<String>();
+            final choices = ((p['choices'] as List?) ?? const []).cast<Json>();
+            final ending = p['ending'] as Json?;
+            final current = p['chapter_index'] as int? ?? 0;
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+              children: [
+                Kicker('${chapters.length} ${plural(chapters.length, 'глава', 'главы', 'глав')}'),
+                const SizedBox(height: 8),
+                Text(c['title'] as String, style: V.display(26, weight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                Text(c['intro'] as String? ?? '', style: V.body(15, height: 1.55)),
+                const SectionTitle('Главы', icon: Icons.format_list_numbered),
+                for (var i = 0; i < chapters.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Panel(
+                      accent: p['started'] == true && p['finished'] != true && i == current ? V.cyan : null,
+                      child: Row(
+                        children: [
+                          Icon(
+                            i < choices.length
+                                ? Icons.check_circle
+                                : (i == current && p['finished'] != true ? Icons.play_circle : Icons.lock_outline),
+                            color: i < choices.length
+                                ? V.green
+                                : (i == current && p['finished'] != true ? V.cyan : V.dim),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text('${i + 1}. ${chapters[i]}', style: V.body(15, weight: FontWeight.w700)),
+                          ),
+                          if (i < choices.length) OptionLetter(choices[i]['option'] as String, size: 26),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              if (p['started'] == true) ...[
-                const SectionTitle('Мир кампании', icon: Icons.public),
-                _Meters(meters: p['meters'] as Json),
+                if (p['started'] == true) ...[
+                  const SectionTitle('Мир кампании', icon: Icons.public),
+                  _Meters(meters: p['meters'] as Json),
+                ],
+                if (ending != null) ...[const SizedBox(height: 16), EndingCard(ending: ending)],
+                const SizedBox(height: 20),
+                if (p['finished'] == true)
+                  GradientButton(
+                    'Пройти заново',
+                    icon: Icons.replay,
+                    busy: _busy,
+                    onPressed: () => _play(c, restart: true),
+                  )
+                else
+                  GradientButton(
+                    p['started'] == true ? 'Продолжить: глава ${current + 1}' : 'Начать кампанию',
+                    icon: Icons.play_arrow,
+                    busy: _busy,
+                    onPressed: () => _play(c),
+                  ),
               ],
-              if (ending != null) ...[const SizedBox(height: 16), EndingCard(ending: ending)],
-              const SizedBox(height: 20),
-              if (p['finished'] == true)
-                GradientButton(
-                  'Пройти заново',
-                  icon: Icons.replay,
-                  busy: _busy,
-                  onPressed: () => _play(c, restart: true),
-                )
-              else
-                GradientButton(
-                  p['started'] == true ? 'Продолжить: глава ${current + 1}' : 'Начать кампанию',
-                  icon: Icons.play_arrow,
-                  busy: _busy,
-                  onPressed: () => _play(c),
-                ),
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -296,11 +302,14 @@ class ChapterScreen extends StatelessWidget {
     }
 
     final view = CaseView(caseData: chapter['case'] as Json, quick: false, onChoose: choose);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${campaign['title']} · глава ${(chapter['index'] as int) + 1}', overflow: TextOverflow.ellipsis),
+    return HuntLayer(
+      scene: 'campaign',
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${campaign['title']} · глава ${(chapter['index'] as int) + 1}', overflow: TextOverflow.ellipsis),
+        ),
+        body: bridges.isEmpty ? view : _Bridges(bridges: bridges, child: view),
       ),
-      body: bridges.isEmpty ? view : _Bridges(bridges: bridges, child: view),
     );
   }
 }
@@ -365,71 +374,74 @@ class StepScreen extends StatelessWidget {
     final p = c['progress'] as Json;
     final ending = p['ending'] as Json?;
     final finished = p['finished'] == true;
-    return Scaffold(
-      appBar: AppBar(title: Text(c['title'] as String)),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-            children: [
-              Kicker('Глава ${(r['chapter_index'] as int) + 1}: ваш вердикт'),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  OptionLetter(r['option'] as String, active: true, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text('Последствия решения', style: V.display(18))),
-                ],
-              ),
-              const SizedBox(height: 12),
-              for (final (key, title, icon) in [
-                ('immediate', 'Сразу', Icons.bolt),
-                ('longterm', 'Со временем', Icons.hourglass_bottom),
-              ])
-                if ((r[key] as String? ?? '').isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Panel(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(icon, size: 18, color: V.amber),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: V.body(12, weight: FontWeight.w800, color: V.amber),
-                                ),
-                                Text(r[key] as String, style: V.body(14.5)),
-                              ],
+    return HuntLayer(
+      scene: 'campaign',
+      child: Scaffold(
+        appBar: AppBar(title: Text(c['title'] as String)),
+        body: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+              children: [
+                Kicker('Глава ${(r['chapter_index'] as int) + 1}: ваш вердикт'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    OptionLetter(r['option'] as String, active: true, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Последствия решения', style: V.display(18))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                for (final (key, title, icon) in [
+                  ('immediate', 'Сразу', Icons.bolt),
+                  ('longterm', 'Со временем', Icons.hourglass_bottom),
+                ])
+                  if ((r[key] as String? ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Panel(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(icon, size: 18, color: V.amber),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: V.body(12, weight: FontWeight.w800, color: V.amber),
+                                  ),
+                                  Text(r[key] as String, style: V.body(14.5)),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              const SectionTitle('Мир кампании', icon: Icons.public),
-              _Meters(meters: p['meters'] as Json, delta: r['meters_delta'] as Json?),
-              if (ending != null) ...[const SizedBox(height: 14), EndingCard(ending: ending)],
-              const SizedBox(height: 20),
-              if (!finished)
-                GradientButton(
-                  'Глава ${(p['chapter_index'] as int) + 1}',
-                  icon: Icons.arrow_forward,
-                  onPressed: () {
-                    Navigator.of(context)
-                        .pushReplacement(MaterialPageRoute(builder: (_) => ChapterScreen(campaign: c)));
-                  },
-                )
-              else
-                GradientButton('К кампании', icon: Icons.auto_stories, onPressed: () => Navigator.of(context).pop()),
-            ],
-          ),
-          if (finished) const Positioned.fill(child: Confetti()),
-        ],
+                const SectionTitle('Мир кампании', icon: Icons.public),
+                _Meters(meters: p['meters'] as Json, delta: r['meters_delta'] as Json?),
+                if (ending != null) ...[const SizedBox(height: 14), EndingCard(ending: ending)],
+                const SizedBox(height: 20),
+                if (!finished)
+                  GradientButton(
+                    'Глава ${(p['chapter_index'] as int) + 1}',
+                    icon: Icons.arrow_forward,
+                    onPressed: () {
+                      Navigator.of(context)
+                          .pushReplacement(MaterialPageRoute(builder: (_) => ChapterScreen(campaign: c)));
+                    },
+                  )
+                else
+                  GradientButton('К кампании', icon: Icons.auto_stories, onPressed: () => Navigator.of(context).pop()),
+              ],
+            ),
+            if (finished) const Positioned.fill(child: Confetti()),
+          ],
+        ),
       ),
     );
   }

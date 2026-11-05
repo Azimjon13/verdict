@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../icons.dart';
+import '../hunt.dart';
+import '../links.dart';
+import '../report.dart';
 import '../theme.dart';
 import '../fx.dart';
 import '../widgets.dart';
@@ -38,139 +41,171 @@ class ResultScreen extends StatelessWidget {
         career?['rank_up'] == true ||
         ((career?['achievements'] as List?) ?? const []).isNotEmpty ||
         guess?['correct'] == true;
-    return Scaffold(
-      appBar: AppBar(title: Text(caseData['title'] as String, overflow: TextOverflow.ellipsis)),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-            children: [
-              if (quick && guess != null) _GuessBanner(guess: guess, total: total),
-              if (career != null) ...[const SizedBox(height: 12), _Rewards(career: career)],
-              const SizedBox(height: 16),
-              const Kicker('Ваш вердикт'),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  OptionLetter(choice, active: true, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(mine['text'] as String, style: V.display(17, weight: FontWeight.w700)),
-                  ),
-                ],
+    return HuntLayer(
+      scene: 'result',
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(caseData['title'] as String, overflow: TextOverflow.ellipsis),
+          actions: [
+            Builder(
+              builder: (context) => IconButton(
+                tooltip: 'Поделиться',
+                icon: const Icon(Icons.share),
+                onPressed: () => shareText(
+                  context,
+                  shareLine(caseData, mine, siteUri(context, '/case/${caseData['id']}')),
+                  subject: 'VERDICT: ${caseData['title']}',
+                ),
               ),
-              if (cons != null) ...[
-                const SizedBox(height: 14),
-                for (final (key, title, icon) in [
-                  ('immediate', 'Сразу', Icons.bolt),
-                  ('longterm', 'Со временем', Icons.hourglass_bottom),
-                  ('characters', 'Люди', Icons.group),
-                  ('world', 'Мир', Icons.public),
-                ])
-                  if ((cons[key] as String? ?? '').isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Panel(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(icon, size: 18, color: V.amber),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: V.body(12, weight: FontWeight.w800, color: V.amber),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(cons[key] as String, style: V.body(14.5)),
-                                ],
+            ),
+            PopupMenuButton<String>(
+              onSelected: (_) =>
+                  report(context, target: 'case', id: caseData['id'] as int, what: 'Дело «${caseData['title']}»'),
+              itemBuilder: (_) => const [PopupMenuItem(value: 'report', child: Text('Пожаловаться на дело'))],
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+              children: [
+                if (quick && guess != null) _GuessBanner(guess: guess, total: total),
+                if (career != null) ...[const SizedBox(height: 12), _Rewards(career: career)],
+                const SizedBox(height: 16),
+                const Kicker('Ваш вердикт'),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OptionLetter(choice, active: true, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(mine['text'] as String, style: V.display(17, weight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+                if (cons != null) ...[
+                  const SizedBox(height: 14),
+                  for (final (key, title, icon) in [
+                    ('immediate', 'Сразу', Icons.bolt),
+                    ('longterm', 'Со временем', Icons.hourglass_bottom),
+                    ('characters', 'Люди', Icons.group),
+                    ('world', 'Мир', Icons.public),
+                  ])
+                    if ((cons[key] as String? ?? '').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Panel(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(icon, size: 18, color: V.amber),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: V.body(12, weight: FontWeight.w800, color: V.amber),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(cons[key] as String, style: V.body(14.5)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-              ],
-              SectionTitle(
-                'Как решили судьи',
-                icon: Icons.bar_chart,
-                trailing: ctrl == null ? null : Pill(ctrl['label'] as String, color: V.magenta),
-              ),
-              Text('$total ${plural(total, 'вердикт', 'вердикта', 'вердиктов')}', style: V.body(13, color: V.muted)),
-              const SizedBox(height: 10),
-              for (final d in decisions)
-                _SplitRow(
-                  d: d,
-                  mine: d['key'] == choice,
-                  leading: (d['share'] as num) == top && top > 0,
-                  majority: majority.contains(d['key']),
+                ],
+                SectionTitle(
+                  'Как решили судьи',
+                  icon: Icons.bar_chart,
+                  trailing: ctrl == null ? null : Pill(ctrl['label'] as String, color: V.magenta),
                 ),
-              if ((r['other_votes'] as num? ?? 0) > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('Своё решение: ${r['other_votes']}', style: V.body(13, color: V.muted)),
-                ),
-              if (amb != null && (amb['conflict'] as String? ?? '').isNotEmpty) ...[
-                const SectionTitle('Почему нет правильного ответа', icon: Icons.balance),
-                Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(amb['conflict'] as String, style: V.body(15, weight: FontWeight.w700)),
-                      if ((amb['for_one'] as String? ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          'С одной стороны',
-                          style: V.body(12, weight: FontWeight.w800, color: V.cyan),
-                        ),
-                        Text(amb['for_one'] as String, style: V.body(14, color: V.muted)),
-                      ],
-                      if ((amb['for_other'] as String? ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          'С другой стороны',
-                          style: V.body(12, weight: FontWeight.w800, color: V.magenta),
-                        ),
-                        Text(amb['for_other'] as String, style: V.body(14, color: V.muted)),
-                      ],
-                    ],
+                Text('$total ${plural(total, 'вердикт', 'вердикта', 'вердиктов')}', style: V.body(13, color: V.muted)),
+                const SizedBox(height: 10),
+                for (final d in decisions)
+                  _SplitRow(
+                    d: d,
+                    mine: d['key'] == choice,
+                    leading: (d['share'] as num) == top && top > 0,
+                    majority: majority.contains(d['key']),
                   ),
-                ),
-              ],
-              const SizedBox(height: 22),
-              if (quick)
-                GradientButton(
-                  'Следующее дело',
-                  icon: Icons.arrow_forward,
+                if ((r['other_votes'] as num? ?? 0) > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('Своё решение: ${r['other_votes']}', style: V.body(13, color: V.muted)),
+                  ),
+                if (amb != null && (amb['conflict'] as String? ?? '').isNotEmpty) ...[
+                  const SectionTitle('Почему нет правильного ответа', icon: Icons.balance),
+                  Panel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(amb['conflict'] as String, style: V.body(15, weight: FontWeight.w700)),
+                        if ((amb['for_one'] as String? ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'С одной стороны',
+                            style: V.body(12, weight: FontWeight.w800, color: V.cyan),
+                          ),
+                          Text(amb['for_one'] as String, style: V.body(14, color: V.muted)),
+                        ],
+                        if ((amb['for_other'] as String? ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'С другой стороны',
+                            style: V.body(12, weight: FontWeight.w800, color: V.magenta),
+                          ),
+                          Text(amb['for_other'] as String, style: V.body(14, color: V.muted)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 22),
+                if (quick)
+                  GradientButton(
+                    'Следующее дело',
+                    icon: Icons.arrow_forward,
+                    onPressed: () {
+                      Navigator.of(context)
+                          .pushReplacement(MaterialPageRoute(builder: (_) => QuickRun(except: caseData['id'] as int)));
+                    },
+                  ),
+                const SizedBox(height: 10),
+                GhostButton(
+                  'Обсуждение',
+                  icon: Icons.chat_bubble_outline,
                   onPressed: () {
-                    Navigator.of(context)
-                        .pushReplacement(MaterialPageRoute(builder: (_) => QuickRun(except: caseData['id'] as int)));
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TalkScreen(caseId: caseData['id'] as int, title: caseData['title'] as String),
+                      ),
+                    );
                   },
                 ),
-              const SizedBox(height: 10),
-              GhostButton(
-                'Обсуждение',
-                icon: Icons.chat_bubble_outline,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => TalkScreen(caseId: caseData['id'] as int, title: caseData['title'] as String),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          if (celebrate) const Positioned.fill(child: Confetti()),
-        ],
+              ],
+            ),
+            if (celebrate) const Positioned.fill(child: Confetti()),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// «Дело «…»: мой вердикт — B, «…». Так решили 34% судей. А как решите вы? https://…/case/17»
+String shareLine(Json caseData, Json mine, Uri link) {
+  final share = mine['share'] as num?;
+  final letter = mine['key'] == 'other' ? 'своё решение' : '${mine['key']}';
+  return 'Дело «${caseData['title']}»: мой вердикт — $letter, «${mine['text']}».'
+      '${share != null && mine['key'] != 'other' ? ' Так решили ${(share * 100).round()}% судей.' : ''}'
+      ' А как решите вы? $link';
 }
 
 class _GuessBanner extends StatelessWidget {

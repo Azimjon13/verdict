@@ -153,6 +153,20 @@ def seed(app):
     place(add_spot(draft, 'Уже на месте', None, 'Под заголовком', 'subtle'), 'index', '.hero h1', 20, 60)
     place_spot = add_spot(draft, 'Новый тайник', None, 'У кнопки', 'subtle')
 
+    # A hunt on the mobile app's screens only: the website shows no banner for it.
+    post('/admin/gifts', {'kind': 'badge', 'name': 'Зоркий глаз', 'icon': 'eye', 'xp': '20',
+                          'text': 'Трофей за тайник в приложении.', 'active': '1'})
+    post('/admin/hunts', {'title': 'Тайники в приложении', 'status': 'active', 'starts_at': '', 'ends_at': ends, 'banner': '1',
+                          'intro': 'Два тайника спрятаны на экранах мобильного приложения.', 'prize_gift_id': ''})
+    app_hunt = q("SELECT id FROM challenges WHERE title = 'Тайники в приложении'")[0]['id']
+    eye = q("SELECT id FROM gifts WHERE name = 'Зоркий глаз'")[0]['id']
+    for label, scene, gift, hint, x, y in [('На главной приложения', 'home', eye, 'Где судья видит свой ранг', 88, 14),
+                                           ('В архиве приложения', 'archive', None, 'Среди папок с делами', 10, 64)]:
+        post('/admin/hunts/%d' % app_hunt, {'action': 'add_spot', 'label': label, 'page': 'unity', 'scene': scene,
+                                            'gift_id': str(gift or ''), 'hint': hint, 'icon': 'gem', 'size': '32',
+                                            'visibility': 'visible', 'max_finds': '0', 'active': '1'})
+        q('UPDATE spots SET x = %s, y = %s WHERE challenge_id = %s AND label = %s', (x, y, app_hunt, label))
+
     cases = {r['id']: [d['key'] for d in json.loads(r['data'])['decisions']]
              for r in q("SELECT id, data FROM situations WHERE status = 'approved' ORDER BY id")}
     rnd = random.Random(7)
@@ -179,6 +193,11 @@ def seed(app):
                                                                          minutes=rnd.randint(0, 59))
                 vote(voter, sid, rnd.choice(cases[sid]), min(at, now), rnd.choice(['quick', 'quick', 'full']))
 
+    # The team's community, with rules; three of the players below join it.
+    post('/communities', {'name': 'Клуб строгих судей', 'description': 'Судим по закону, даже когда сердце против.',
+                          'rules': 'Спорим о делах, а не о людях. Без спойлеров к делу дня.', 'access': 'open',
+                          'icon': 'gavel', 'hue': '260'})
+    club = q("SELECT slug FROM communities WHERE name = 'Клуб строгих судей'")[0]['slug']
     # Players with accounts: last month's season (closed, with trophies), this month's rating, friend requests to the team.
     last_month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
     for i, name in enumerate(['Анна Ветрова', 'Борис Лад', 'Вера Кейн', 'Глеб Орлов', 'Дина Юн', 'Егор Мэй']):
@@ -196,6 +215,9 @@ def seed(app):
             vote(out['voter_id'], 3, cases[3][i % 2], now - timedelta(hours=8 - i))
             q('INSERT INTO comments (situation_id, user_id, option_key, text, likes, created_at) VALUES (3, %s, %s, %s, %s, %s)',
               (out['user']['id'], cases[3][i % 2], TALK[i], 4 - i, now - timedelta(hours=7 - i)))
+        if i < 3:  # members of the team's community
+            c.post('/api/v1/communities/%s/join' % club, json={'accept_rules': True},
+                   headers={'Authorization': 'Bearer ' + out['token']})
     with app.test_request_context('/'):
         from verdict import seasons
         seasons.close(last_month)

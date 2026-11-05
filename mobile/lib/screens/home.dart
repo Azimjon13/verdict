@@ -4,7 +4,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../hunt.dart';
 import '../icons.dart';
+import '../links.dart';
 import '../main.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -24,7 +26,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Key _loader = UniqueKey();
 
   Future<(Json, Json, List<Json>)> _load() async {
-    final api = SessionScope.read(context).api;
+    final s = SessionScope.read(context);
+    final api = s.api;
+    unawaited(s.refreshHunt());
     final r = await Future.wait([api.get('/profile'), api.get('/daily'), api.get('/campaigns')]);
     return (r[0], r[1], (r[2]['campaigns'] as List).cast<Json>());
   }
@@ -86,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             RankCard(career: career, onTap: () => widget.onTab(2)),
+            HuntBanner(onOpen: () => widget.onTab(2)),
             const SizedBox(height: 12),
             if (daily['case'] != null)
               DailyCard(daily: daily, onOpen: () => _openCase((daily['case'] as Json)['id'] as int)),
@@ -122,6 +127,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             CampaignsSection(campaigns: data.$3, onChanged: _refresh),
+            const SizedBox(height: 18),
+            Panel(
+              onTap: () => openSite(context, '/create'),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_note, color: V.cyan),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Есть своя дилемма? Предложите дело на сайте — от идеи в пару строк до полного досье.',
+                      style: V.body(13.5, color: V.muted),
+                    ),
+                  ),
+                  const Icon(Icons.open_in_new, size: 18, color: V.muted),
+                ],
+              ),
+            ),
             if (!s.signedIn) ...[
               const SizedBox(height: 18),
               Panel(

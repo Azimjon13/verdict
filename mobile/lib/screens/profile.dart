@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../icons.dart';
+import '../links.dart';
 import '../main.dart';
+import '../report.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'communities.dart';
 
 void openProfile(BuildContext context, String login) =>
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProfileScreen(login: login)));
@@ -94,7 +97,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final achievementsDict = SessionScope.of(context).catalog['achievements'] as Json? ?? {};
     return Scaffold(
-      appBar: AppBar(title: Text('@${widget.login}')),
+      appBar: AppBar(
+        title: Text('@${widget.login}'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (v) => v == 'site'
+                ? openSite(context, '/u/${widget.login}')
+                : report(context, target: 'user', login: widget.login, what: 'Судья @${widget.login}'),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'site', child: Text('Открыть на сайте')),
+              PopupMenuItem(value: 'report', child: Text('Пожаловаться')),
+            ],
+          ),
+        ],
+      ),
       body: Loader<_Data>(
         key: _loader,
         load: _load,
@@ -222,7 +238,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final c in communities) Pill(c['name'] as String, icon: Icons.groups, color: V.violet),
+                      for (final c in communities)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => openCommunity(context, c['slug'] as String),
+                          child: Pill(c['name'] as String, icon: Icons.groups, color: V.violet),
+                        ),
                     ],
                   ),
                 ],

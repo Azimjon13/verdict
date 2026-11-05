@@ -308,6 +308,8 @@ def test_hunt_in_the_game_client(team, new_browser, db):
     assert all(s['id'] != web for s in state['spots'])
     hunt = next(h for h in state['hunts'] if h['id'] == hid)
     assert hunt['total'] == 2 and hunt['found'] == 0
+    where = {x['id']: (x['scene'], x['page']) for x in hunt['spots']}
+    assert where[usid] == ('courtroom', 'Игра · courtroom') and where[web][0] is None
     r = client.post('/api/v1/hunt/spots/%d/claim' % usid, headers=me).get_json()
     assert r['ok'] and r['gift']['xp'] == 15 and r['gift']['kind'] == 'xp' and r['career']['xp'] >= 15
     assert client.post('/api/v1/hunt/spots/%d/claim' % usid, headers=me).status_code == 409
@@ -344,3 +346,18 @@ def test_tokens_agree_between_processes_without_a_configured_key(app, db):
         assert hunt.token(1, 'a' * 32) == first
         assert hunt.token(2, 'a' * 32) != first
     assert len(db.value("SELECT meta_value FROM meta WHERE meta_key = 'hunt_secret'")) == 64
+
+
+def test_spots_on_the_apps_screens(team, db):
+    hid = make_hunt(team, db)
+    team.get('/admin/hunts/%d' % hid)
+    assert 'Приложение или Unity' in team.html and '<code>archive</code> — Архив' in team.html
+    team.form('/admin/hunts/%d' % hid, {'action': 'add_spot', 'label': 'В архиве', 'page': 'unity', 'scene': 'archive',
+                                        'gift_id': '', 'hint': 'Среди папок', 'icon': 'key', 'size': '32',
+                                        'visibility': 'subtle', 'max_finds': '0', 'active': '1'})
+    sid = db.value("SELECT id FROM spots WHERE challenge_id = %s AND page = 'unity:archive'", (hid,))
+    assert sid
+    team.get('/admin/hunts/%d' % hid)
+    assert 'Приложение · Архив' in team.html
+    team.get('/admin/spots/%d' % sid)
+    assert 'Приложение · экран «Архив»' in team.html

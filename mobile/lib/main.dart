@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'hunt.dart';
 import 'screens/account.dart';
 import 'screens/archive.dart';
 import 'screens/home.dart';
@@ -75,6 +76,7 @@ class _BootState extends State<Boot> {
     try {
       await s.loadCatalog();
       s.refreshMe();
+      s.refreshHunt();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
       if (mounted) setState(() => _error = e);
@@ -116,9 +118,20 @@ class Shell extends StatefulWidget {
 
   final int initialTab;
 
+  static _ShellState? _current;
+
+  /// Back to the tabs and onto [tab] (0 Играть … 4 Аккаунт) — from anywhere in the app.
+  static void goTo(BuildContext context, int tab) {
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    _current?.go(tab);
+  }
+
   @override
   State<Shell> createState() => _ShellState();
 }
+
+/// The tabs as scenes of a treasure hunt (admin → «Приложение или Unity» → the scene).
+const scenes = ['home', 'archive', 'judge', 'ratings', 'account'];
 
 class _ShellState extends State<Shell> with WidgetsBindingObserver {
   late int _tab = widget.initialTab;
@@ -127,18 +140,24 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    Shell._current = this;
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    if (Shell._current == this) Shell._current = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) SessionScope.read(context).refreshMe();
+    if (state == AppLifecycleState.resumed) {
+      final s = SessionScope.read(context);
+      s.refreshMe();
+      s.refreshHunt();
+    }
   }
 
   void go(int tab) => setState(() => _tab = tab);
@@ -156,7 +175,10 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(index: _tab, children: pages),
+        child: IndexedStack(
+          index: _tab,
+          children: [for (var i = 0; i < pages.length; i++) HuntLayer(scene: scenes[i], child: pages[i])],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,

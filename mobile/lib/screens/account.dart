@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../icons.dart';
+import '../links.dart';
 import '../main.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'communities.dart';
 import 'profile.dart';
 
 class AccountScreen extends StatelessWidget {
@@ -143,13 +145,19 @@ class _SignInState extends State<_SignIn> {
         onPressed: _submit,
       ),
       if (!_register) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => openSite(context, '/forgot'),
+          child: const Text('Забыли пароль? Восстановить на сайте'),
+        ),
         Text(
-          'Забыли пароль? Восстановите его на сайте — через Telegram-бот или команду.',
+          'Новый пароль придёт ссылкой в Telegram, если он подключён к аккаунту, — или его выдаст команда.',
           textAlign: TextAlign.center,
-          style: V.body(12.5, color: V.dim),
+          style: V.body(12, color: V.dim),
         ),
       ],
+      const SizedBox(height: 18),
+      GhostButton('Сообщества судей', icon: Icons.groups, onPressed: () => openCommunities(context)),
       const SizedBox(height: 26),
       const _ServerCard(),
     ],
@@ -176,7 +184,11 @@ class _SignedState extends State<_Signed> {
 
   Future<Json> _load() async {
     final s = SessionScope.read(context);
-    final r = await Future.wait([s.api.get('/notifications'), s.api.get('/friends')]);
+    final r = await Future.wait([
+      s.api.get('/notifications'),
+      s.api.get('/friends'),
+      s.refreshMe().then((_) => <String, dynamic>{}),
+    ]);
     final out = {...r[0], 'social': r[1]};
     if ((out['unread'] as num? ?? 0) > 0) {
       s.api.post('/notifications/read').then((_) => s.markRead(), onError: (_) {});
@@ -191,6 +203,42 @@ class _SignedState extends State<_Signed> {
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+
+  List<Widget> _communities(Session s) {
+    final mine = ((s.me?['communities'] as List?) ?? const []).cast<Json>();
+    final roles = ((s.catalog['social'] as Json?)?['roles'] as Json?) ?? const {};
+    return [
+      SectionTitle(
+        'Сообщества',
+        icon: Icons.groups,
+        trailing: TextButton(onPressed: () => openCommunities(context), child: const Text('Все')),
+      ),
+      if (mine.isEmpty)
+        Text(
+          'Вступите в клуб судей: свои правила, свой рейтинг, свои обсуждения дел.',
+          style: V.body(13.5, color: V.muted),
+        ),
+      for (final c in mine)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Panel(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            onTap: () => openCommunity(context, c['slug'] as String),
+            child: Row(
+              children: [
+                const Icon(Icons.groups, color: V.violet),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(c['name'] as String, style: V.body(14.5, weight: FontWeight.w800)),
+                ),
+                Text('${roles[c['role']] ?? ''}', style: V.body(12, color: V.muted)),
+                const Icon(Icons.chevron_right, color: V.muted),
+              ],
+            ),
+          ),
+        ),
+    ];
   }
 
   List<Widget> _friends(Json social) {
@@ -316,6 +364,10 @@ class _SignedState extends State<_Signed> {
                 ],
               ),
             ),
+            const SizedBox(height: 10),
+            _ProfileSettings(user: user),
+            const _TelegramCard(),
+            ..._communities(s),
             ..._friends(social),
             SectionTitle(
               'Уведомления',
@@ -337,6 +389,7 @@ class _SignedState extends State<_Signed> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Panel(
                   accent: n['read'] == true ? null : V.magenta,
+                  onTap: (n['link'] as String? ?? '').isEmpty ? null : () => openLink(context, n['link'] as String),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -468,8 +521,186 @@ class _ServerCardState extends State<_ServerCard> {
             ),
           ],
           const SizedBox(height: 6),
-          Text('VERDICT 1.1 · игрок ${s.api.voterId.substring(0, 6)}…', style: V.body(11.5, color: V.dim)),
+          Text('VERDICT $appVersion · игрок ${s.api.voterId.substring(0, 6)}…', style: V.body(11.5, color: V.dim)),
         ],
+      ),
+    );
+  }
+}
+
+/// «О себе» and who sees the profile — as the account page on the website (POST /me/profile).
+class _ProfileSettings extends StatefulWidget {
+  const _ProfileSettings({required this.user});
+
+  final Json user;
+
+  @override
+  State<_ProfileSettings> createState() => _ProfileSettingsState();
+}
+
+class _ProfileSettingsState extends State<_ProfileSettings> {
+  bool _open = false;
+  bool _busy = false;
+  late final _bio = TextEditingController(text: widget.user['bio'] as String? ?? '');
+  late String _visibility = widget.user['visibility'] as String? ?? 'public';
+  late bool _inRatings = widget.user['in_ratings'] as bool? ?? true;
+
+  @override
+  void dispose() {
+    _bio.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final s = SessionScope.read(context);
+    setState(() => _busy = true);
+    try {
+      await s.api.post('/me/profile', {'bio': _bio.text.trim(), 'visibility': _visibility, 'in_ratings': _inRatings});
+      await s.refreshMe();
+      if (mounted) {
+        setState(() => _open = false);
+        snack(context, 'Профиль сохранён.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) snack(context, e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    final vis = ((s.catalog['social'] as Json?)?['visibility'] as Json?) ?? const {};
+    final now = vis[widget.user['visibility']] as Json?;
+    return Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            child: Row(
+              children: [
+                const Icon(Icons.manage_accounts_outlined, color: V.cyan, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Профиль', style: V.body(14.5, weight: FontWeight.w800)),
+                      Text(
+                        'Профиль виден: ${(now?['name'] as String? ?? '').toLowerCase()}'
+                        '${widget.user['in_ratings'] == false ? ' · не в рейтингах' : ''}',
+                        style: V.body(12, color: V.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(_open ? Icons.expand_less : Icons.expand_more, color: V.muted),
+              ],
+            ),
+          ),
+          if (_open) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _bio,
+              maxLength: 280,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: 'О себе'),
+            ),
+            Text('Кто видит профиль', style: V.body(13, weight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: [
+                for (final e in vis.entries)
+                  ButtonSegment(
+                    value: e.key,
+                    label: Text(capitalize(((e.value as Json)['name'] as String).split(' ').last)),
+                  ),
+              ],
+              selected: {_visibility},
+              onSelectionChanged: (v) => setState(() => _visibility = v.first),
+            ),
+            const SizedBox(height: 6),
+            Text((vis[_visibility] as Json?)?['desc'] as String? ?? '', style: V.body(12, color: V.dim)),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _inRatings,
+              onChanged: (v) => setState(() => _inRatings = v),
+              activeThumbColor: V.cyan,
+              title: Text('Участвовать в рейтингах', style: V.body(14, weight: FontWeight.w700)),
+            ),
+            GradientButton('Сохранить', icon: Icons.check, busy: _busy, onPressed: _save),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Telegram: notifications and the case of the day in the chat, a new password through it. Shown when the team
+/// connected the bot on the server.
+class _TelegramCard extends StatefulWidget {
+  const _TelegramCard();
+
+  @override
+  State<_TelegramCard> createState() => _TelegramCardState();
+}
+
+class _TelegramCardState extends State<_TelegramCard> {
+  bool _busy = false;
+
+  Future<void> _act(String action) async {
+    final s = SessionScope.read(context);
+    setState(() => _busy = true);
+    try {
+      final out = await s.api.post('/me/telegram/$action');
+      if (action == 'link' && mounted) {
+        await openExternal(context, Uri.parse(out['link'] as String));
+      } else {
+        await s.refreshMe();
+      }
+    } on ApiException catch (e) {
+      if (mounted) snack(context, e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tg = SessionScope.of(context).me?['telegram'] as Json?;
+    if (tg == null || tg['ready'] != true) return const SizedBox.shrink();
+    final linked = tg['linked'] == true;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Panel(
+        child: Row(
+          children: [
+            const Icon(Icons.send, color: V.cyan, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(linked ? 'Telegram подключён' : 'Telegram', style: V.body(14.5, weight: FontWeight.w800)),
+                  Text(
+                    linked
+                        ? 'Уведомления и дело дня приходят в @${tg['bot']}.'
+                        : 'Уведомления, дело дня и восстановление пароля — в чате с @${tg['bot']}.',
+                    style: V.body(12, color: V.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            linked
+                ? TextButton(onPressed: _busy ? null : () => _act('unlink'), child: const Text('Отключить'))
+                : FilledButton(onPressed: _busy ? null : () => _act('link'), child: const Text('Подключить')),
+          ],
+        ),
       ),
     );
   }

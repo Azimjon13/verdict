@@ -7,7 +7,7 @@
     <div class="container">
         <span class="kicker"><a href="{{ url_for('admin.hunt_page', challenge_id=c.id) }}">{{ icon('arrow-left') }}{{ c.title }}</a></span>
         <h1>{{ s.label or 'Тайник ' ~ s.id }}</h1>
-        <p class="lead">{{ ('Игра · сцена ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %} · найден {{ finds|length }} {{ plural(finds|length, 'раз', 'раза', 'раз') }}{% if s.max_finds %} из {{ s.max_finds }}{% endif %}</p>
+        <p class="lead">{{ (('Приложение · экран «' ~ HUNT_SCENES[s.page[6:]] ~ '»') if s.page[6:] in HUNT_SCENES else 'Игра · сцена ' ~ s.page[6:]) if unity else HUNT_PAGES.get(s.page, s.page) }}{% if s.path %} · {{ s.path }}{% endif %} · найден {{ finds|length }} {{ plural(finds|length, 'раз', 'раза', 'раз') }}{% if s.max_finds %} из {{ s.max_finds }}{% endif %}</p>
         {% include 'admin/_nav.html' %}
     </div>
 </section>
