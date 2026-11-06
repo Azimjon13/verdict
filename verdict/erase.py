@@ -54,6 +54,18 @@ def _season_boards(user_id):
         execute('UPDATE seasons SET board = %s WHERE season = %s', (json.dumps(board, ensure_ascii=False), row['season']))
 
 
+def _mentions(user):
+    """Others' notifications that name this account: its friend requests, the requests it accepted, its requests to
+    join a community. Found through the friendships and memberships it had, so a namesake's stay."""
+    uid, name = int(user['id']), user['display_name']
+    execute("DELETE n FROM notifications n JOIN friendships f ON f.user_id = %s AND f.friend_id = n.user_id"
+            " WHERE n.kind = 'friend_request' AND n.text = %s", (uid, name + ' хочет добавить вас в друзья.'))
+    execute("DELETE FROM notifications WHERE kind = 'friend_accepted' AND link = %s", ('/u/%s' % user['login'],))
+    execute("DELETE n FROM notifications n JOIN community_members m ON m.user_id = %s"
+            " JOIN communities c ON c.id = m.community_id"
+            " WHERE n.kind = 'community_request' AND n.text = CONCAT(%s, ' просится в «', c.name, '».')", (uid, name))
+
+
 def erase_account(user_id):
     """Deletes the account and what belongs to it (see the module's note). Returns the deleted login, or None."""
     user = query_one('SELECT * FROM users WHERE id = %s', (user_id,))
@@ -65,6 +77,7 @@ def erase_account(user_id):
         voters = [r['voter'] for r in query('SELECT voter FROM players WHERE user_id = %s', (user_id,))]
         _hand_over(user_id)
         _season_boards(user_id)
+        _mentions(user)
         # the support it gave leaves the counters of others' comments (the likes themselves go with the account)
         execute('UPDATE comments c JOIN comment_likes l ON l.comment_id = c.id SET c.likes = IF(c.likes > 0, c.likes - 1, 0)'
                 ' WHERE l.user_id = %s', (user_id,))

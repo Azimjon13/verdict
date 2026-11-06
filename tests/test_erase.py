@@ -20,10 +20,10 @@ def approved(db, n):
     return [r['id'] for r in db.rows("SELECT id FROM situations WHERE status = 'approved' ORDER BY id LIMIT %s", (n,))]
 
 
-def make_community(db, owner_id, name):
+def make_community(db, owner_id, name, access='open'):
     slug = 'club-' + secrets.token_hex(3)
     db.rows("INSERT INTO communities (slug, name, description, rules, access, invite_code, icon, hue, owner_id, created_at, updated_at)"
-            " VALUES (%s, %s, '', '', 'open', 'code', 'users', 190, %s, NOW(), NOW())", (slug, name, owner_id))
+            " VALUES (%s, %s, '', '', %s, 'code', 'users', 190, %s, NOW(), NOW())", (slug, name, access, owner_id))
     cid = db.value('SELECT id FROM communities WHERE slug = %s', (slug,))
     db.rows("INSERT INTO community_members (community_id, user_id, role, status, joined_at) VALUES (%s, %s, 'owner', 'active', NOW())",
             (cid, owner_id))
@@ -43,7 +43,8 @@ def test_deleting_ones_account_on_the_website(app, new_browser, db):
     b_login = b.register('Боря')
     b_id = uid(db, b_login)
     c = new_browser()
-    c_id = uid(db, c.register('Вера'))
+    c_login = c.register('Вера')
+    c_id = uid(db, c_login)
     cases = approved(db, 3)
     a.vote(cases[0], 'A', reasoning='Потому что закон')
     voter = a.cookie('verdict_vid')
@@ -70,13 +71,21 @@ def test_deleting_ones_account_on_the_website(app, new_browser, db):
     member(db, shared, c_id, minutes_ago=30)
     member(db, shared, b_id, role='moderator', minutes_ago=5)  # a moderator comes first, even if newer
     alone, _ = make_community(db, a_id, 'Пустой клуб Ани')
-    season = '1999-%02d' % (secrets.randbelow(12) + 1)
+    season = '1987-06'  # a closed season of its own (test_seasons checks that 1999-01 doesn't exist); removed at the end
     db.rows('DELETE FROM seasons WHERE season = %s', (season,))
     board = [{'place': 1, 'user_id': a_id, 'login': a_login, 'display_name': 'Аня Удаляемая', 'title': 'Чемпион', 'value': 90, 'xp': 90},
              {'place': 2, 'user_id': b_id, 'login': b_login, 'display_name': 'Боря', 'title': None, 'value': 40, 'xp': 40}]
     db.rows('INSERT INTO seasons (season, name, closed_at, players, board) VALUES (%s, %s, NOW(), 2, %s)',
             (season, 'Старый сезон', json.dumps(board, ensure_ascii=False)))
     api.post('/api/v1/reports', json={'target': 'user', 'login': b_login, 'reason': 'spam'}, headers=bearer(ta))
+    # what others were told about her: a friend request, an accepted request, a request to join
+    api.post('/api/v1/friends', json={'login': c_login}, headers=bearer(ta))
+    _, veras = make_community(db, c_id, 'Клуб Веры', access='request')
+    assert api.post('/api/v1/communities/%s/join' % veras, json={'accept_rules': True}, headers=bearer(ta)).get_json()['result'] == 'requested'
+    told = "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND kind = %s AND text LIKE %s"
+    assert db.value(told, (c_id, 'friend_request', 'Аня Удаляемая%')) == 1
+    assert db.value(told, (c_id, 'community_request', 'Аня Удаляемая%')) == 1
+    assert db.value(told, (b_id, 'friend_accepted', 'Аня Удаляемая%')) == 1
 
     # a wrong password changes nothing
     a.form('/account', {'action': 'delete', 'delete_password': 'not-my-password'})
@@ -96,6 +105,8 @@ def test_deleting_ones_account_on_the_website(app, new_browser, db):
     for table in ('api_tokens', 'friendships', 'notifications', 'telegram_links', 'sessions', 'comment_likes'):
         assert db.value('SELECT COUNT(*) FROM %s WHERE user_id = %%s' % table, (a_id,)) == 0, table
     assert db.value('SELECT COUNT(*) FROM friendships WHERE friend_id = %s', (a_id,)) == 0
+    for who, kind in ((c_id, 'friend_request'), (c_id, 'community_request'), (b_id, 'friend_accepted')):
+        assert db.value(told, (who, kind, 'Аня Удаляемая%')) == 0, kind
     assert db.value('SELECT COUNT(*) FROM comments WHERE id = %s', (mine,)) == 0
     assert db.value('SELECT likes FROM comments WHERE id = %s', (theirs,)) == 0
     assert api.get('/api/v1/me', headers=bearer(ta)).status_code == 401
@@ -118,6 +129,7 @@ def test_deleting_ones_account_on_the_website(app, new_browser, db):
     assert 'Удалённый судья' in page.html and 'аккаунт удалён' in page.html and '/u/None' not in page.html
     page.get('/u/%s' % a_login)
     assert 'Удалённый судья' not in page.html
+    db.rows('DELETE FROM seasons WHERE season = %s', (season,))
 
 
 def test_deleting_from_the_game_client(app, db):
