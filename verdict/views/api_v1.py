@@ -201,6 +201,7 @@ def index():
             'POST /api/v1/auth/logout': 'forgets this device (Authorization: Bearer <token>)',
             'GET /api/v1/me, POST /api/v1/me/profile': 'the signed-in account (Bearer)',
             'POST /api/v1/me/telegram/link|unlink': 'a one-time t.me link to tie Telegram to the account; or untie it (Bearer)',
+            'POST /api/v1/me/delete {password}': 'delete the account for good, with its progress (Bearer)',
             'POST /api/v1/reports {target, login|slug|id, reason, text?}': 'report a player, community, case or comment (Bearer)',
             'GET /api/v1/notifications, POST /api/v1/notifications/read {ids?}': 'the account\'s notifications (Bearer)',
             'GET /api/v1/friends, POST /api/v1/friends {login}': 'friends and requests (Bearer)',
@@ -689,6 +690,27 @@ def me_telegram(action):
     if not telegram.ready():
         return error('Telegram-бот ещё не подключён на этом сервере.', 503)
     return {'ok': True, 'link': telegram.deep_link(telegram.new_code(uid))}
+
+
+@bp.post('/me/delete')
+def me_delete():
+    """Deletes the account for good, with its player's progress: {password}. The device then plays as a new
+    anonymous player (a new X-Voter-Id). See verdict/erase.py for what goes and what stays without the name."""
+    from .. import erase
+    from ..auth import auth_attempt
+    user = account()
+    if not user:
+        return need_account()
+    refusal = erase.can_erase(user)
+    if refusal:
+        return error(refusal, 403)
+    if gameauth.locked(user['login']):
+        return error('Слишком много неверных паролей. Попробуйте через 15 минут.', 429)
+    if not auth_attempt(user['login'], str(body().get('password', ''))):
+        gameauth.failed(user['login'])
+        return error('Пароль указан неверно.', 403)
+    erase.erase_account(int(user['id']))
+    return {'ok': True}
 
 
 REPORT_TARGETS = {'user': 'user', 'community': 'community', 'case': 'situation', 'comment': 'comment'}

@@ -56,6 +56,7 @@ answers `429` with the reason in `error`.
 | `GET /api/v1/communities/<slug>` | — / Bearer | one community with its members, season rating and (with a token) `me`: my membership |
 | `POST /api/v1/auth/register`, `/auth/login`, `/auth/logout` | — / Bearer | accounts, see above |
 | `GET /api/v1/me`, `POST /api/v1/me/profile` | Bearer | the account, its player id, career, communities; `{bio, visibility, in_ratings}` |
+| `POST /api/v1/me/delete {password}` | Bearer | deletes the account for good with its player's progress; `403` for a wrong password or a team account |
 | `POST /api/v1/me/telegram/link`, `/unlink` | Bearer | a one-time `t.me` link that ties the player's Telegram to the account (`503` while the team hasn't connected the bot); untie it |
 | `POST /api/v1/reports {target, login\|slug\|id, reason, text?}` | Bearer | report a player, a community, a case or a comment to the team |
 | `GET /api/v1/notifications`, `POST /api/v1/notifications/read {ids?}` | Bearer | the account's notifications; mark some or all read |

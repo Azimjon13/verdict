@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 
-const appVersion = '1.2';
+const appVersion = '1.3';
 
 const defaultServer = String.fromEnvironment('VERDICT_API', defaultValue: 'https://verdict.azero.uz');
 
@@ -18,7 +18,8 @@ String newVoterId() {
 
 class Session extends ChangeNotifier {
   Session(this._prefs, {http.Client? client})
-    : api = Api(
+    : fresh = _prefs.getString('voter') == null,
+      api = Api(
         baseUrl: _prefs.getString('server') ?? defaultServer,
         voterId: _prefs.getString('voter') ?? newVoterId(),
         token: _prefs.getString('token'),
@@ -36,6 +37,16 @@ class Session extends ChangeNotifier {
 
   final SharedPreferences _prefs;
   final Api api;
+
+  /// A new phone: no player id was kept yet. The intro shows once, on such a phone only.
+  final bool fresh;
+
+  bool get showIntro => fresh && !(_prefs.getBool('intro_seen') ?? false);
+
+  Future<void> introDone() async {
+    await _prefs.setBool('intro_seen', true);
+    notifyListeners();
+  }
 
   /// The game's dictionaries (GET /catalog): categories, meters, ranks, judge styles, achievements.
   Json catalog = {};
@@ -93,6 +104,12 @@ class Session extends ChangeNotifier {
     } on ApiException {
       // already gone on the server: forget it here all the same
     }
+    await _forget();
+  }
+
+  /// Deletes the account for good, with its progress (POST /me/delete); the phone then plays as a new judge.
+  Future<void> deleteAccount(String password) async {
+    await api.post('/me/delete', {'password': password});
     await _forget();
   }
 

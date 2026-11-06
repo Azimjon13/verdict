@@ -1,9 +1,10 @@
 {#- A player in social lists: avatar, name (link to the profile), title. -#}
 {% macro person(login, name, title=none, small=false) %}
-<a class="who{{ ' who-sm' if small }}" href="{{ url_for('profile', login=login) }}">
-    <span class="avatar {{ 'avatar-xs' if small else 'avatar-sm' }}" style="--ah: {{ name_hue(name) }}">{{ initials(name) }}</span>
-    <span class="who-body"><b>{{ name }}</b>{% if title %}<small class="who-title">{{ icon('tag') }}{{ title }}</small>{% else %}<small>@{{ login }}</small>{% endif %}</span>
-</a>
+{# login is none for a deleted account (it keeps its place on closed season boards, without the name) #}
+<{{ 'a' if login else 'span' }} class="who{{ ' who-sm' if small }}{{ ' who-gone' if not login }}"{% if login %} href="{{ url_for('profile', login=login) }}"{% endif %}>
+    <span class="avatar {{ 'avatar-xs' if small else 'avatar-sm' }}" style="--ah: {{ name_hue(name) }}">{{ initials(name) if login else '—' }}</span>
+    <span class="who-body"><b>{{ name }}</b>{% if title %}<small class="who-title">{{ icon('tag') }}{{ title }}</small>{% elif login %}<small>@{{ login }}</small>{% else %}<small>аккаунт удалён</small>{% endif %}</span>
+</{{ 'a' if login else 'span' }}>
 {% endmacro %}
 
 {% macro rank_chip(rank, xp) %}<span class="rank-chip">{{ icon(rank.icon) }}<span>{{ rank.name }}</span><b>{{ xp }} XP</b></span>{% endmacro %}

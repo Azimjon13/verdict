@@ -40,6 +40,14 @@ DEFAULTS = {
     'cron_key': '',
     # When the bot reminds of the case of the day (hour, UTC; 14 = 19:00 in Tashkent, 17:00 in Moscow).
     'daily_hour_utc': 14,
+    # How players reach the team: an e-mail address or a link. Shown on /privacy («Конфиденциальность»); app stores
+    # want one there before they publish the app.
+    'contact': '',
+    # The Android app, for /.well-known/assetlinks.json: links to the site's cases, profiles and communities then open
+    # in the app without asking. SHA-256 fingerprints of the app's signing certificate, comma-separated
+    # (keytool -list -v -keystore <the .jks>). Empty: no file — links open in the browser.
+    'android_package': 'uz.azero.verdict',
+    'android_cert_sha256': '',
 }
 
 ENV = {
@@ -58,6 +66,9 @@ ENV = {
     ('telegram_token',): 'VERDICT_TELEGRAM_TOKEN',
     ('cron_key',): 'VERDICT_CRON_KEY',
     ('daily_hour_utc',): 'VERDICT_DAILY_HOUR_UTC',
+    ('contact',): 'VERDICT_CONTACT',
+    ('android_package',): 'VERDICT_ANDROID_PACKAGE',
+    ('android_cert_sha256',): 'VERDICT_ANDROID_CERT_SHA256',
 }
 
 

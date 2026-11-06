@@ -35,6 +35,46 @@ def offline():
     return render_template('offline.html')
 
 
+def privacy():
+    """«Конфиденциальность»: what the game keeps, who sees what, how long, and how to delete an account. The facts here
+    follow the code (cookies, retention in notify/gameauth/signups, verdict/erase.py) — change them together."""
+    from flask import current_app
+    cfg = current_app.config['VERDICT']
+    contact = (cfg.get('contact') or '').strip()
+    href = None
+    if contact.startswith(('http://', 'https://')):
+        href = contact
+    elif '@' in contact and ' ' not in contact:
+        href = 'mailto:' + contact
+    toc = {
+        'short': 'Коротко',
+        'data': 'Что мы храним',
+        'visible': 'Что видят другие',
+        'why': 'Зачем',
+        'keep': 'Сколько храним',
+        'others': 'Кто ещё что-то получает',
+        'device': 'На вашем устройстве',
+        'delete': 'Удаление аккаунта и данных',
+        'contact': 'Связаться с командой',
+    }
+    return page('privacy.html', title='Конфиденциальность', active='', body_class='page-brief page-privacy', bg='calm',
+                toc=toc, contact=contact, contact_href=href, session_days=max(1, cfg['session_lifetime'] // 86400))
+
+
+def assetlinks():
+    """Android App Links: lets the app open the site's links when its signing certificate is set in the config."""
+    from flask import abort, current_app, jsonify
+    cfg = current_app.config['VERDICT']
+    prints = [x.strip().upper() for x in str(cfg.get('android_cert_sha256') or '').split(',') if x.strip()]
+    if not prints:
+        abort(404)
+    response = jsonify([{'relation': ['delegate_permission/common.handle_all_urls'],
+                         'target': {'namespace': 'android_app', 'package_name': cfg.get('android_package') or 'uz.azero.verdict',
+                                    'sha256_cert_fingerprints': prints}}])
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
+
+
 def index():
     stats = stats_overview()
     approved = situations_list(status='approved', order='old')

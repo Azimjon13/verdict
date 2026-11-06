@@ -68,6 +68,13 @@
                     <input type="hidden" name="action" value="delete">
                     <button class="btn btn-sm btn-danger" type="submit">{{ icon('trash') }}Удалить данные</button>
                 </form>
+                {% if info.login %}
+                    <form method="post" class="inline-form" data-confirm="Удалить аккаунт @{{ info.login }} вместе с игровыми данными, друзьями, комментариями и уведомлениями? Так делают по просьбе игрока, который не может войти сам. Это нельзя отменить." data-confirm-title="Удалить аккаунт" data-confirm-ok="Удалить навсегда" data-confirm-tone="danger">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="action" value="erase_account">
+                        <button class="btn btn-sm btn-danger" type="submit">{{ icon('x') }}Удалить аккаунт</button>
+                    </form>
+                {% endif %}
             </div>
             {% if info.blocked %}<p class="admin-note tone-warn">{{ icon('ban') }}Игрок отстранён: охота, рейтинг, друзья и сообщества для него закрыты.</p>{% endif %}
         </section>

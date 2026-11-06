@@ -47,6 +47,8 @@ ROUTES = [
     ('/telegram/hook',           'telegram_hook', api.telegram_hook,     ['POST']),
     ('/sw.js',                   'service_worker', pages.service_worker, ['GET']),
     ('/offline',                 'offline',     pages.offline,           ['GET']),
+    ('/privacy',                 'privacy',     pages.privacy,           ['GET']),
+    ('/.well-known/assetlinks.json', 'assetlinks', pages.assetlinks,     ['GET']),
 ]
 
 # PHP page → (endpoint, query parameter that becomes the <int:id> part, endpoint when that parameter is set)

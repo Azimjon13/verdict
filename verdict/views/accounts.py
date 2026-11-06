@@ -11,7 +11,7 @@ from ..auth import (ROLES, admins_count, auth_attempt, auth_login, auth_logout, 
 from ..catalog import STATUSES
 from ..repository import input_str, situations_list, vote_counts
 from ..sessions import active_count, revoke_others
-from .. import gameauth, signups, telegram
+from .. import erase, gameauth, signups, telegram
 from ..players import on_login, on_logout, on_register
 from ..web import csrf_valid, flash, page, redirect, require_login, safe_back, voter_id
 
@@ -161,6 +161,18 @@ def account():
             telegram.unlink(uid)
             flash('success', 'Telegram отключён от аккаунта.')
             return redirect(url_for('account') + '#telegram')
+        elif act == 'delete' and not erase.can_erase(me):
+            if gameauth.locked(me['login']):
+                errors['delete_password'] = 'Слишком много неверных паролей. Попробуйте через 15 минут.'
+            elif not auth_attempt(me['login'], request.form.get('delete_password', '')):
+                gameauth.failed(me['login'])
+                errors['delete_password'] = 'Пароль указан неверно.'
+            else:
+                erase.erase_account(uid)
+                auth_logout()
+                on_logout()
+                flash('success', 'Аккаунт удалён. Спасибо, что судили с нами.')
+                return redirect(url_for('index'))
 
     mine = situations_list(user_id=uid)
     by_status = {k: 0 for k in STATUSES}
@@ -170,6 +182,7 @@ def account():
                 me=me, errors=errors, mine=mine, by_status=by_status, counts=vote_counts(),
                 sessions=active_count(uid, lifetime), role_name=ROLES.get(me['role'], me['role']),
                 tg_ready=telegram.ready(), tg_link=telegram.link_of(uid), tg_bot=telegram.bot_name(),
+                erase_refusal=erase.can_erase(me),
                 name_value=request.form.get('display_name', me['display_name']) if request.method == 'POST' else me['display_name'])
 
 

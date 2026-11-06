@@ -43,6 +43,7 @@
                 {{ field_error(errors, 'password_confirm') }}
             </label>
             <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('check') }}Создать аккаунт</button>
+            <p class="muted small auth-privacy">Почту и телефон не спрашиваем. <a href="{{ url_for('privacy') }}">Что игра хранит и как удалить аккаунт</a></p>
             <p class="auth-switch">Уже есть аккаунт? <a href="{{ url_for('login', back=back) if back else url_for('login') }}">Войти</a></p>
         </form>
     </div>

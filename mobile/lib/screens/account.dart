@@ -160,6 +160,8 @@ class _SignInState extends State<_SignIn> {
       GhostButton('Сообщества судей', icon: Icons.groups, onPressed: () => openCommunities(context)),
       const SizedBox(height: 26),
       const _ServerCard(),
+      const SizedBox(height: 14),
+      const _DataLinks(signedIn: false),
     ],
   );
 }
@@ -436,6 +438,8 @@ class _SignedState extends State<_Signed> {
             ),
             const SizedBox(height: 26),
             const _ServerCard(),
+            const SizedBox(height: 14),
+            const _DataLinks(signedIn: true),
           ],
         );
       },
@@ -521,6 +525,11 @@ class _ServerCardState extends State<_ServerCard> {
             ),
           ],
           const SizedBox(height: 6),
+          if (_open) ...[
+            const SizedBox(height: 10),
+            Text('Номер игрока на этом телефоне', style: V.body(12, color: V.muted)),
+            SelectableText(s.api.voterId, style: V.mono(12.5)),
+          ],
           Text('VERDICT $appVersion · игрок ${s.api.voterId.substring(0, 6)}…', style: V.body(11.5, color: V.dim)),
         ],
       ),
@@ -704,4 +713,114 @@ class _TelegramCardState extends State<_TelegramCard> {
       ),
     );
   }
+}
+
+/// «Конфиденциальность» (the website's /privacy) and, signed in, «Удалить аккаунт».
+class _DataLinks extends StatelessWidget {
+  const _DataLinks({required this.signedIn});
+
+  final bool signedIn;
+
+  Future<void> _delete(BuildContext context) async {
+    final s = SessionScope.read(context);
+    final deleted = await showDialog<bool>(
+      context: context,
+      builder: (_) => DeleteAccountDialog(session: s),
+    );
+    if (deleted == true && context.mounted) snack(context, 'Аккаунт удалён. Спасибо, что судили с нами.');
+  }
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.center,
+    spacing: 4,
+    children: [
+      TextButton.icon(
+        onPressed: () => openSite(context, '/privacy'),
+        icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+        label: const Text('Конфиденциальность'),
+        style: TextButton.styleFrom(foregroundColor: V.muted),
+      ),
+      if (signedIn)
+        TextButton.icon(
+          onPressed: () => _delete(context),
+          icon: const Icon(Icons.delete_outline, size: 18),
+          label: const Text('Удалить аккаунт'),
+          style: TextButton.styleFrom(foregroundColor: V.red),
+        ),
+    ],
+  );
+}
+
+/// «Удалить аккаунт?»: what goes, the password, then the account is gone and the phone plays as a new judge.
+class DeleteAccountDialog extends StatefulWidget {
+  const DeleteAccountDialog({super.key, required this.session});
+
+  final Session session;
+
+  @override
+  State<DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
+  final _password = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.session.deleteAccount(_password.text);
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: V.panel2,
+    title: const Text('Удалить аккаунт?'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Навсегда удалятся аккаунт, ваши вердикты, опыт, ранг, достижения, подарки, друзья, комментарии, '
+            'уведомления и связь с Telegram. Дела, которые уже в игре, и место в прошлых сезонах останутся без '
+            'вашего имени. Вернуть аккаунт будет нельзя.',
+            style: V.body(14),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(labelText: 'Пароль — для подтверждения', errorText: _error),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Оставить')),
+      FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: V.red, foregroundColor: Colors.white),
+        onPressed: _busy || _password.text.isEmpty ? null : _go,
+        child: Text(_busy ? 'Удаляем…' : 'Удалить навсегда'),
+      ),
+    ],
+  );
 }

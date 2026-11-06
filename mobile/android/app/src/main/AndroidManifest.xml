@@ -26,6 +26,24 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Links to the site's cases, discussions, profiles, communities, campaigns and seasons open in the app
+                 (lib/links.dart). They open without asking once the site serves /.well-known/assetlinks.json with
+                 this app's signing certificate (config `android_cert_sha256`); until then Android may ask, or keep
+                 using the browser. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="verdict.azero.uz" />
+                <data android:pathPrefix="/case/" />
+                <data android:pathPrefix="/quick/" />
+                <data android:pathPrefix="/talk/" />
+                <data android:pathPrefix="/u/" />
+                <data android:pathPrefix="/c/" />
+                <data android:pathPrefix="/campaign/" />
+                <data android:pathPrefix="/seasons" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

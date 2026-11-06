@@ -19,6 +19,12 @@ void openCommunities(BuildContext context) =>
 void openCommunity(BuildContext context, String slug) =>
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => CommunityScreen(slug: slug)));
 
+/// The code of an invite link («/c/`slug`?invite=…»), or what was pasted when it isn't a link.
+String inviteOf(String text) {
+  final v = text.trim();
+  return Uri.tryParse(v)?.queryParameters['invite'] ?? v;
+}
+
 class CommunityEmblem extends StatelessWidget {
   const CommunityEmblem({super.key, required this.icon, required this.hue, this.size = 44});
 
@@ -133,9 +139,12 @@ class CommunitiesScreen extends StatelessWidget {
 }
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key, required this.slug});
+  const CommunityScreen({super.key, required this.slug, this.invite});
 
   final String slug;
+
+  /// From an invite link the app was opened with: lets the player straight in, no code to type.
+  final String? invite;
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -153,15 +162,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
   /// The rules first (when there are any), and the invite code for an invite-only community.
   Future<void> _join(Json c) async {
     final rules = (c['rules'] as String? ?? '').trim();
-    final invite = c['access'] == 'invite';
-    String code = '';
-    if (rules.isNotEmpty || invite) {
+    var code = widget.invite ?? '';
+    final askCode = c['access'] == 'invite' && code.isEmpty;
+    if (rules.isNotEmpty || askCode) {
       final res = await showDialog<String>(
         context: context,
-        builder: (_) => _JoinDialog(rules: rules, invite: invite),
+        builder: (_) => _JoinDialog(rules: rules, invite: askCode),
       );
       if (res == null || !mounted) return;
-      code = res;
+      if (askCode) code = res;
     }
     setState(() => _busy = true);
     try {
@@ -223,7 +232,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (!s.signedIn) return Text('Войдите, чтобы вступить.', style: V.body(13.5, color: V.muted));
     if (me == null) {
       return GradientButton(
-        c['access'] == 'request' ? 'Подать заявку' : 'Вступить',
+        (widget.invite ?? '').isNotEmpty
+            ? 'Вступить по приглашению'
+            : (c['access'] == 'request' ? 'Подать заявку' : 'Вступить'),
         icon: Icons.group_add,
         busy: _busy,
         onPressed: () => _join(c),
@@ -387,10 +398,7 @@ class _JoinDialogState extends State<_JoinDialog> {
     super.dispose();
   }
 
-  String get _codeValue {
-    final v = _code.text.trim();
-    return Uri.tryParse(v)?.queryParameters['code'] ?? v;
-  }
+  String get _codeValue => inviteOf(_code.text);
 
   @override
   Widget build(BuildContext context) {

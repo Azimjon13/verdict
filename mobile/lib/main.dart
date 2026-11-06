@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'hunt.dart';
+import 'intro.dart';
+import 'links.dart';
 import 'screens/account.dart';
 import 'screens/archive.dart';
 import 'screens/home.dart';
@@ -39,9 +41,41 @@ class VerdictApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: V.theme(),
       locale: const Locale('ru'),
-      home: const Boot(),
+      builder: (context, child) => PhoneColumn(child: child ?? const SizedBox.shrink()),
+      // The app opens on Boot; a link the phone opened the app with (verdict.azero.uz/case/17 …) waits for it.
+      onGenerateInitialRoutes: (name) => [
+        MaterialPageRoute(builder: (_) => Boot(link: name == Navigator.defaultRouteName ? null : name)),
+      ],
+      // A link opened with the app while it runs.
+      onGenerateRoute: (settings) => linkRoute(settings.name ?? Navigator.defaultRouteName),
     ),
   );
+}
+
+/// On a tablet or a wide window the game keeps a phone's column, centred: the layout it was made for, easier to read.
+class PhoneColumn extends StatelessWidget {
+  const PhoneColumn({super.key, required this.child});
+
+  final Widget child;
+  static const width = 600.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    if (mq.size.width <= width + 120) return child;
+    return ColoredBox(
+      color: V.bg,
+      child: Center(
+        child: SizedBox(
+          width: width,
+          child: MediaQuery(
+            data: mq.copyWith(size: Size(width, mq.size.height)),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Gives every screen the session (and rebuilds them when it changes: sign-in, unread count, catalog).
@@ -54,7 +88,10 @@ class SessionScope extends InheritedNotifier<Session> {
 
 /// First the game's dictionaries, then the app.
 class Boot extends StatefulWidget {
-  const Boot({super.key});
+  const Boot({super.key, this.link});
+
+  /// A link of the site the app was opened with: shown once the app is ready.
+  final String? link;
 
   @override
   State<Boot> createState() => _BootState();
@@ -78,6 +115,12 @@ class _BootState extends State<Boot> {
       s.refreshMe();
       s.refreshHunt();
       if (mounted) setState(() => _ready = true);
+      final link = widget.link;
+      if (link != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) openLink(context, link);
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -85,7 +128,7 @@ class _BootState extends State<Boot> {
 
   @override
   Widget build(BuildContext context) {
-    if (_ready) return const Shell();
+    if (_ready) return SessionScope.of(context).showIntro ? const Intro() : const Shell();
     return Scaffold(
       body: _error != null
           ? ErrorView(_error!, onRetry: _start)

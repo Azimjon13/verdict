@@ -148,6 +148,23 @@
             <p class="muted small">Сессии хранятся на сервере. Если вы входили с чужого устройства, завершите остальные сеансы.</p>
             <button class="btn btn-sm btn-block btn-danger" type="submit">{{ icon('logout') }}Выйти на других устройствах</button>
         </form>
+
+        <form method="post" class="panel side-card" id="delete" data-validate novalidate data-confirm="Удалить аккаунт навсегда? Вернуть его будет нельзя." data-confirm-title="Удалить аккаунт" data-confirm-ok="Удалить навсегда" data-confirm-tone="danger">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="delete">
+            <span class="label-mono">Удалить аккаунт</span>
+            {% if erase_refusal %}
+                <p class="muted small">{{ erase_refusal }}</p>
+            {% else %}
+                <p class="muted small">Удалятся аккаунт, ваши вердикты, опыт, достижения, подарки, друзья, комментарии, уведомления и связь с Telegram. Дела, которые уже в игре, и место в прошлых сезонах останутся без вашего имени. <a href="{{ url_for('privacy') }}#delete">Подробнее</a></p>
+                <label class="field{{ ' has-error' if 'delete_password' in errors }}">
+                    <span>Пароль — для подтверждения</span>
+                    <input type="password" name="delete_password" required autocomplete="current-password">
+                    {{ field_error(errors, 'delete_password') }}
+                </label>
+                <button class="btn btn-sm btn-block btn-danger" type="submit">{{ icon('x') }}Удалить аккаунт</button>
+            {% endif %}
+        </form>
     </aside>
 </div>
 {% endblock %}

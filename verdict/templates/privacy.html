@@ -1,0 +1,131 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set me_user = current_user() %}
+{# The facts on this page follow the code: cookies (web.py, sessions.py), retention (notify.py, gameauth.py,
+   signups.py), deletion (erase.py). Change them together. #}
+<section class="page-hero">
+    <div class="container">
+        <span class="kicker reveal">Конфиденциальность</span>
+        <h1 class="reveal">Ваши данные <span class="grad-text">в VERDICT</span></h1>
+        <p class="lead reveal">Что игра хранит о вас на сайте и в приложении VERDICT, кто что видит, сколько это хранится и как всё удалить. Без мелкого шрифта.</p>
+        <div class="hero-actions reveal">
+            <a class="btn btn-lg" href="#delete">{{ icon('x') }}Удалить аккаунт</a>
+        </div>
+    </div>
+</section>
+
+<div class="container brief-layout">
+    <aside class="brief-toc">
+        <nav class="panel" aria-label="Содержание">
+            <span class="label-mono">Содержание</span>
+            {% for anchor, label in toc.items() %}
+                <a href="#{{ anchor }}" data-nav="{{ anchor }}"><span class="nav-num">{{ '%02d' % loop.index }}</span>{{ label }}</a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <div class="brief-body privacy">
+        <section class="panel brief-block" id="short" data-section>
+            <header class="block-head"><span class="block-num">01</span><h2>Коротко</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('check') }}<span>Играть можно без аккаунта: игра помнит вас по случайному номеру игрока, без имени и почты.</span></li>
+                <li>{{ icon('check') }}<span>Аккаунт нужен для рейтинга, друзей, сообществ и обсуждений. Мы просим только логин, имя (любое) и пароль — почту и телефон не спрашиваем.</span></li>
+                <li>{{ icon('check') }}<span>Рекламы, сторонней аналитики и трекеров нет. Данные не продаются и никому не передаются для рекламы.</span></li>
+                <li>{{ icon('check') }}<span>Аккаунт удаляется в один шаг — на сайте или в приложении, вместе с прогрессом.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="data" data-section>
+            <header class="block-head"><span class="block-num">02</span><h2>Что мы храним</h2></header>
+            <h3>Без аккаунта</h3>
+            <ul class="privacy-list">
+                <li>{{ icon('user') }}<span><b>Номер игрока</b> — случайные 32 символа. На сайте он лежит в cookie, в приложении — в памяти приложения на телефоне.</span></li>
+                <li>{{ icon('gavel') }}<span><b>Ваши вердикты</b> — какой вариант вы выбрали, ваше объяснение (если написали), догадку о большинстве в Быстром суде, сколько секунд вы решали и когда.</span></li>
+                <li>{{ icon('trophy') }}<span><b>Игровой прогресс</b> — опыт, ранг, серию дней, достижения, показатели вашего мира, подарки и найденные тайники, прохождения кампаний, дни, когда вы играли.</span></li>
+            </ul>
+            <h3>С аккаунтом — ещё</h3>
+            <ul class="privacy-list">
+                <li>{{ icon('lock') }}<span><b>Логин, имя, пароль</b> — пароль хранится только в виде необратимого хеша (bcrypt), прочитать его не может никто, включая команду.</span></li>
+                <li>{{ icon('users') }}<span><b>Профиль и общение</b> — «о себе», кому виден профиль, участие в рейтингах; друзья и заявки; сообщества; ваши комментарии и отметки «Поддерживаю»; уведомления; жалобы, которые вы отправили.</span></li>
+                <li>{{ icon('file') }}<span><b>Ваши дела</b> — ситуации, которые вы написали как автор, с их статусом.</span></li>
+                <li>{{ icon('key') }}<span><b>Входы</b> — сеансы сайта и входы приложения (только хеш ключа, название устройства и когда им пользовались).</span></li>
+                <li>{{ icon('send') }}<span><b>Telegram</b>, если вы его подключили, — номер чата и имя пользователя в Telegram, чтобы бот присылал уведомления, дело дня и ссылку для нового пароля.</span></li>
+            </ul>
+            <h3>Для защиты от злоупотреблений</h3>
+            <ul class="privacy-list">
+                <li>{{ icon('shield') }}<span>При регистрации — хеш IP-адреса с секретным ключом (сам адрес не сохраняется): чтобы с одного адреса нельзя было завести сотни аккаунтов.</span></li>
+                <li>{{ icon('shield') }}<span>Неудачные попытки входа — по логину, чтобы притормозить подбор пароля.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="visible" data-section>
+            <header class="block-head"><span class="block-num">03</span><h2>Что видят другие</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('eye') }}<span><b>Профиль</b> — имя, логин, ранг, опыт, число вердиктов, стиль судьи, трофеи, сообщества и «о себе». Кому он виден, решаете вы: всем, только друзьям или только вам.</span></li>
+                <li>{{ icon('trophy') }}<span><b>Рейтинги</b> — имя, логин, титул и очки. Из рейтингов можно выйти в настройках профиля.</span></li>
+                <li>{{ icon('message') }}<span><b>Комментарии</b> — видны тем, кто сам вынес вердикт по делу, вместе с вашим именем и выбранным вариантом.</span></li>
+                <li>{{ icon('users') }}<span><b>Друзья</b> видят, как вы решили то же дело. <b>Сообщества</b> показывают список участников.</span></li>
+                <li>{{ icon('chart') }}<span>Остальным ваши отдельные вердикты не показываются — только общая статистика по делу («как решили судьи»).</span></li>
+                <li>{{ icon('shield') }}<span><b>Команда VERDICT</b> видит игровые данные игроков в панели управления — чтобы проводить охоты, выдавать подарки, разбирать жалобы и помогать с доступом.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="why" data-section>
+            <header class="block-head"><span class="block-num">04</span><h2>Зачем</h2></header>
+            <p>Только чтобы работала игра: запоминать ваш прогресс и мир, считать рейтинги и сезоны, показывать, как разделились судьи, связывать друзей и сообщества, присылать уведомления и защищать игру от накруток и спама. Время на решение помогает нам понять, какие дела слишком длинные или слишком простые.</p>
+        </section>
+
+        <section class="panel brief-block" id="keep" data-section>
+            <header class="block-head"><span class="block-num">05</span><h2>Сколько храним</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('clock') }}<span>Аккаунт и прогресс — пока вы их не удалите.</span></li>
+                <li>{{ icon('clock') }}<span>Уведомления — 90 дней. Вход в приложении — до 90 дней без использования. Сеанс на сайте — до {{ session_days }} {{ plural(session_days, 'дня', 'дней', 'дней') }} без активности.</span></li>
+                <li>{{ icon('clock') }}<span>Хеш адреса при регистрации и неудачные попытки входа — сутки.</span></li>
+                <li>{{ icon('clock') }}<span>Ссылки для нового пароля и коды привязки Telegram — пока не использованы или не устарели.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="others" data-section>
+            <header class="block-head"><span class="block-num">06</span><h2>Кто ещё что-то получает</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('globe') }}<span><b>Хостинг</b>, на котором работает сайт, ведёт обычные журналы запросов: адрес, время, запрошенная страница.</span></li>
+                <li>{{ icon('globe') }}<span><b>Google Fonts</b> — сайт загружает шрифты с серверов Google, поэтому Google видит адрес и браузер посетителя. Приложение шрифты не загружает: они встроены.</span></li>
+                <li>{{ icon('send') }}<span><b>Telegram</b> — только если вы подключили бота: сообщения от бота проходят через Telegram.</span></li>
+                <li>{{ icon('x') }}<span>Больше никому: ни рекламным сетям, ни аналитическим сервисам.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="device" data-section>
+            <header class="block-head"><span class="block-num">07</span><h2>На вашем устройстве</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('box') }}<span><b>Cookie сайта</b>: <code>verdict_vid</code> — номер игрока (год), <code>verdict_sid</code> — сеанс входа. Других cookie нет.</span></li>
+                <li>{{ icon('box') }}<span><b>Хранилище браузера</b>: настройки звука и эффектов, черновик дела, пока вы его пишете, и файлы сайта для работы без сети.</span></li>
+                <li>{{ icon('box') }}<span><b>Приложение</b> хранит номер игрока, ключ входа, ваш логин и имя и адрес сервера — в своей памяти на телефоне.</span></li>
+            </ul>
+        </section>
+
+        <section class="panel brief-block" id="delete" data-section>
+            <header class="block-head"><span class="block-num">08</span><h2>Удаление аккаунта и данных</h2></header>
+            <ul class="privacy-list">
+                <li>{{ icon('x') }}<span><b>В приложении</b>: «Аккаунт» → «Удалить аккаунт», введите пароль.</span></li>
+                <li>{{ icon('x') }}<span><b>На сайте</b>: войдите → «Профиль» → «Удалить аккаунт», введите пароль.{% if me_user %} <a href="{{ url_for('account') }}#delete">Открыть профиль</a>{% endif %}</span></li>
+            </ul>
+            <p><b>Удаляются сразу и навсегда:</b> аккаунт, все ваши вердикты, опыт, ранг, достижения, мир, подарки, найденные тайники, прохождения кампаний, друзья, участие в сообществах, комментарии и ваши отметки «Поддерживаю», уведомления, связь с Telegram, входы на всех устройствах, черновики дел.</p>
+            <p><b>Остаются без вашего имени:</b> дела, которые вы написали и которые уже в игре или на отборе (теперь это часть игры); ваше место в таблицах закрытых сезонов — как «Удалённый судья»; жалобы, которые вы отправили. Сообщество, которое вы основали, переходит модератору или самому давнему участнику; если в нём никого нет — удаляется.</p>
+            <p><b>Без аккаунта</b> прогресс привязан только к номеру игрока: удалите данные сайта в браузере или переустановите приложение — и новый номер ни с чем прежним не связан. Чтобы стереть и сами записи, сообщите команде номер игрока (в приложении он виден в «Аккаунт» → «Сервер»).</p>
+            <p><b>Если войти не получается</b> — восстановите пароль через Telegram («Забыли пароль?» на странице входа), или напишите команде (ниже): она удалит аккаунт за вас.</p>
+        </section>
+
+        <section class="panel brief-block" id="contact" data-section>
+            <header class="block-head"><span class="block-num">09</span><h2>Связаться с командой</h2></header>
+            {% if contact %}
+                <p>По вопросам о данных и удалении: {% if contact_href %}<a href="{{ contact_href }}">{{ contact }}</a>{% else %}{{ contact }}{% endif %}.</p>
+            {% else %}
+                <p>Вопросы о данных принимает команда VERDICT. Если у вас есть аккаунт, вы можете удалить его сами — см. выше.</p>
+                {% if me_user and me_user.role == 'admin' %}<p class="admin-note tone-warn">{{ icon('alert') }}Видно только команде: укажите здесь, как с вами связаться, — настройка <code>contact</code> в config.json (e-mail или ссылка). Магазины приложений требуют контакт на этой странице.</p>{% endif %}
+            {% endif %}
+            <p class="muted small">Страница действует с 6 ноября 2026 года. Если что-то здесь изменится, мы обновим её и дату.</p>
+        </section>
+    </div>
+</div>
+{% endblock %}

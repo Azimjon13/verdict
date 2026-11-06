@@ -83,6 +83,7 @@ SHOTS = [
     ('judge', '/__as?vid={judge}&to=/judge', False), ('ratings', '/ratings', False), ('campaigns', '/campaigns', False),
     ('talk', '/talk/3', True), ('seasons', '/seasons', False), ('season', '/seasons/{last_season}', False), ('notifications', '/notifications', True),
     ('admin', '/admin/', True), ('admin-players', '/admin/players', True), ('admin-hunt', '/admin/hunts/{hunt}', True),
+    ('privacy', '/privacy', False), ('account', '/account', True),
 ]
 
 

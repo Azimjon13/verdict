@@ -31,67 +31,69 @@ class _RatingsScreenState extends State<RatingsScreen> {
       'seasons': {'name': 'Прошлые сезоны'},
     };
     final b = boards[_board] as Json;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('Рейтинг судей', style: V.display(24, weight: FontWeight.w900)),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => openCommunities(context),
-                    icon: const Icon(Icons.groups, size: 18),
-                    label: const Text('Сообщества'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 38,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
+    return NestedScrollView(
+      headerSliverBuilder: (context, _) => [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    for (final e in boards.entries)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          selected: _board == e.key,
-                          onSelected: (_) => setState(() => _board = e.key),
-                          showCheckmark: false,
-                          label: Text((e.value as Json)['name'] as String),
-                          labelStyle: V.body(13, weight: FontWeight.w700, color: _board == e.key ? V.bg : V.text),
-                          selectedColor: V.cyan,
-                          backgroundColor: const Color(0xFF0B0F27),
-                          side: BorderSide(color: _board == e.key ? V.cyan : V.line),
-                        ),
-                      ),
+                    Expanded(
+                      child: Text('Рейтинг судей', style: V.display(24, weight: FontWeight.w900)),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => openCommunities(context),
+                      icon: const Icon(Icons.groups, size: 18),
+                      label: const Text('Сообщества'),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              if (_board != 'seasons') Text(b['desc'] as String? ?? '', style: V.body(12.5, color: V.dim)),
-              if (s.signedIn && _board != 'seasons')
-                SwitchListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  value: _friends,
-                  onChanged: (v) => setState(() => _friends = v),
-                  activeThumbColor: V.cyan,
-                  title: Text('Только друзья', style: V.body(14, weight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 38,
+                  child: ListView(
+                    key: const ValueKey('boards'),
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final e in boards.entries)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            selected: _board == e.key,
+                            onSelected: (_) => setState(() => _board = e.key),
+                            showCheckmark: false,
+                            label: Text((e.value as Json)['name'] as String),
+                            labelStyle: V.body(13, weight: FontWeight.w700, color: _board == e.key ? V.bg : V.text),
+                            selectedColor: V.cyan,
+                            backgroundColor: const Color(0xFF0B0F27),
+                            side: BorderSide(color: _board == e.key ? V.cyan : V.line),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-            ],
+                const SizedBox(height: 8),
+                if (_board != 'seasons') Text(b['desc'] as String? ?? '', style: V.body(12.5, color: V.dim)),
+                if (s.signedIn && _board != 'seasons')
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    value: _friends,
+                    onChanged: (v) => setState(() => _friends = v),
+                    activeThumbColor: V.cyan,
+                    title: Text('Только друзья', style: V.body(14, weight: FontWeight.w700)),
+                  ),
+              ],
+            ),
           ),
         ),
-        if (_board == 'seasons')
-          const Expanded(child: SeasonsView())
-        else
-          Expanded(
-            child: Loader<Json>(
+      ],
+      body: _board == 'seasons'
+          ? const SeasonsView()
+          : Loader<Json>(
               key: ValueKey('$_board$_friends'),
               load: () =>
                   s.api.get('/ratings', query: {'board': _board, if (_friends && s.signedIn) 'scope': 'friends'}),
@@ -125,8 +127,6 @@ class _RatingsScreenState extends State<RatingsScreen> {
                 );
               },
             ),
-          ),
-      ],
     );
   }
 }
@@ -147,7 +147,7 @@ class RatingRow extends StatelessWidget {
       child: Panel(
         accent: r['login'] == me ? V.cyan : (r['place'] == 1 ? V.amber : null),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        onTap: () => openProfile(context, r['login'] as String),
+        onTap: r['login'] == null ? null : () => openProfile(context, r['login'] as String),
         child: Row(
           children: [
             SizedBox(
@@ -286,7 +286,8 @@ class SeasonsView extends StatelessWidget {
                       const SizedBox(height: 8),
                       for (final r in ((season['podium'] as List?) ?? const []).cast<Json>())
                         InkWell(
-                          onTap: () => openProfile(context, r['login'] as String),
+                          // a deleted account keeps its place without the name: nothing to open
+                          onTap: r['login'] == null ? null : () => openProfile(context, r['login'] as String),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 5),
                             child: Row(

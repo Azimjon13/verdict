@@ -2,11 +2,13 @@
 //   flutter build web -t tool/showcase.dart --dart-define=VERDICT_API=http://127.0.0.1:8099
 //   …/index.html?screen=home | archive | judge | ratings | account | case | verdict | result | talk | talk-open
 //                       | campaign | chapter2 | step | ending | profile | seasons | friends
-//                       | found | hunts | communities | community | report
+//                       | found | hunts | communities | community | report | intro | delete | tablet
 import 'package:flutter/material.dart';
 import 'package:verdict_mobile/hunt.dart';
+import 'package:verdict_mobile/intro.dart';
 import 'package:verdict_mobile/main.dart';
 import 'package:verdict_mobile/report.dart';
+import 'package:verdict_mobile/screens/account.dart';
 import 'package:verdict_mobile/screens/campaigns.dart';
 import 'package:verdict_mobile/screens/communities.dart';
 import 'package:verdict_mobile/screens/case_screen.dart';
@@ -49,6 +51,18 @@ class _Show extends StatelessWidget {
       await s.signIn('player1', 'password123');
       return const Shell(initialTab: 4);
     }
+    if (screen == 'intro') return const Intro();
+    if (screen == 'delete') {
+      await s.signIn('player2', 'password123');
+      return _After(
+        const Shell(initialTab: 4),
+        (c) => showDialog<bool>(
+          context: c,
+          builder: (_) => DeleteAccountDialog(session: s),
+        ),
+      );
+    }
+    if (screen == 'tablet') return const PhoneColumn(child: Shell());
     if (screen == 'hunts') {
       await s.refreshHunt();
       return Scaffold(

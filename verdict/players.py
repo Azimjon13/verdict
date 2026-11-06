@@ -213,9 +213,9 @@ def set_blocked(voter, blocked):
 
 
 def delete_player(voter):
-    """Removes everything the game knows about a player: verdicts, career, gifts, finds, activity. The account
-    (if any) stays — it is a separate thing, managed on the «Команда» page."""
-    for table in ('votes', 'spot_finds', 'gift_grants', 'player_days', 'players'):
+    """Removes everything the game knows about a player: verdicts, career, gifts, finds, campaign runs, activity.
+    The account (if any) stays — erase.erase_account deletes an account with its player."""
+    for table in ('votes', 'spot_finds', 'gift_grants', 'player_days', 'campaign_runs', 'players'):
         execute('DELETE FROM %s WHERE voter = %%s' % table, (voter,))
 
 

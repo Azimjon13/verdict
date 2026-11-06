@@ -170,6 +170,17 @@ def player_page(voter):
             players.delete_player(voter)
             flash('success', 'Все игровые данные игрока удалены.')
             return redirect(url_for('admin.players_page'))
+        elif act == 'erase_account' and info_user(voter):
+            from .. import erase
+            from ..auth import user_find
+            u = user_find(info_user(voter)['id'])
+            refusal = erase.can_erase(u)
+            if refusal:
+                flash('error', refusal)
+            else:
+                erase.erase_account(int(u['id']))
+                flash('success', 'Аккаунт @%s и его данные удалены.' % u['login'])
+                return redirect(url_for('admin.players_page'))
         return redirect(back)
 
     info = players.player_detail(voter)

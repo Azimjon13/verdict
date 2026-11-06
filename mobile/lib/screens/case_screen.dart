@@ -147,7 +147,12 @@ class _CaseViewState extends State<CaseView> {
               Text('${_page + 1} / ${panels.length}', style: V.mono(12, color: V.muted)),
               if (_page < last) ...[
                 const SizedBox(width: 6),
-                TextButton(onPressed: () => _go(last), child: const Text('К вердикту')),
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => _go(last),
+                    child: const Text('К вердикту', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
               ],
             ],
           ),
@@ -193,11 +198,17 @@ class _CaseViewState extends State<CaseView> {
                       ),
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _go(_page + 1),
-                    icon: const Icon(Icons.arrow_forward, size: 18),
-                    label: Text(_page + 1 == last ? 'К вердикту' : 'Дальше'),
-                    style: FilledButton.styleFrom(backgroundColor: V.cyan, foregroundColor: V.bg),
+                  Flexible(
+                    child: FilledButton.icon(
+                      onPressed: () => _go(_page + 1),
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: Text(
+                        _page + 1 == last ? 'К вердикту' : 'Дальше',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: FilledButton.styleFrom(backgroundColor: V.cyan, foregroundColor: V.bg),
+                    ),
                   ),
                 ],
               ),

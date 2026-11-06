@@ -8,5 +8,7 @@
     },
     "admin_password": "change-me-too",
     "secret_key": "any-long-random-string",
-    "session_lifetime": 1209600
+    "session_lifetime": 1209600,
+    "contact": "",
+    "android_cert_sha256": ""
 }

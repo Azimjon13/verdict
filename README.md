@@ -43,6 +43,8 @@ Environment variables win over `config.json` in the project root (copy `config.e
 | Telegram bot token (from @BotFather) | *(none: no bot)* | `VERDICT_TELEGRAM_TOKEN` |
 | Key in the hourly cron address `/cron/<key>` | made and kept in the database | `VERDICT_CRON_KEY` |
 | Hour of the case-of-the-day reminder (UTC) | 14 (19:00 Tashkent) | `VERDICT_DAILY_HOUR_UTC` |
+| How players reach the team (e-mail or link), shown on `/privacy` | *(none)* | `VERDICT_CONTACT` |
+| Android app's package / signing certificate SHA-256 (comma-separated), for `/.well-known/assetlinks.json` | `uz.azero.verdict` / *(none: no file)* | `VERDICT_ANDROID_PACKAGE`, `VERDICT_ANDROID_CERT_SHA256` |
 
 If your MySQL user cannot create databases, create one and import `database/schema.sql`.
 
@@ -216,6 +218,16 @@ live in the database; export them with `/api/export` (team only).
   anonymously before (where both judged the same case, the account's verdict stays). Signing out gives the browser a
   fresh anonymous player, so the next person at a shared computer doesn't play as you. The player id is a secret
   (it is the key to the verdicts); the public side of a player is the account. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- **Deleting an account** — «Профиль» → «Удалить аккаунт» (the password confirms it), the same in the app
+  (`POST /api/v1/me/delete`), or the team for someone who can't sign in (admin → player → «Удалить аккаунт»).
+  `verdict/erase.py` removes, in one transaction, the account, its player's verdicts and career, friends, memberships,
+  comments and the support it gave, notifications, Telegram, sign-ins and drafts; cases in the game or on review and
+  the place on closed season boards stay without the name («Удалённый судья»); a community it founded passes to a
+  moderator or the longest member. The team's own accounts can't delete themselves (the site never loses its last
+  admin by accident).
+- **`/privacy`** («Конфиденциальность», linked in the footer and on sign-up) says in plain words what the game keeps,
+  who sees what, how long, and how to delete everything. It follows the code — change both together. Set `contact`
+  (an e-mail) before publishing the app: stores want one there.
 
 ## Pages
 
@@ -443,9 +455,11 @@ Small effects that make a verdict feel like one, all synthesised in the browser 
 
 A Flutter app for Android (iOS builds on a Mac) on top of the game API: Быстрый суд with the case as swipeable frames
 and the majority guess, the case of the day, the archive, the judge profile and the player's world, ratings, sign-in
-(the phone's progress joins the account), notifications and the discussion. Players share one career between the
-app and the site. Build the APK with `flutter build apk --release` in `mobile/` — see `mobile/README.md`; GitHub runs
-its analyzer and widget tests on every push.
+(the phone's progress joins the account), notifications and the discussion, story campaigns, treasure hunts on the
+app's screens, friends, communities, seasons, gifts, reports and account deletion. Players share one career between
+the app and the site. Links to the site's cases, profiles and communities open in the app (Android App Links: set
+`android_cert_sha256` so they open without asking). Build the APK with `flutter build apk --release` in `mobile/` —
+see `mobile/README.md` (also for Google Play signing); GitHub runs its analyzer and widget tests on every push.
 
 ## Installable app
 

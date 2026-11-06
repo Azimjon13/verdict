@@ -288,8 +288,14 @@ class _DailyCardState extends State<DailyCard> {
             children: [
               const Icon(Icons.calendar_today, size: 16, color: V.amber),
               const SizedBox(width: 8),
-              Text('ДЕЛО ДНЯ', style: V.mono(11, color: V.amber)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  'ДЕЛО ДНЯ',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: V.mono(11, color: V.amber),
+                ),
+              ),
               Text('${two(h)}:${two(m)}:${two(sec)}', style: V.mono(12, color: V.amber)),
             ],
           ),

@@ -6,6 +6,7 @@ on the site and the other way round.
 
 ## What's in it
 
+- **The first launch** on a new phone: three cards on what the game is (skippable, shown once).
 - **Играть** — the rank and its progress, a treasure hunt that is on, the case of the day with its countdown and
   bonus, Быстрый суд, the story campaigns, and a way to suggest one's own case (on the website).
 - **A case** — swipeable frames like «Дело в кадрах» on the site (the world and the player's role, the story with
@@ -37,8 +38,14 @@ on the site and the other way round.
   the team connected the bot: link the chat for notifications and the case of the day, or unlink), the player's
   communities, friends (requests to accept or decline, friends with their rank and streak, pending requests, finding
   a judge by login), notifications (the tab shows the unread count; a notification opens what it is about — a
-  profile, a community, a discussion — in the app), signing out (the phone gets a fresh anonymous player), and the
-  server address (default `https://verdict.azero.uz`).
+  profile, a community, a discussion — in the app), signing out (the phone gets a fresh anonymous player), the
+  server address (default `https://verdict.azero.uz`) with the phone's player number, «Конфиденциальность» (the
+  website's `/privacy`) and «Удалить аккаунт» (the password confirms it; the account goes with all its progress and
+  the phone starts as a new anonymous judge — Google Play requires deletion inside the app).
+- **Links open the app.** A shared link to a case, a discussion, a judge, a community (an invite link lets the player
+  straight in), a campaign or the seasons on `verdict.azero.uz` opens in the app when it's installed — at start-up or
+  while it runs (`lib/links.dart`, the intent filter in `android/app/src/main/AndroidManifest.xml`).
+- **Tablets** get the phone's column in the middle of the screen; large text is checked on a small phone by a test.
 - **Обсуждение** — comments under a case after one's own verdict; backing them and writing need an account; one's
   own comment can be deleted, another's reported. Reports (judges, communities, cases, comments) reach the team's
   «Жалобы» in the admin panel.
@@ -60,11 +67,30 @@ Another server: `--dart-define=VERDICT_API=https://example.com` (the address can
 Аккаунт → Сервер). Debug builds may use plain `http` (an emulator reaches the PC as `http://10.0.2.2:<port>`); release
 builds need `https`.
 
-**Publishing.** The release APK is signed with the debug key — fine for installing by hand («установка из
-неизвестных источников»), not for Google Play. For Play: create an upload key (`keytool -genkey …`), add a
-`signingConfig` in `android/app/build.gradle.kts` and build an app bundle (`flutter build appbundle`). The app id is
-`uz.azero.verdict`. iOS needs a Mac with Xcode: `flutter build ipa`, after setting the bundle id, the team and the app
-icons there.
+**Publishing.** Without a key of your own the release APK is signed with the debug key — fine for installing by hand
+(«установка из неизвестных источников»), not for Google Play. For Play:
+
+1. Make an upload key once and keep it (and its passwords) safe — losing it means asking Google to reset it:
+   `keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`
+2. Put `upload.jks` into `mobile/android/` and next to it `key.properties` (both are ignored by git):
+
+   ```
+   storeFile=upload.jks
+   storePassword=…
+   keyAlias=upload
+   keyPassword=…
+   ```
+3. `flutter build appbundle` → `build/app/outputs/bundle/release/app-release.aab`, upload it in the Play Console. The
+   app id is `uz.azero.verdict`. The store listing needs the privacy page — `https://verdict.azero.uz/privacy` — and
+   the account-deletion page — `https://verdict.azero.uz/privacy#delete`; set `contact` in the site's config first.
+4. **Links that open the app without asking** (Android App Links): put the SHA-256 of the certificate that signs the
+   app into the site's config `android_cert_sha256` (with Play App Signing, take it from Play Console → «App
+   integrity»; for an APK: `apksigner verify --print-certs <apk>`), restart the site, and check
+   `https://verdict.azero.uz/.well-known/assetlinks.json`. Without it, Android may ask which app to use, or keep
+   opening the browser.
+
+iOS needs a Mac with Xcode: `flutter build ipa`, after setting the bundle id, the team and the app icons there
+(links opening the iOS app would also need Associated Domains).
 
 Icons are drawn from the site's logo by `scripts/make_icons.py` (in the project root; it needs Chrome). The fonts
 (Manrope, Unbounded) are bundled under the SIL Open Font License (`assets/fonts/OFL-*.txt`, also on the app's
@@ -80,7 +106,9 @@ lib/theme.dart         the site's colours and fonts; lib/icons.dart — the site
 lib/widgets.dart       panels, buttons, letters, bars, avatars, loading and error states
 lib/fx.dart            the verdict stamp and the confetti (still when the phone asks to reduce motion)
 lib/hunt.dart          treasure hunts: the spots over a screen (HuntLayer), the gift window, the hunts panel
-lib/links.dart         the website in the browser, the site's links inside the app, the share sheet
+lib/links.dart         the website in the browser, the site's links inside the app (and links the app is opened
+                       with), the share sheet
+lib/intro.dart         the first launch's three cards
 lib/report.dart        «Пожаловаться» (POST /reports)
 lib/screens/           home, case_screen (frames + verdict), result_screen, campaigns, archive, judge, ratings (and
                        seasons), communities, profile, account (profile settings, Telegram, friends), talk

@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:verdict_mobile/links.dart';
 import 'package:verdict_mobile/main.dart';
+import 'package:verdict_mobile/screens/campaigns.dart';
 import 'package:verdict_mobile/screens/communities.dart';
 import 'package:verdict_mobile/screens/profile.dart';
 import 'package:verdict_mobile/screens/result_screen.dart';
@@ -91,6 +92,10 @@ class FakeServer {
         body = fixture('friends');
       case '/reports':
         body = jsonEncode({'ok': true, 'new': true});
+      case '/me/delete':
+        final password = (jsonDecode(req.body) as Map<String, dynamic>)['password'];
+        status = password == 'password123' ? 200 : 403;
+        body = jsonEncode(status == 200 ? {'ok': true} : {'ok': false, 'error': 'Пароль указан неверно.'});
       case '/campaigns':
         body = fixture('campaigns');
       case '/campaigns/rubezh':
@@ -145,14 +150,22 @@ Future<void> settle(WidgetTester tester, [int steps = 12]) async {
   }
 }
 
-/// The app on a phone; [signedIn] — as player1 of the fixtures, with a saved token.
-Future<FakeServer> start(WidgetTester tester, {bool signedIn = false, bool telegram = false}) async {
-  tester.view.physicalSize = const Size(1080, 2340);
+/// The app on a phone; [signedIn] — as player1 of the fixtures, with a saved token; [fresh] — a new phone, which
+/// shows the intro first; [size] in logical pixels.
+Future<FakeServer> start(
+  WidgetTester tester, {
+  bool signedIn = false,
+  bool telegram = false,
+  bool fresh = false,
+  Size size = const Size(360, 780),
+}) async {
+  tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues(
-    signedIn ? {'token': 'test-token', 'login': 'player1', 'name': 'Анна Ветрова'} : {},
-  );
+  SharedPreferences.setMockInitialValues({
+    if (!fresh) 'intro_seen': true,
+    if (signedIn) ...{'token': 'test-token', 'login': 'player1', 'name': 'Анна Ветрова'},
+  });
   final server = FakeServer(telegramReady: telegram);
   final session = await Session.load(client: server.client);
   await tester.pumpWidget(VerdictApp(session: session));
@@ -284,7 +297,13 @@ void main() {
     expect(find.text('Войдите, чтобы добавить судью в друзья.'), findsOneWidget);
     await tester.pageBack();
     await settle(tester);
-    await tester.dragUntilVisible(find.text('Прошлые сезоны'), find.byType(ListView).first, const Offset(-200, 0));
+    await tester.drag(find.byType(NestedScrollView), const Offset(0, 500)); // the header back into view
+    await settle(tester);
+    await tester.dragUntilVisible(
+      find.text('Прошлые сезоны'),
+      find.byKey(const ValueKey('boards')),
+      const Offset(-200, 0),
+    );
     await tapText(tester, 'Прошлые сезоны');
     expect(find.textContaining('Идёт сезон'), findsOneWidget);
   });
@@ -391,6 +410,11 @@ void main() {
     expect(appTab('/'), 0);
     expect(appTab('/u/anna'), isNull);
     expect(appRoute('/seasons/2026-10'), isA<Scaffold>());
+    expect(appRoute('/campaign/rubezh'), isA<CampaignScreen>());
+    expect(appRoute('/communities'), isA<CommunitiesScreen>());
+    expect((appRoute('/c/klub?invite=xyz') as CommunityScreen).invite, 'xyz');
+    expect(inviteOf('https://verdict.azero.uz/c/klub?invite=xyz'), 'xyz');
+    expect(inviteOf(' xyz '), 'xyz');
     expect(appRoute('/case/x'), isNull);
     final line = shareLine(
       {'id': 17, 'title': 'Шёпот'},
@@ -401,6 +425,84 @@ void main() {
       line,
       'Дело «Шёпот»: мой вердикт — B, «Промолчать». Так решили 35% судей. А как решите вы? https://v.uz/case/17',
     );
+  });
+
+  testWidgets('a new phone starts with the intro, once', (tester) async {
+    await start(tester, fresh: true);
+    expect(find.text('Вы — судья'), findsOneWidget);
+    await tapText(tester, 'Дальше');
+    await settle(tester);
+    expect(find.text('Решения меняют ваш мир'), findsOneWidget);
+    await tapText(tester, 'Пропустить');
+    expect(find.text('Быстрый суд'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('intro_seen'), isTrue);
+  });
+
+  testWidgets('a link the app is opened with: the screen after the start; one while it runs: on top', (tester) async {
+    tester.platformDispatcher.defaultRouteNameTestValue = '/c/klub-strogikh-sudey?invite=abc';
+    addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
+    final server = await start(tester, signedIn: true);
+    expect(server.paths, contains('/communities/klub-strogikh-sudey'));
+    expect(find.text('Вступить по приглашению'), findsOneWidget);
+    await tester.tap(find.text('Вступить по приглашению'));
+    await settle(tester);
+    await tester.tap(find.text('Принимаю правила'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Вступить'));
+    await settle(tester);
+    final join = server.requests.lastWhere((r) => r.url.path.endsWith('/join'));
+    expect(jsonDecode(join.body), {'accept_rules': true, 'code': 'abc'});
+
+    await tester.binding.handlePushRoute('/u/player2');
+    await settle(tester);
+    expect(server.paths, contains('/users/player2'));
+    expect(find.text('@player2'), findsOneWidget);
+    await tester.binding.handlePushRoute('/ratings');
+    await settle(tester);
+    expect(find.text('Рейтинг судей'), findsOneWidget);
+  });
+
+  testWidgets('deleting the account: the password, then a new anonymous judge on this phone', (tester) async {
+    final server = await start(tester, signedIn: true);
+    final before = (await SharedPreferences.getInstance()).getString('voter');
+    await tester.tap(find.text('Аккаунт').last);
+    await settle(tester);
+    await scrollTo(tester, 'Удалить аккаунт');
+    await tapText(tester, 'Удалить аккаунт');
+    await tester.enterText(find.byType(TextField).last, 'wrong');
+    await tester.pump();
+    await tapText(tester, 'Удалить навсегда');
+    expect(find.text('Пароль указан неверно.'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'password123');
+    await tester.pump();
+    await tapText(tester, 'Удалить навсегда');
+    await settle(tester);
+    expect(server.paths, contains('/me/delete'));
+    expect(find.text('Аккаунт удалён. Спасибо, что судили с нами.'), findsOneWidget);
+    expect(find.text('Войти'), findsWidgets); // the tab is the sign-in again
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('token'), isNull);
+    expect(prefs.getString('voter'), isNot(before));
+  });
+
+  testWidgets('on a tablet the game keeps a phone\'s column', (tester) async {
+    await start(tester, size: const Size(1200, 900));
+    expect(tester.getSize(find.byType(NavigationBar)).width, 600);
+  });
+
+  testWidgets('large text on a small phone: every tab fits', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await start(tester, signedIn: true, size: const Size(320, 640));
+    for (final tab in ['Архив', 'Судья', 'Рейтинг', 'Аккаунт', 'Играть']) {
+      await tester.tap(find.text(tab).last);
+      await settle(tester);
+    }
+    await scrollTo(tester, 'Быстрый суд');
+    await tapText(tester, 'Быстрый суд');
+    await tapText(tester, 'К вердикту');
+    expect(find.text('Ваш вердикт'), findsOneWidget);
   });
 
   test('dates as the website writes them', () {
