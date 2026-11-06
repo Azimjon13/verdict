@@ -66,7 +66,7 @@ def erase_account(user_id):
         _hand_over(user_id)
         _season_boards(user_id)
         # the support it gave leaves the counters of others' comments (the likes themselves go with the account)
-        execute('UPDATE comments c JOIN comment_likes l ON l.comment_id = c.id SET c.likes = GREATEST(c.likes - 1, 0)'
+        execute('UPDATE comments c JOIN comment_likes l ON l.comment_id = c.id SET c.likes = IF(c.likes > 0, c.likes - 1, 0)'
                 ' WHERE l.user_id = %s', (user_id,))
         execute("DELETE FROM situations WHERE user_id = %s AND status = 'draft'", (user_id,))
         execute("UPDATE situations SET author = '' WHERE user_id = %s", (user_id,))  # the signature goes; the case stays

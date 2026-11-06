@@ -36,9 +36,17 @@ jobs:
       - name: Lint
         run: python -m pyflakes verdict tests scripts passenger_wsgi.py run.py
       - name: Tests
-        run: python -m pytest tests -q
+        run: python -m pytest tests -q --junitxml=pytest.xml
+      - name: Show failing tests
+        if: failure()
+        run: python scripts/ci_annotate.py pytest.xml
       - name: Browser tests (headless Chrome)
-        run: python tests/e2e/run.py
+        run: |
+          set -o pipefail
+          python tests/e2e/run.py 2>&1 | tee e2e.log
+      - name: Show failing browser checks
+        if: failure() && hashFiles('e2e.log') != ''
+        run: python scripts/ci_annotate.py e2e.log
 
   mobile:
     runs-on: ubuntu-24.04

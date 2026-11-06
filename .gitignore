@@ -5,3 +5,5 @@ __pycache__/
 .pytest_cache/
 config.json
 startup-error.txt
+pytest.xml
+e2e.log
